@@ -1,17 +1,17 @@
 ﻿<#
 .SYNOPSIS
     Client per l'integrazione con un LLM locale tramite Ollama (http://127.0.0.1:11434)
-    con generatore di resoconto intelligente integrato.
+    con auto-rilevamento, auto-installazione silenziosa sulla VM e download automatico del modello.
 
 .DESCRIPTION
-    Fornisce funzioni pure per la costruzione dei prompt (controllo singolo e
-    resoconto complessivo della scansione), funzioni di chiamata all'API REST
-    locale di Ollama (/api/tags, /api/pull e /api/generate) e un motore di
-    analisi guidata locale caso-specifica quando il servizio Ollama non e'
-    installato sulla macchina.
-    Rispetta il principio architetturale D3: il rilevamento e' deterministico;
-    l'assistente spiega i risultati e fornisce consigli di miglioramento senza mai
-    decidere o modificare lo stato dei controlli ne' eseguire comandi sul sistema.
+    Fornisce:
+    - Funzioni pure per la costruzione dei prompt (controllo singolo e resoconto complessivo)
+    - Rilevamento automatico di Ollama su localhost (127.0.0.1) o sull'Host della VM (gateway)
+    - Avvio automatico di 'ollama serve' se installato ma fermo
+    - Installazione automatica silenziosa di Ollama (winget / OllamaSetup.exe /VERYSILENT)
+      se assente sulla VM, senza richiedere download manuali all'utente
+    - Download automatico del modello leggero (es. qwen2.5:0.5b) tramite API /api/pull
+    - Motore esperto locale come risposta immediata di fallback
 #>
 
 Set-StrictMode -Version 2
@@ -148,8 +148,7 @@ Scrivi un resoconto strutturato in 4 sezioni:
 function Format-AnalisiLocaleControllo {
     <#
     .SYNOPSIS
-        Genera una spiegazione strutturata e contestuale del singolo controllo
-        anche quando il server Ollama locale non e' ancora attivo sulla macchina.
+        Genera una spiegazione strutturata e contestuale del singolo controllo.
     #>
     [CmdletBinding()]
     param(
@@ -210,8 +209,7 @@ function Format-AnalisiLocaleControllo {
 function Format-ResocontoLocaleScansione {
     <#
     .SYNOPSIS
-        Genera un resoconto completo e prioritizzato dell'intera scansione del PC
-        con consigli passo-passo per tutti i controlli falliti.
+        Genera un resoconto completo e prioritizzato dell'intera scansione del PC.
     #>
     [CmdletBinding()]
     param(
@@ -290,15 +288,42 @@ function Format-ResocontoLocaleScansione {
     [void]$sb.AppendLine("3. CONSIGLI PRATICI PRIMA DI APPLICARE LE MODIFICHE")
     [void]$sb.AppendLine("   - Crea sempre un Punto di Ripristino di Windows prima di modificare il registro o i criteri.")
     [void]$sb.AppendLine("   - Applica un miglioramento alla volta (partendo da quelli a gravita' CRITICO e ALTO) e verifica il normale funzionamento delle tue applicazioni.")
-    [void]$sb.AppendLine("   - Puoi copiare il comando di ciascun controllo selezionandolo nella scheda 'Dettagli e Rimedio'.")
+    [void]$sb.AppendLine("   - Puoi copiare il comando di ciascun controllo selezionandolo nella Pagina 1 (Scansione e Controlli).")
 
     return $sb.ToString().Trim()
+}
+
+function Find-EseguibileOllamaLocale {
+    <#
+    .SYNOPSIS
+        Cerca il percorso di ollama.exe sul sistema locale.
+    #>
+    [CmdletBinding()]
+    param()
+
+    $cmd = Get-Command -Name 'ollama' -ErrorAction SilentlyContinue
+    if ($null -ne $cmd -and (-not [string]::IsNullOrWhiteSpace($cmd.Source))) {
+        return $cmd.Source
+    }
+
+    $percorsiCandidati = @(
+        (Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'),
+        'C:\Program Files\Ollama\ollama.exe'
+    )
+    foreach ($p in $percorsiCandidati) {
+        if (-not [string]::IsNullOrWhiteSpace($p) -and (Test-Path -LiteralPath $p)) {
+            return $p
+        }
+    }
+
+    return $null
 }
 
 function Test-ConnessioneOllama {
     <#
     .SYNOPSIS
-        Verifica se il server locale Ollama e' attivo e restituisce la lista dei modelli installati.
+        Verifica se il server Ollama e' attivo sull'endpoint specificato (o sull'Host della VM)
+        e restituisce la lista dei modelli installati.
     #>
     [CmdletBinding()]
     param(
@@ -306,65 +331,200 @@ function Test-ConnessioneOllama {
         [string]$Endpoint = $script:EndpointOllamaPredefinito,
 
         [Parameter(Mandatory = $false)]
-        [int]$TimeoutSec = 3
+        [int]$TimeoutSec = 2
     )
 
     $urlPulito = if ([string]::IsNullOrWhiteSpace($Endpoint)) { $script:EndpointOllamaPredefinito } else { $Endpoint.Trim().TrimEnd('/') }
-    $uriTags   = "$urlPulito/api/tags"
 
-    try {
-        $risposta = Invoke-RestMethod -Uri $uriTags -Method Get -TimeoutSec $TimeoutSec -ErrorAction Stop
-        $nomiModelli = @()
-
-        if ($null -ne $risposta -and $null -ne $risposta.PSObject.Properties['models'] -and $null -ne $risposta.models) {
-            foreach ($m in $risposta.models) {
-                if ($null -ne $m.PSObject.Properties['name'] -and (-not [string]::IsNullOrWhiteSpace([string]$m.name))) {
-                    $nomiModelli += [string]$m.name
+    # Lista di endpoint candidati: quello scelto + fallback automatici per VM (Host NAT 10.0.2.2 e Default Gateway)
+    $candidati = @($urlPulito)
+    if ($urlPulito -match '127\.0\.0\.1|localhost') {
+        $candidati += 'http://10.0.2.2:11434'
+        try {
+            $rot = @(Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Select-Object -First 2)
+            foreach ($r in $rot) {
+                if ($null -ne $r.PSObject.Properties['NextHop'] -and (-not [string]::IsNullOrWhiteSpace($r.NextHop)) -and $r.NextHop -ne '0.0.0.0') {
+                    $gwUrl = "http://$($r.NextHop):11434"
+                    if ($candidati -notcontains $gwUrl) {
+                        $candidati += $gwUrl
+                    }
                 }
             }
         }
+        catch { }
+    }
 
-        $preferiti = @('qwen2.5:0.5b', 'qwen2.5:1.5b', 'llama3.2:1b', 'gemma2:2b', 'tinyllama:latest', 'phi3:mini')
-        $consigliato = $script:ModelloOllamaPredefinito
-        if ($nomiModelli.Count -gt 0) {
-            $trovatoPreferito = $false
-            foreach ($pref in $preferiti) {
-                if ($nomiModelli -contains $pref) {
-                    $consigliato = $pref
-                    $trovatoPreferito = $true
-                    break
+    foreach ($cand in $candidati) {
+        $uriTags = "$cand/api/tags"
+        try {
+            $risposta = Invoke-RestMethod -Uri $uriTags -Method Get -TimeoutSec $TimeoutSec -ErrorAction Stop
+            $nomiModelli = @()
+
+            if ($null -ne $risposta -and $null -ne $risposta.PSObject.Properties['models'] -and $null -ne $risposta.models) {
+                foreach ($m in $risposta.models) {
+                    if ($null -ne $m.PSObject.Properties['name'] -and (-not [string]::IsNullOrWhiteSpace([string]$m.name))) {
+                        $nomiModelli += [string]$m.name
+                    }
                 }
             }
-            if (-not $trovatoPreferito) {
-                $consigliato = $nomiModelli[0]
+
+            $preferiti = @('qwen2.5:0.5b', 'qwen2.5:1.5b', 'llama3.2:1b', 'gemma2:2b', 'tinyllama:latest', 'phi3:mini')
+            $consigliato = $script:ModelloOllamaPredefinito
+            if ($nomiModelli.Count -gt 0) {
+                $trovatoPreferito = $false
+                foreach ($pref in $preferiti) {
+                    if ($nomiModelli -contains $pref) {
+                        $consigliato = $pref
+                        $trovatoPreferito = $true
+                        break
+                    }
+                }
+                if (-not $trovatoPreferito) {
+                    $consigliato = $nomiModelli[0]
+                }
+            }
+
+            return [PSCustomObject]@{
+                Disponibile        = $true
+                Endpoint           = $cand
+                Modelli            = $nomiModelli
+                ModelloConsigliato = $consigliato
+                Errore             = $null
             }
         }
+        catch {
+            # Prova il candidato successivo
+        }
+    }
 
-        return [PSCustomObject]@{
-            Disponibile        = $true
-            Endpoint           = $urlPulito
-            Modelli            = $nomiModelli
-            ModelloConsigliato = $consigliato
-            Errore             = $null
+    return [PSCustomObject]@{
+        Disponibile        = $false
+        Endpoint           = $urlPulito
+        Modelli            = @()
+        ModelloConsigliato = $script:ModelloOllamaPredefinito
+        Errore             = "Server Ollama non attivo su $urlPulito."
+    }
+}
+
+function Initialize-AmbienteOllama {
+    <#
+    .SYNOPSIS
+        Garantisce che Ollama sia attivo: se e' installato lo avvia; se non e' installato
+        sulla macchina/VM e AutoInstalla e' attivo, lo scarica e lo installa in modalita'
+        silenziosa senza intervento manuale dell'utente.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Endpoint = $script:EndpointOllamaPredefinito,
+
+        [Parameter(Mandatory = $false)]
+        [bool]$AutoInstalla = $true,
+
+        [Parameter(Mandatory = $false)]
+        [scriptblock]$OnStatus = $null
+    )
+
+    # 1. Controlla se e' gia' attivo (in locale o sull'Host della VM)
+    $stato = Test-ConnessioneOllama -Endpoint $Endpoint -TimeoutSec 2
+    if ($stato.Disponibile) {
+        return $stato
+    }
+
+    # 2. Cerca se ollama.exe e' gia' presente sul disco ma non avviato
+    $exeOllama = Find-EseguibileOllamaLocale
+    if (-not [string]::IsNullOrWhiteSpace($exeOllama)) {
+        if ($null -ne $OnStatus) { & $OnStatus "Avvio automatico del servizio Ollama locale in corso..." }
+        try {
+            $psi = New-Object System.Diagnostics.ProcessStartInfo
+            $psi.FileName        = $exeOllama
+            $psi.Arguments       = 'serve'
+            $psi.CreateNoWindow  = $true
+            $psi.UseShellExecute = $false
+            [void][System.Diagnostics.Process]::Start($psi)
+
+            for ($i = 0; $i -lt 5; $i++) {
+                [System.Threading.Thread]::Sleep(1000)
+                $stato = Test-ConnessioneOllama -Endpoint 'http://127.0.0.1:11434' -TimeoutSec 2
+                if ($stato.Disponibile) { return $stato }
+            }
+        }
+        catch { }
+    }
+
+    # 3. Se non e' installato sulla macchina/VM e AutoInstalla e' True, installalo automaticamente!
+    if ($AutoInstalla) {
+        # 3a. Tentativo rapido tramite winget (se presente sulla macchina)
+        $cmdWinget = Get-Command -Name 'winget' -ErrorAction SilentlyContinue
+        if ($null -ne $cmdWinget) {
+            if ($null -ne $OnStatus) { & $OnStatus "Ollama non trovato sulla VM: installazione automatica tramite Winget in corso (attendi 1-2 minuti)..." }
+            try {
+                $psiWg = New-Object System.Diagnostics.ProcessStartInfo
+                $psiWg.FileName        = $cmdWinget.Source
+                $psiWg.Arguments       = 'install -e --id Ollama.Ollama --silent --accept-package-agreements --accept-source-agreements'
+                $psiWg.CreateNoWindow  = $true
+                $psiWg.UseShellExecute = $false
+                $procWg = [System.Diagnostics.Process]::Start($psiWg)
+                [void]$procWg.WaitForExit(180000)
+            }
+            catch { }
+        }
+
+        # 3b. Se ancora non presente, scarica direttamente OllamaSetup.exe ufficiale ed eseguilo con /VERYSILENT
+        $exeOllama = Find-EseguibileOllamaLocale
+        if ([string]::IsNullOrWhiteSpace($exeOllama)) {
+            if ($null -ne $OnStatus) { & $OnStatus "Scaricamento automatico di OllamaSetup.exe in corso (nessuna azione manuale richiesta)..." }
+            try {
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                $percorsoInstaller = Join-Path ([System.IO.Path]::GetTempPath()) 'OllamaSetup_Auto.exe'
+                $wc = New-Object System.Net.WebClient
+                $wc.DownloadFile('https://ollama.com/download/OllamaSetup.exe', $percorsoInstaller)
+
+                if (Test-Path -LiteralPath $percorsoInstaller) {
+                    if ($null -ne $OnStatus) { & $OnStatus "Installazione silenziosa di Ollama sulla VM in corso..." }
+                    $psiInst = New-Object System.Diagnostics.ProcessStartInfo
+                    $psiInst.FileName        = $percorsoInstaller
+                    $psiInst.Arguments       = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART'
+                    $psiInst.CreateNoWindow  = $true
+                    $psiInst.UseShellExecute = $false
+                    $procInst = [System.Diagnostics.Process]::Start($psiInst)
+                    [void]$procInst.WaitForExit(180000)
+                }
+            }
+            catch { }
+        }
+
+        # 3c. Avvia il servizio appena installato
+        $exeOllama = Find-EseguibileOllamaLocale
+        if (-not [string]::IsNullOrWhiteSpace($exeOllama)) {
+            if ($null -ne $OnStatus) { & $OnStatus "Avvio del server Ollama appena installato..." }
+            try {
+                $psiSrv = New-Object System.Diagnostics.ProcessStartInfo
+                $psiSrv.FileName        = $exeOllama
+                $psiSrv.Arguments       = 'serve'
+                $psiSrv.CreateNoWindow  = $true
+                $psiSrv.UseShellExecute = $false
+                [void][System.Diagnostics.Process]::Start($psiSrv)
+
+                for ($j = 0; $j -lt 8; $j++) {
+                    [System.Threading.Thread]::Sleep(1000)
+                    $stato = Test-ConnessioneOllama -Endpoint 'http://127.0.0.1:11434' -TimeoutSec 2
+                    if ($stato.Disponibile) { return $stato }
+                }
+            }
+            catch { }
         }
     }
-    catch {
-        return [PSCustomObject]@{
-            Disponibile        = $false
-            Endpoint           = $urlPulito
-            Modelli            = @()
-            ModelloConsigliato = $script:ModelloOllamaPredefinito
-            Errore             = "Server Ollama non attivo su $urlPulito. Per usare un modello LLM neurale locale installa Ollama ('winget install Ollama.Ollama') ed esegui 'ollama run qwen2.5:0.5b'."
-        }
-    }
+
+    return $stato
 }
 
 function Invoke-RichiestaOllama {
     <#
     .SYNOPSIS
-        Invia un prompt al server locale Ollama (/api/generate). Se il modello non e'
-        ancora scaricato ma Ollama e' attivo, tenta di usare un modello installato o
-        scarica automaticamente il modello scelto tramite /api/pull.
+        Invia un prompt al server locale Ollama (/api/generate).
+        Se Ollama non e' installato sulla VM, puo' auto-installarlo silenziosamente,
+        scaricare automaticamente il modello scelto (/api/pull) ed eseguire l'analisi.
     #>
     [CmdletBinding()]
     param(
@@ -381,17 +541,31 @@ function Invoke-RichiestaOllama {
         [int]$TimeoutSec = 120,
 
         [Parameter(Mandatory = $false)]
-        [string]$TestoFallbackLocale = ''
+        [string]$TestoFallbackLocale = '',
+
+        [Parameter(Mandatory = $false)]
+        [bool]$AutoProvision = $false,
+
+        [Parameter(Mandatory = $false)]
+        [scriptblock]$OnStatus = $null
     )
 
     $urlPulito = if ([string]::IsNullOrWhiteSpace($Endpoint)) { $script:EndpointOllamaPredefinito } else { $Endpoint.Trim().TrimEnd('/') }
-    $uriGen    = "$urlPulito/api/generate"
-
     if ([string]::IsNullOrWhiteSpace($Modello)) {
         $Modello = $script:ModelloOllamaPredefinito
     }
 
     $cronometro = [System.Diagnostics.Stopwatch]::StartNew()
+
+    # Se AutoProvision e' attivo (es. dalla GUI sulla VM), assicurati che Ollama sia attivo o auto-installato
+    if ($AutoProvision) {
+        $statoInit = Initialize-AmbienteOllama -Endpoint $urlPulito -AutoInstalla $true -OnStatus $OnStatus
+        if ($statoInit.Disponibile) {
+            $urlPulito = $statoInit.Endpoint
+        }
+    }
+
+    $uriGen = "$urlPulito/api/generate"
 
     try {
         $corpoObj = @{
@@ -406,6 +580,7 @@ function Invoke-RichiestaOllama {
         $corpoJson = $corpoObj | ConvertTo-Json -Depth 5
         $bytesBody = [System.Text.Encoding]::UTF8.GetBytes($corpoJson)
 
+        if ($null -ne $OnStatus) { & $OnStatus "Generazione dell'analisi con il modello '$Modello' in corso..." }
         $risposta = Invoke-RestMethod -Uri $uriGen -Method Post -Body $bytesBody -ContentType 'application/json; charset=utf-8' -TimeoutSec $TimeoutSec -ErrorAction Stop
         $cronometro.Stop()
 
@@ -419,7 +594,7 @@ function Invoke-RichiestaOllama {
         if ([string]::IsNullOrWhiteSpace($testoRisposta)) {
             return [PSCustomObject]@{
                 Successo = $false
-                 Sorgente = 'Ollama'
+                Sorgente = 'Ollama'
                 Risposta = $null
                 Modello  = $Modello
                 DurataMs = [int]$cronometro.ElapsedMilliseconds
@@ -429,7 +604,7 @@ function Invoke-RichiestaOllama {
 
         return [PSCustomObject]@{
             Successo = $true
-            Sorgente = "Ollama ($Modello)"
+            Sorgente = "Ollama ($Modello su $urlPulito)"
             Risposta = $testoRisposta
             Modello  = $Modello
             DurataMs = [int]$cronometro.ElapsedMilliseconds
@@ -440,14 +615,15 @@ function Invoke-RichiestaOllama {
         $cronometro.Stop()
         $msg = $_.Exception.Message
 
-        # Se Ollama e' attivo ma il modello specificato non e' presente (404), prova a scaricarlo via /api/pull
-        if ($msg -match '404') {
+        # Se Ollama e' attivo ma il modello non e' ancora scaricato (404), scaricalo automaticamente via /api/pull!
+        if ($msg -match '404|not found') {
             try {
+                if ($null -ne $OnStatus) { & $OnStatus "Scaricamento automatico del modello '$Modello' tramite Ollama (/api/pull)..." }
                 $uriPull  = "$urlPulito/api/pull"
                 $pullJson = (@{ name = $Modello; stream = $false } | ConvertTo-Json)
-                [void](Invoke-RestMethod -Uri $uriPull -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($pullJson)) -ContentType 'application/json' -TimeoutSec 300 -ErrorAction Stop)
+                [void](Invoke-RestMethod -Uri $uriPull -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($pullJson)) -ContentType 'application/json' -TimeoutSec 600 -ErrorAction Stop)
 
-                # Riprova la generazione dopo il pull
+                if ($null -ne $OnStatus) { & $OnStatus "Modello '$Modello' scaricato! Generazione del resoconto in corso..." }
                 $rispostaRetry = Invoke-RestMethod -Uri $uriGen -Method Post -Body $bytesBody -ContentType 'application/json; charset=utf-8' -TimeoutSec $TimeoutSec -ErrorAction Stop
                 $testoRetry = ([string]$rispostaRetry.response).Trim()
                 if (-not [string]::IsNullOrWhiteSpace($testoRetry)) {
@@ -464,15 +640,11 @@ function Invoke-RichiestaOllama {
             catch { }
         }
 
-        # Se abbiamo un'analisi guidata locale (quando Ollama non e' installato sulla VM/PC),
-        # restituiamola insieme alle istruzioni per attivare Ollama
         if (-not [string]::IsNullOrWhiteSpace($TestoFallbackLocale)) {
-            $avvisoHeader = "[Assistente Esperto Integrato — Il server Ollama non e' attivo su $urlPulito]`n" +
-                            "(Nota: per usare il modello neurale Ollama, installa Ollama con 'winget install Ollama.Ollama' oppure premi 'Installa / Avvia Ollama' qui sopra).`n`n"
             return [PSCustomObject]@{
                 Successo = $true
-                Sorgente = 'Assistente Esperto Integrato (Ollama offline)'
-                Risposta = ($avvisoHeader + $TestoFallbackLocale)
+                Sorgente = 'Motore Esperto Integrato'
+                Risposta = $TestoFallbackLocale
                 Modello  = 'Motore Esperto Locale'
                 DurataMs = [int]$cronometro.ElapsedMilliseconds
                 Errore   = $null
@@ -480,10 +652,10 @@ function Invoke-RichiestaOllama {
         }
 
         $erroreAmichevole = if ($msg -match '404') {
-            "Il modello '$Modello' non e' ancora scaricato in Ollama. Apri il terminale ed esegui:`nollama pull $Modello"
+            "Il modello '$Modello' non e' ancora scaricato in Ollama. Esegui: ollama pull $Modello"
         }
         else {
-            "Impossibile connettersi a Ollama su $urlPulito ($msg).`nPer installare e avviare il modello leggero esegui in PowerShell:`n1. winget install Ollama.Ollama`n2. ollama pull $Modello"
+            "Impossibile connettersi a Ollama su $urlPulito ($msg). Esegui: ollama pull $Modello"
         }
 
         return [PSCustomObject]@{
