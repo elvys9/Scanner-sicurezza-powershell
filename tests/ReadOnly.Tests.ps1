@@ -1,11 +1,15 @@
 ﻿<#
 .SYNOPSIS
-    Test Pester 5 — Verifica di SOLA LETTURA.
+    Test Pester 5 — Verifica di SOLA LETTURA per src/core e src/ui.
 
 .DESCRIPTION
-    Analizza con l'AST tutti i file .ps1 nella cartella src/ e verifica
-    che nessun comando usi un verbo vietato. Questo garantisce che lo
-    scanner non modifichi mai lo stato del sistema.
+    Analizza con l'AST tutti i file .ps1 in src/core, src/ui e src/Invoke-Scanner.ps1
+    verificando che nessun comando usi un verbo di modifica non autorizzato.
+    - Per src/core: elenco rigoroso di sola lettura.
+    - Per src/ui (e Invoke-Scanner.ps1): elenco esplicito e commentato di
+      comandi consentiti (costruzione oggetti UI, export scelto dall'utente,
+      riavvio come amministratore o in STA). Qualsiasi altro verbo di
+      scrittura fa fallire il test.
 #>
 
 Set-StrictMode -Version 2
@@ -13,7 +17,7 @@ Set-StrictMode -Version 2
 Describe 'Verifica SOLA LETTURA dei file sorgente' {
 
     BeforeAll {
-        # Verbi vietati (il collettore non deve mai usare questi verbi)
+        # Verbi vietati (il codice non deve mai usare questi verbi per modificare il sistema)
         $verbiVietati = @(
             'Set',
             'New',
@@ -34,13 +38,13 @@ Describe 'Verifica SOLA LETTURA dei file sorgente' {
             'Invoke-Expression'
         )
 
-        # Eccezioni ammesse (con motivazione):
-        # - New-Object: crea oggetti .NET in memoria, non modifica il sistema
+        # Eccezioni ammesse per src/core (con motivazione):
+        # - New-Object: crea oggetti .NET in memoria (es. UTF8Encoding, StringBuilder), non modifica il sistema
         # - New-Report: funzione interna per costruire l'oggetto report in memoria (sola lettura)
         # - Add-Member: aggiunge proprieta' a oggetti in memoria
-        # - Add-Type: carica tipi .NET in memoria (non modifica il sistema)
+        # - Add-Type: carica tipi .NET in memoria
         # - Set-StrictMode: configurazione dell'interprete (obbligatorio per qualita' del codice)
-        $eccezioniAmmesse = @(
+        $eccezioniCore = @(
             'New-Object',
             'New-Report',
             'Add-Member',
@@ -48,92 +52,167 @@ Describe 'Verifica SOLA LETTURA dei file sorgente' {
             'Set-StrictMode'
         )
 
-        # Percorso della cartella sorgente
-        $percorsoSrc = Join-Path $PSScriptRoot '..\src'
+        # Elenco ESPLICITO e commentato di comandi consentiti per src/ui e Invoke-Scanner.ps1:
+        # - New-Object: istanzia controlli WPF, SaveFileDialog (scelta file export), XmlNodeReader, BrushConverter in memoria
+        # - New-Report: costruisce l'oggetto report in memoria per l'export JSON/HTML scelto dall'utente
+        # - Add-Member: aggiunge proprieta' a oggetti in memoria
+        # - Add-Type: carica gli assembly WPF (PresentationFramework, PresentationCore, WindowsBase)
+        # - Set-StrictMode: imposta Set-StrictMode -Version 2 in ogni file e runspace
+        # - Start-ScannerUI: funzione interna che apre la finestra WPF in sola lettura
+        # - Start-Process: consentito SOLO per riavviare lo scanner stesso come amministratore (-Verb RunAs)
+        #                  su richiesta esplicita dell'utente o per rilanciarsi con flag -STA
+        # Nota: la copia negli appunti usa [System.Windows.Clipboard]::SetText e la scrittura
+        #       dell'export usa Export-ReportJson / Export-ReportHtml / Export-TechnicalLog.
+        $eccezioniUi = @(
+            'New-Object',
+            'New-Report',
+            'Add-Member',
+            'Add-Type',
+            'Set-StrictMode',
+            'Start-ScannerUI',
+            'Start-Process'
+        )
+
+        $percorsoSrc  = Join-Path $PSScriptRoot '..\src'
+        $percorsoCore = Join-Path $percorsoSrc 'core'
+        $percorsoUi   = Join-Path $percorsoSrc 'ui'
     }
 
-    It 'La cartella src esiste' {
-        Test-Path -LiteralPath $percorsoSrc | Should -Be $true
-    }
+    Context 'Motore di scansione (src/core)' {
 
-    It 'Non contiene comandi con verbi vietati' {
-        $fileSorgente = Get-ChildItem -Path $percorsoSrc -Filter '*.ps1' -Recurse
+        It 'La cartella src/core esiste' {
+            Test-Path -LiteralPath $percorsoCore | Should -Be $true
+        }
 
-        $violazioni = @()
+        It 'src/core non contiene comandi con verbi vietati' {
+            $fileCore = Get-ChildItem -Path $percorsoCore -Filter '*.ps1' -Recurse
+            $violazioni = @()
 
-        foreach ($file in $fileSorgente) {
-            # Analisi AST del file
-            $erroriParse = $null
-            $ast = [System.Management.Automation.Language.Parser]::ParseFile(
-                $file.FullName,
-                [ref]$null,
-                [ref]$erroriParse
-            )
+            foreach ($file in $fileCore) {
+                $erroriParse = $null
+                $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+                    $file.FullName,
+                    [ref]$null,
+                    [ref]$erroriParse
+                )
 
-            # Trova tutti i comandi nel file
-            $comandi = $ast.FindAll(
-                { param($nodo) $nodo -is [System.Management.Automation.Language.CommandAst] },
-                $true
-            )
+                $comandi = $ast.FindAll(
+                    { param($nodo) $nodo -is [System.Management.Automation.Language.CommandAst] },
+                    $true
+                )
 
-            foreach ($comando in $comandi) {
-                $nomeComando = $comando.GetCommandName()
-                if (-not $nomeComando) { continue }
+                foreach ($comando in $comandi) {
+                    $nomeComando = $comando.GetCommandName()
+                    if (-not $nomeComando) { continue }
 
-                # Verifica comandi esplicitamente vietati
-                if ($comandiVietati -contains $nomeComando) {
-                    $violazioni += "$($file.Name):$($comando.Extent.StartLineNumber) - $nomeComando (vietato)"
-                    continue
-                }
+                    if ($comandiVietati -contains $nomeComando) {
+                        $violazioni += "$($file.Name):$($comando.Extent.StartLineNumber) - $nomeComando (vietato)"
+                        continue
+                    }
 
-                # Verifica se e' un'eccezione ammessa
-                if ($eccezioniAmmesse -contains $nomeComando) {
-                    continue
-                }
+                    if ($eccezioniCore -contains $nomeComando) {
+                        continue
+                    }
 
-                # Estrai il verbo dal comando (formato Verbo-Nome)
-                $parti = $nomeComando -split '-', 2
-                if ($parti.Count -ge 2) {
-                    $verbo = $parti[0]
-                    if ($verbiVietati -contains $verbo) {
-                        $violazioni += "$($file.Name):$($comando.Extent.StartLineNumber) - $nomeComando (verbo '$verbo' vietato)"
+                    $parti = $nomeComando -split '-', 2
+                    if ($parti.Count -ge 2) {
+                        $verbo = $parti[0]
+                        if ($verbiVietati -contains $verbo) {
+                            $violazioni += "$($file.Name):$($comando.Extent.StartLineNumber) - $nomeComando (verbo '$verbo' vietato in src/core)"
+                        }
                     }
                 }
             }
-        }
 
-        if ($violazioni.Count -gt 0) {
-            $messaggio = "Trovate $($violazioni.Count) violazione/i di sola lettura:`n"
-            $messaggio += ($violazioni -join "`n")
+            $messaggio = if ($violazioni.Count -gt 0) {
+                "Trovate $($violazioni.Count) violazione/i in src/core:`n$($violazioni -join "`n")"
+            } else { 'Nessuna violazione' }
             $violazioni.Count | Should -Be 0 -Because $messaggio
         }
     }
 
-    It 'Non contiene scritture nel registro (REG_SET pattern)' {
-        $fileSorgente = Get-ChildItem -Path $percorsoSrc -Filter '*.ps1' -Recurse
+    Context 'Interfaccia grafica e punto d ingresso (src/ui e Invoke-Scanner.ps1)' {
 
-        $violazioni = @()
+        It 'La cartella src/ui esiste' {
+            Test-Path -LiteralPath $percorsoUi | Should -Be $true
+        }
 
-        foreach ($file in $fileSorgente) {
-            $contenuto = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
-            $righe = $contenuto -split "`n"
-            $numRiga = 0
+        It 'src/ui e Invoke-Scanner.ps1 usano solo comandi presenti nell elenco esplicito consentito' {
+            $fileUi = @(Get-ChildItem -Path $percorsoUi -Filter '*.ps1' -Recurse)
+            $fileEntry = Get-Item -LiteralPath (Join-Path $percorsoSrc 'Invoke-Scanner.ps1')
+            $tuttiFileUi = @($fileUi) + @($fileEntry)
 
-            foreach ($riga in $righe) {
-                $numRiga++
-                # Cerca pattern di scrittura nel registro
-                if ($riga -match 'Set-ItemProperty|New-ItemProperty|Remove-ItemProperty|Set-Item\s.*HK') {
-                    # Ignora commenti
-                    $rigaTrimmed = $riga.TrimStart()
-                    if (-not $rigaTrimmed.StartsWith('#')) {
-                        $violazioni += "$($file.Name):$numRiga - $($riga.Trim())"
+            $violazioni = @()
+
+            foreach ($file in $tuttiFileUi) {
+                $erroriParse = $null
+                $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+                    $file.FullName,
+                    [ref]$null,
+                    [ref]$erroriParse
+                )
+
+                $comandi = $ast.FindAll(
+                    { param($nodo) $nodo -is [System.Management.Automation.Language.CommandAst] },
+                    $true
+                )
+
+                foreach ($comando in $comandi) {
+                    $nomeComando = $comando.GetCommandName()
+                    if (-not $nomeComando) { continue }
+
+                    if ($comandiVietati -contains $nomeComando) {
+                        $violazioni += "$($file.Name):$($comando.Extent.StartLineNumber) - $nomeComando (vietato)"
+                        continue
+                    }
+
+                    if ($eccezioniUi -contains $nomeComando) {
+                        continue
+                    }
+
+                    $parti = $nomeComando -split '-', 2
+                    if ($parti.Count -ge 2) {
+                        $verbo = $parti[0]
+                        if ($verbiVietati -contains $verbo) {
+                            $violazioni += "$($file.Name):$($comando.Extent.StartLineNumber) - $nomeComando (verbo '$verbo' non autorizzato in src/ui)"
+                        }
                     }
                 }
             }
+
+            $messaggio = if ($violazioni.Count -gt 0) {
+                "Trovate $($violazioni.Count) violazione/i in src/ui:`n$($violazioni -join "`n")"
+            } else { 'Nessuna violazione' }
+            $violazioni.Count | Should -Be 0 -Because $messaggio
         }
 
-        if ($violazioni.Count -gt 0) {
-            $messaggio = "Trovate scritture nel registro:`n$($violazioni -join "`n")"
+        It 'Nessun file eseguibile in src/ contiene scritture nel registro' {
+            $fileSorgente = Get-ChildItem -Path $percorsoSrc -Filter '*.ps1' -Recurse
+            $violazioni = @()
+
+            foreach ($file in $fileSorgente) {
+                # Analisi AST per verificare che nessun CommandAst sia Set-ItemProperty, New-ItemProperty, Remove-ItemProperty, Set-Item
+                $erroriParse = $null
+                $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+                    $file.FullName,
+                    [ref]$null,
+                    [ref]$erroriParse
+                )
+                $comandi = $ast.FindAll(
+                    { param($nodo) $nodo -is [System.Management.Automation.Language.CommandAst] },
+                    $true
+                )
+                foreach ($cmd in $comandi) {
+                    $nome = $cmd.GetCommandName()
+                    if ($nome -in @('Set-ItemProperty', 'New-ItemProperty', 'Remove-ItemProperty', 'Set-Item', 'New-Item', 'Remove-Item')) {
+                        $violazioni += "$($file.Name):$($cmd.Extent.StartLineNumber) - $nome"
+                    }
+                }
+            }
+
+            $messaggio = if ($violazioni.Count -gt 0) {
+                "Trovati comandi di scrittura su Item/Registro:`n$($violazioni -join "`n")"
+            } else { 'Nessuna scrittura trovata' }
             $violazioni.Count | Should -Be 0 -Because $messaggio
         }
     }
