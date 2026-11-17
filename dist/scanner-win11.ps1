@@ -663,7 +663,7 @@ $script:XamlIncorporato = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Scanner sicurezza Windows"
-        Width="1120" Height="740"
+        Width="1220" Height="780"
         MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
@@ -677,19 +677,20 @@ $script:XamlIncorporato = @'
 
     <Window.Resources>
         <ResourceDictionary>
-            <!-- Colori predefiniti (Tema Chiaro) aggiornabili a runtime via codice per Tema Scuro -->
-            <SolidColorBrush x:Key="BgPrimary" Color="#F4F6F9"/>
+            <!-- Palette Tema Chiaro (aggiornabile a runtime per Tema Scuro) -->
+            <SolidColorBrush x:Key="BgPrimary" Color="#F1F5F9"/>
             <SolidColorBrush x:Key="BgSurface" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="BgHeader" Color="#0F172A"/>
             <SolidColorBrush x:Key="TextHeader" Color="#F8FAFC"/>
             <SolidColorBrush x:Key="BgSubtle" Color="#F8FAFC"/>
-            <SolidColorBrush x:Key="TextPrimary" Color="#1E293B"/>
+            <SolidColorBrush x:Key="TextPrimary" Color="#0F172A"/>
             <SolidColorBrush x:Key="TextSecondary" Color="#475569"/>
             <SolidColorBrush x:Key="BorderSubtle" Color="#CBD5E1"/>
             <SolidColorBrush x:Key="AccentBrush" Color="#2563EB"/>
             <SolidColorBrush x:Key="AccentText" Color="#FFFFFF"/>
+            <SolidColorBrush x:Key="AiAccentBrush" Color="#7C3AED"/>
 
-            <!-- Colori per stato (sempre accompagnati da simbolo + testo) -->
+            <!-- Colori semantici per stato -->
             <SolidColorBrush x:Key="PassBg" Color="#DCFCE7"/>
             <SolidColorBrush x:Key="PassFg" Color="#166534"/>
             <SolidColorBrush x:Key="PassBorder" Color="#86EFAC"/>
@@ -710,35 +711,81 @@ $script:XamlIncorporato = @'
             <SolidColorBrush x:Key="ErrorFg" Color="#9A3412"/>
             <SolidColorBrush x:Key="ErrorBorder" Color="#FDBA74"/>
 
-            <!-- Banner Avviso Admin -->
             <SolidColorBrush x:Key="WarnBannerBg" Color="#FEF3C7"/>
             <SolidColorBrush x:Key="WarnBannerFg" Color="#92400E"/>
             <SolidColorBrush x:Key="WarnBannerBorder" Color="#F59E0B"/>
+
+            <!-- Stile Pulsante Secondario Moderno (Arrotondato) -->
+            <Style x:Key="ModernButton" TargetType="Button">
+                <Setter Property="Background" Value="{DynamicResource BgSurface}"/>
+                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.45"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Stile Pulsante Primario Blu -->
+            <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Style>
+
+            <!-- Stile Pulsante Assistente IA Viola -->
+            <Style x:Key="AiButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+                <Setter Property="Background" Value="{DynamicResource AiAccentBrush}"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AiAccentBrush}"/>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- 0: Header -->
+            <!-- 0: Intestazione -->
             <RowDefinition Height="Auto"/>
-            <!-- 1: Banner Non-Admin (opzionale) -->
+            <!-- 1: Banner Non-Admin -->
             <RowDefinition Height="Auto"/>
-            <!-- 2: Banner Errore generale (opzionale) -->
+            <!-- 2: Banner Errore -->
             <RowDefinition Height="Auto"/>
-            <!-- 3: Barra azioni e avanzamento -->
+            <!-- 3: Barra comandi principale + Progresso -->
             <RowDefinition Height="Auto"/>
-            <!-- 4: Conteggi riepilogo -->
+            <!-- 4: Schede KPI Riepilogo -->
             <RowDefinition Height="Auto"/>
-            <!-- 5: Barra filtri -->
+            <!-- 5: Barra Filtri -->
             <RowDefinition Height="Auto"/>
-            <!-- 6: Contenuto principale (Tabella + Dettaglio) -->
+            <!-- 6: Area Principale (Tabella + Schede Dettaglio/IA) -->
             <RowDefinition Height="*"/>
-            <!-- 7: Barra inferiore (Export + Disclaimer permanente) -->
+            <!-- 7: Barra Inferiore (Export + Disclaimer) -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 0. INTESTAZIONE -->
-        <Border Grid.Row="0" Background="{DynamicResource BgHeader}" Padding="16,10">
+        <!-- 0. INTESTAZIONE PREMIUM -->
+        <Border Grid.Row="0" Background="{DynamicResource BgHeader}" Padding="18,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -747,25 +794,34 @@ $script:XamlIncorporato = @'
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="18"
-                               Foreground="#60A5FA" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock Text="Scanner sicurezza Windows" FontSize="17" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextHeader}" VerticalAlignment="Center"/>
-                    <TextBlock Text=" (Sola lettura)" FontSize="12" Foreground="#94A3B8"
-                               VerticalAlignment="Center" Margin="6,2,0,0"/>
+                    <Border Background="#1E3A8A" CornerRadius="6" Padding="7,5" Margin="0,0,12,0">
+                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                   Foreground="#60A5FA" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Scanner Sicurezza Windows 11" FontSize="17" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextHeader}" VerticalAlignment="Center"/>
+                            <Border Background="#065F46" CornerRadius="4" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="SOLA LETTURA" FontSize="10" FontWeight="Bold" Foreground="#A7F3D0"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="Analisi deterministica di configurazione, antivirus, file sospetti e assistente IA locale"
+                                   FontSize="11" Foreground="#94A3B8" Margin="0,1,0,0"/>
+                    </StackPanel>
                 </StackPanel>
 
-                <Border Grid.Column="1" Background="#1E293B" CornerRadius="4" Padding="10,4" Margin="0,0,10,0"
+                <Border Grid.Column="1" Background="#1E293B" CornerRadius="6" Padding="12,6" Margin="0,0,10,0"
                         VerticalAlignment="Center" BorderBrush="#334155" BorderThickness="1">
                     <TextBlock x:Name="TxtAmbienteInfo"
                                Text="Windows 11 | Admin: --"
-                               Foreground="#E2E8F0" FontSize="12" VerticalAlignment="Center"/>
+                               Foreground="#E2E8F0" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </Border>
 
                 <Button x:Name="BtnTema" Grid.Column="2" Content="Tema: Scuro"
-                        Padding="10,4" MinWidth="105" Cursor="Hand"
-                        TabIndex="1"
-                        ToolTip="Cambia tra tema chiaro e tema scuro (Alt+T)"/>
+                        Style="{StaticResource ModernButton}"
+                        MinWidth="110" TabIndex="1"
+                        ToolTip="Passa tra Tema Chiaro e Tema Scuro"/>
             </Grid>
         </Border>
 
@@ -773,7 +829,7 @@ $script:XamlIncorporato = @'
         <Border x:Name="BannerNonAdmin" Grid.Row="1"
                 Background="{DynamicResource WarnBannerBg}"
                 BorderBrush="{DynamicResource WarnBannerBorder}"
-                BorderThickness="0,0,0,1" Padding="16,8" Visibility="Collapsed">
+                BorderThickness="0,0,0,1" Padding="18,8" Visibility="Collapsed">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -782,12 +838,11 @@ $script:XamlIncorporato = @'
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="[!]" FontWeight="Bold" Foreground="{DynamicResource WarnBannerFg}" Margin="0,0,8,0"/>
                     <TextBlock Foreground="{DynamicResource WarnBannerFg}" TextWrapping="Wrap" VerticalAlignment="Center"
-                               Text="Avviato senza privilegi di amministratore. I controlli che richiedono privilegi elevati (es. Firewall, Account locali) risulteranno 'Sconosciuto' e mai 'Fallito'."/>
+                               Text="Sessione non amministrativa: alcuni controlli (es. esclusioni Defender) risulteranno 'Sconosciuto'. Riavvia come Amministratore per l'analisi completa."/>
                 </StackPanel>
                 <Button x:Name="BtnRiavviaAdmin" Grid.Column="1" Content="Riavvia come amministratore"
-                        Padding="10,4" Margin="12,0,0,0" Cursor="Hand" FontWeight="SemiBold"
-                        TabIndex="2"
-                        ToolTip="Rilancia lo scanner richiedendo i privilegi di amministratore tramite UAC"/>
+                        Style="{StaticResource ModernButton}" Margin="12,0,0,0" TabIndex="2"
+                        ToolTip="Rilancia lo scanner con privilegi elevati tramite UAC"/>
             </Grid>
         </Border>
 
@@ -795,72 +850,76 @@ $script:XamlIncorporato = @'
         <Border x:Name="BannerErrore" Grid.Row="2"
                 Background="{DynamicResource ErrorBg}"
                 BorderBrush="{DynamicResource ErrorBorder}"
-                BorderThickness="0,0,0,1" Padding="16,8" Visibility="Collapsed">
+                BorderThickness="0,0,0,1" Padding="18,8" Visibility="Collapsed">
             <TextBlock x:Name="TxtBannerErrore"
                        Foreground="{DynamicResource ErrorFg}"
                        TextWrapping="Wrap" FontWeight="SemiBold"
                        Text="Si e' verificato un problema durante l'esecuzione di alcuni controlli."/>
         </Border>
 
-        <!-- 3. BARRA AZIONI E AVANZAMENTO -->
+        <!-- 3. BARRA AZIONI PRINCIPALE E AVANZAMENTO -->
         <Border Grid.Row="3" Background="{DynamicResource BgSurface}"
-                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="16,10">
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="18,10">
             <Grid>
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Button x:Name="BtnAvvia" Grid.Column="0" Content="_Avvia scansione"
-                        Padding="16,6" FontWeight="SemiBold" Cursor="Hand"
-                        Background="{DynamicResource AccentBrush}" Foreground="{DynamicResource AccentText}"
-                        TabIndex="3"
-                        ToolTip="Avvia l'analisi di sicurezza in sola lettura (Alt+A)"/>
+                <Button x:Name="BtnAvvia" Grid.Column="0" Content="_Avvia scansione (34 controlli)"
+                        Style="{StaticResource PrimaryButton}" Padding="16,7" TabIndex="3"
+                        ToolTip="Avvia l'analisi completa di sicurezza in sola lettura (Alt+A)"/>
 
                 <Button x:Name="BtnAnnulla" Grid.Column="1" Content="A_nnulla"
-                        Padding="14,6" Margin="10,0,0,0" IsEnabled="False" Cursor="Hand"
-                        TabIndex="4"
-                        ToolTip="Interrompe la scansione in corso al termine del controllo attuale (Alt+N)"/>
+                        Style="{StaticResource ModernButton}" Padding="14,7" Margin="8,0,0,0"
+                        IsEnabled="False" TabIndex="4"
+                        ToolTip="Interrompe la scansione in corso (Alt+N)"/>
 
-                <ProgressBar x:Name="ProgressScansione" Grid.Column="2"
-                             Height="18" Margin="20,0,12,0" Minimum="0" Maximum="18" Value="0"
-                             VerticalAlignment="Center"/>
+                <Button x:Name="BtnResocontoLLM" Grid.Column="2" Content="&#x2728; Resoconto IA &amp; Consigli"
+                        Style="{StaticResource AiButton}" Padding="14,7" Margin="12,0,0,0"
+                        IsEnabled="False" TabIndex="5"
+                        ToolTip="Analizza i risultati della scansione e genera un piano di miglioramento prioritario"/>
 
-                <TextBlock x:Name="TxtProgresso" Grid.Column="3"
-                           Text="Pronto (0/18)" FontWeight="SemiBold"
+                <ProgressBar x:Name="ProgressScansione" Grid.Column="3"
+                             Height="14" Margin="20,0,14,0" Minimum="0" Maximum="34" Value="0"
+                             Foreground="#10B981" VerticalAlignment="Center"/>
+
+                <TextBlock x:Name="TxtProgresso" Grid.Column="4"
+                           Text="Pronto (0/34)" FontWeight="Bold"
                            Foreground="{DynamicResource TextSecondary}"
                            VerticalAlignment="Center" MinWidth="135" TextAlignment="Right"/>
             </Grid>
         </Border>
 
-        <!-- 4. SCHEDE RIEPILOGO CONTEGGI -->
-        <Border Grid.Row="4" Background="{DynamicResource BgPrimary}" Padding="16,8,16,4">
+        <!-- 4. SCHEDE KPI RIEPILOGO -->
+        <Border Grid.Row="4" Background="{DynamicResource BgPrimary}" Padding="18,10,18,6">
             <UniformGrid Rows="1" Columns="5">
                 <Border Background="{DynamicResource PassBg}" BorderBrush="{DynamicResource PassBorder}"
-                        BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="0,0,6,0">
-                    <TextBlock x:Name="TxtCountSuperati" Text="[OK] 0 Superati"
+                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,8,0">
+                    <TextBlock x:Name="TxtCountSuperati" Text="[OK] 0 Superati" FontSize="14"
                                Foreground="{DynamicResource PassFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
                 </Border>
                 <Border Background="{DynamicResource FailBg}" BorderBrush="{DynamicResource FailBorder}"
-                        BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="3,0,6,0">
-                    <TextBlock x:Name="TxtCountFalliti" Text="[X] 0 Falliti"
+                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,8,0">
+                    <TextBlock x:Name="TxtCountFalliti" Text="[X] 0 Falliti" FontSize="14"
                                Foreground="{DynamicResource FailFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
                 </Border>
                 <Border Background="{DynamicResource UnknownBg}" BorderBrush="{DynamicResource UnknownBorder}"
-                        BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="3,0,6,0">
-                    <TextBlock x:Name="TxtCountSconosciuti" Text="[?] 0 Sconosciuti"
+                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,8,0">
+                    <TextBlock x:Name="TxtCountSconosciuti" Text="[?] 0 Sconosciuti" FontSize="14"
                                Foreground="{DynamicResource UnknownFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
                 </Border>
                 <Border Background="{DynamicResource NaBg}" BorderBrush="{DynamicResource NaBorder}"
-                        BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="3,0,6,0">
-                    <TextBlock x:Name="TxtCountNonApplicabili" Text="[-] 0 Non applicabili"
+                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,8,0">
+                    <TextBlock x:Name="TxtCountNonApplicabili" Text="[-] 0 Non applicabili" FontSize="14"
                                Foreground="{DynamicResource NaFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
                 </Border>
                 <Border Background="{DynamicResource ErrorBg}" BorderBrush="{DynamicResource ErrorBorder}"
-                        BorderThickness="1" CornerRadius="4" Padding="10,6" Margin="3,0,0,0">
-                    <TextBlock x:Name="TxtCountErrori" Text="[!] 0 Errori"
+                        BorderThickness="1" CornerRadius="8" Padding="12,8">
+                    <TextBlock x:Name="TxtCountErrori" Text="[!] 0 Errori" FontSize="14"
                                Foreground="{DynamicResource ErrorFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
                 </Border>
             </UniformGrid>
@@ -868,10 +927,10 @@ $script:XamlIncorporato = @'
 
         <!-- 5. BARRA FILTRI E RICERCA -->
         <Border Grid.Row="5" Background="{DynamicResource BgSurface}"
-                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,1" Padding="16,8" Margin="0,4,0,0">
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,1" Padding="18,8" Margin="0,2,0,0">
             <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="Stato:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                <ComboBox x:Name="CmbFiltroStato" Width="135" Margin="0,0,14,0" SelectedIndex="0" TabIndex="5">
+                <ComboBox x:Name="CmbFiltroStato" Width="135" Padding="6,4" Margin="0,0,14,0" SelectedIndex="0" TabIndex="6">
                     <ComboBoxItem Content="Tutti"/>
                     <ComboBoxItem Content="fallito"/>
                     <ComboBoxItem Content="superato"/>
@@ -881,7 +940,7 @@ $script:XamlIncorporato = @'
                 </ComboBox>
 
                 <TextBlock Text="Gravita':" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                <ComboBox x:Name="CmbFiltroGravita" Width="120" Margin="0,0,14,0" SelectedIndex="0" TabIndex="6">
+                <ComboBox x:Name="CmbFiltroGravita" Width="120" Padding="6,4" Margin="0,0,14,0" SelectedIndex="0" TabIndex="7">
                     <ComboBoxItem Content="Tutte"/>
                     <ComboBoxItem Content="critico"/>
                     <ComboBoxItem Content="alto"/>
@@ -891,261 +950,304 @@ $script:XamlIncorporato = @'
                 </ComboBox>
 
                 <TextBlock Text="Categoria:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                <ComboBox x:Name="CmbFiltroCategoria" Width="150" Margin="0,0,14,0" SelectedIndex="0" TabIndex="7">
+                <ComboBox x:Name="CmbFiltroCategoria" Width="165" Padding="6,4" Margin="0,0,14,0" SelectedIndex="0" TabIndex="8">
                     <ComboBoxItem Content="Tutte"/>
                 </ComboBox>
 
                 <TextBlock Text="Cerca:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                <TextBox x:Name="TxtRicerca" Width="180" Padding="4,2" Margin="0,0,10,0" TabIndex="8"
-                         ToolTip="Filtra per titolo o ID del controllo (es. HOME-FW-001)"/>
+                <TextBox x:Name="TxtRicerca" Width="210" Padding="6,4" Margin="0,0,10,0" TabIndex="9"
+                         VerticalContentAlignment="Center"
+                         ToolTip="Filtra per titolo o ID del controllo (es. HOME-AV-003, BitLocker, Firewall)"/>
 
-                <Button x:Name="BtnResetFiltri" Content="Reimposta filtri" Padding="8,2" Cursor="Hand" TabIndex="9"/>
+                <Button x:Name="BtnResetFiltri" Content="Reimposta filtri"
+                        Style="{StaticResource ModernButton}" Padding="10,4" TabIndex="10"/>
             </WrapPanel>
         </Border>
 
-        <!-- 6. AREA PRINCIPALE: TABELLA RISULTATI + PANNELLO DETTAGLIO -->
-        <Grid Grid.Row="6" Margin="16,10,16,10">
+        <!-- 6. AREA PRINCIPALE: TABELLA RISULTATI + PANNELLO DESTRO A SCHEDE -->
+        <Grid Grid.Row="6" Margin="18,10,18,10">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="3*" MinWidth="420"/>
-                <ColumnDefinition Width="8"/>
-                <ColumnDefinition Width="2*" MinWidth="320"/>
+                <ColumnDefinition Width="11*" MinWidth="440"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="10*" MinWidth="400"/>
             </Grid.ColumnDefinitions>
 
             <!-- Colonna sinistra: Tabella + Messaggio guida iniziale -->
-            <Grid Grid.Column="0">
-                <DataGrid x:Name="GridRisultati"
-                          AutoGenerateColumns="False"
-                          IsReadOnly="True"
-                          SelectionMode="Single"
-                          SelectionUnit="FullRow"
-                          HeadersVisibility="Column"
-                          GridLinesVisibility="Horizontal"
-                          HorizontalGridLinesBrush="{DynamicResource BorderSubtle}"
-                          Background="{DynamicResource BgSurface}"
-                          RowBackground="{DynamicResource BgSurface}"
-                          AlternatingRowBackground="{DynamicResource BgSubtle}"
-                          Foreground="{DynamicResource TextPrimary}"
-                          BorderBrush="{DynamicResource BorderSubtle}"
-                          BorderThickness="1"
-                          RowHeaderWidth="0"
-                          CanUserAddRows="False"
-                          CanUserDeleteRows="False"
-                          CanUserReorderColumns="False"
-                          TabIndex="10">
-                    <DataGrid.Columns>
-                        <DataGridTextColumn Header="Stato" Binding="{Binding StatusLabel}" Width="125"/>
-                        <DataGridTextColumn Header="Gravita'" Binding="{Binding SeverityLabel}" Width="85"/>
-                        <DataGridTextColumn Header="Categoria" Binding="{Binding Category}" Width="115"/>
-                        <DataGridTextColumn Header="ID" Binding="{Binding ControlId}" Width="115"/>
-                        <DataGridTextColumn Header="Controllo" Binding="{Binding Title}" Width="*"/>
-                    </DataGrid.Columns>
-                </DataGrid>
+            <Border Grid.Column="0" Background="{DynamicResource BgSurface}"
+                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                <Grid>
+                    <DataGrid x:Name="GridRisultati"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              SelectionUnit="FullRow"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="{DynamicResource BorderSubtle}"
+                              Background="{DynamicResource BgSurface}"
+                              RowBackground="{DynamicResource BgSurface}"
+                              AlternatingRowBackground="{DynamicResource BgSubtle}"
+                              Foreground="{DynamicResource TextPrimary}"
+                              BorderThickness="0"
+                              RowHeight="32"
+                              RowHeaderWidth="0"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserReorderColumns="False"
+                              TabIndex="11">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Stato" Binding="{Binding StatusLabel}" Width="120"/>
+                            <DataGridTextColumn Header="Gravita'" Binding="{Binding SeverityLabel}" Width="80"/>
+                            <DataGridTextColumn Header="Categoria" Binding="{Binding Category}" Width="125"/>
+                            <DataGridTextColumn Header="ID" Binding="{Binding ControlId}" Width="115"/>
+                            <DataGridTextColumn Header="Controllo" Binding="{Binding Title}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
 
-                <!-- Messaggio guida quando la tabella e' vuota -->
-                <Border x:Name="PanelGuidaVuota"
-                        Background="{DynamicResource BgSurface}"
-                        BorderBrush="{DynamicResource BorderSubtle}"
-                        BorderThickness="1" Padding="24"
-                        HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="36"
-                                   Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                        <TextBlock x:Name="TxtMessaggioGuida"
-                                   Text="Premi 'Avvia scansione' per analizzare la sicurezza del sistema."
-                                   FontSize="15" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextPrimary}"
-                                   TextAlignment="Center" TextWrapping="Wrap"/>
-                        <TextBlock Text="La scansione e' in sola lettura e non apporta alcuna modifica a Windows."
-                                   FontSize="12" Foreground="{DynamicResource TextSecondary}"
-                                   TextAlignment="Center" Margin="0,6,0,0"/>
-                    </StackPanel>
-                </Border>
-            </Grid>
+                    <!-- Messaggio guida quando la tabella e' vuota -->
+                    <Border x:Name="PanelGuidaVuota"
+                            Background="{DynamicResource BgSurface}"
+                            Padding="28" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="42"
+                                       Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                            <TextBlock x:Name="TxtMessaggioGuida"
+                                       Text="Premi 'Avvia scansione' per analizzare i 34 controlli di sicurezza del PC."
+                                       FontSize="16" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimary}"
+                                       TextAlignment="Center" TextWrapping="Wrap"/>
+                            <TextBlock Text="Verranno analizzati Antivirus, File sospetti in Download/Temp, Avvio automatico, Rete e Impostazioni di Windows."
+                                       FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                       TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
 
-            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent"/>
+            <GridSplitter Grid.Column="1" Width="10" HorizontalAlignment="Stretch" Background="Transparent"/>
 
-            <!-- Colonna destra: Pannello Dettaglio -->
+            <!-- Colonna destra: Intestazione Fissa del Controllo + Schede (Dettagli / Assistente IA) -->
             <Border Grid.Column="2" Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="4" Padding="14">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel>
-                        <TextBlock Text="DETTAGLIO CONTROLLO" FontSize="11" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <!-- Intestazione del controllo selezionato (sempre visibile!) -->
+                        <RowDefinition Height="Auto"/>
+                        <!-- Schede: 1. Dettagli & Rimedio  |  2. Assistente IA & Resoconto -->
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                        <TextBlock x:Name="TxtDettaglioTitolo"
-                                   Text="Seleziona un controllo dalla tabella"
-                                   FontSize="16" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
-
-                        <TextBlock x:Name="TxtDettaglioSottotitolo"
-                                   Text="ID: - | Stato: - | Gravita': -"
-                                   FontSize="12" Foreground="{DynamicResource TextSecondary}"
-                                   Margin="0,4,0,10" TextWrapping="Wrap"/>
-
-                        <!-- Selettore Modalita' Semplice / Tecnico -->
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                            <Button x:Name="BtnModoSemplice" Content="Semplice" Padding="12,3"
-                                    FontWeight="SemiBold" Cursor="Hand" TabIndex="11"
-                                    ToolTip="Mostra la spiegazione pensata per utenti domestici"/>
-                            <Button x:Name="BtnModoTecnico" Content="Tecnico" Padding="12,3" Margin="6,0,0,0"
-                                    Cursor="Hand" TabIndex="12"
-                                    ToolTip="Mostra dettagli tecnici, ID, riferimenti CIS ed evidenze"/>
+                    <!-- Intestazione fissa in alto a destra -->
+                    <Border Grid.Row="0" Background="{DynamicResource BgSubtle}"
+                            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+                            CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+                        <StackPanel>
+                            <TextBlock x:Name="TxtDettaglioTitolo"
+                                       Text="Seleziona un controllo dalla tabella"
+                                       FontSize="15" FontWeight="Bold"
+                                       Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="TxtDettaglioSottotitolo"
+                                       Text="ID: -  |  Stato: -  |  Gravita': -  |  Categoria: -"
+                                       FontSize="12" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       Margin="0,4,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
+                    </Border>
 
-                        <!-- Sezione: Perche' conta / Spiegazione -->
-                        <TextBlock x:Name="TxtTitoloSpiegazione" Text="Perche' conta (spiegazione semplice)"
-                                   FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,4"/>
-                        <Border Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
-                                BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
-                            <TextBlock x:Name="TxtDettaglioSpiegazione"
-                                       Text="Seleziona una riga nella tabella a sinistra per leggere la spiegazione del controllo."
-                                       TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"/>
-                        </Border>
+                    <!-- TabControl per separare in modo pulito Dettagli e Assistente IA -->
+                    <TabControl x:Name="TabPannelloDestro" Grid.Row="1"
+                                Background="Transparent" BorderThickness="0" Padding="0,6,0,0">
 
-                        <!-- Banner errore specifico del controllo (comprensibile, senza stack trace) -->
-                        <Border x:Name="BannerDettaglioErrore"
-                                Background="{DynamicResource ErrorBg}" BorderBrush="{DynamicResource ErrorBorder}"
-                                BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,0,0,10"
-                                Visibility="Collapsed">
-                            <TextBlock x:Name="TxtDettaglioErrore"
-                                       Foreground="{DynamicResource ErrorFg}" TextWrapping="Wrap"
-                                       Text=""/>
-                        </Border>
-
-                        <!-- Sezione: Valore Atteso / Valore Trovato -->
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="8"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <Border Grid.Column="0" Background="{DynamicResource BgSubtle}"
-                                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                                    CornerRadius="4" Padding="8,6">
+                        <!-- SCHEDA 1: DETTAGLI TECNICI E RIMEDIO -->
+                        <TabItem x:Name="TabItemDettaglio" Header="  Dettagli &amp; Come Correggere  " FontWeight="SemiBold">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="2,6,4,4">
                                 <StackPanel>
-                                    <TextBlock Text="Valore atteso" FontSize="11" FontWeight="Bold"
+                                    <!-- Selettore Semplice / Tecnico + Pulsante rapido Spiega con IA -->
+                                    <Grid Margin="0,0,0,10">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Button x:Name="BtnModoSemplice" Grid.Column="0" Content="Vista Semplice"
+                                                Style="{StaticResource ModernButton}" Padding="10,4" TabIndex="12"/>
+                                        <Button x:Name="BtnModoTecnico" Grid.Column="1" Content="Vista Tecnica"
+                                                Style="{StaticResource ModernButton}" Padding="10,4" Margin="6,0,0,0" TabIndex="13"/>
+
+                                        <Button x:Name="BtnSpiegaLLM" Grid.Column="3"
+                                                Content="&#x2728; Spiega con IA"
+                                                Style="{StaticResource AiButton}" Padding="12,4"
+                                                ToolTip="Analizza questo controllo nell'Assistente IA e mostra come applicare la correzione"/>
+                                    </Grid>
+
+                                    <!-- Perche' conta -->
+                                    <TextBlock x:Name="TxtTitoloSpiegazione" Text="Perche' conta (spiegazione semplice)"
+                                               FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
+                                    <Border Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
+                                            BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,10">
+                                        <TextBlock x:Name="TxtDettaglioSpiegazione"
+                                                   Text="Seleziona una riga nella tabella a sinistra per leggere la spiegazione del controllo."
+                                                   TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"/>
+                                    </Border>
+
+                                    <!-- Banner errore eventuale -->
+                                    <Border x:Name="BannerDettaglioErrore"
+                                            Background="{DynamicResource ErrorBg}" BorderBrush="{DynamicResource ErrorBorder}"
+                                            BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,10"
+                                            Visibility="Collapsed">
+                                        <TextBlock x:Name="TxtDettaglioErrore"
+                                                   Foreground="{DynamicResource ErrorFg}" TextWrapping="Wrap"/>
+                                    </Border>
+
+                                    <!-- Valore Atteso / Valore Trovato -->
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="8"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Background="{DynamicResource BgSubtle}"
+                                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+                                                CornerRadius="6" Padding="10,8">
+                                            <StackPanel>
+                                                <TextBlock Text="VALORE ATTESO (SICURO)" FontSize="10" FontWeight="Bold"
+                                                           Foreground="{DynamicResource TextSecondary}"/>
+                                                <TextBlock x:Name="TxtDettaglioAtteso" Text="-" TextWrapping="Wrap"
+                                                           Margin="0,3,0,0" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Grid.Column="2" Background="{DynamicResource BgSubtle}"
+                                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+                                                CornerRadius="6" Padding="10,8">
+                                            <StackPanel>
+                                                <TextBlock Text="VALORE RILEVATO SUL PC" FontSize="10" FontWeight="Bold"
+                                                           Foreground="{DynamicResource TextSecondary}"/>
+                                                <TextBlock x:Name="TxtDettaglioOsservato" Text="-" TextWrapping="Wrap"
+                                                           Margin="0,3,0,0" FontWeight="SemiBold"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Come correggere -->
+                                    <TextBlock Text="Come migliorare questa impostazione" FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
+                                    <Border Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
+                                            BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,10">
+                                        <TextBlock x:Name="TxtDettaglioRimedio"
+                                                   Text="-" TextWrapping="Wrap"
+                                                   Foreground="{DynamicResource TextPrimary}"/>
+                                    </Border>
+
+                                    <!-- Blocco Comando PowerShell -->
+                                    <StackPanel x:Name="PanelComandoRimedio" Visibility="Collapsed" Margin="0,0,0,10">
+                                        <TextBlock Text="Comando PowerShell di riferimento (sola copia, non eseguito dallo scanner):"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                        <TextBox x:Name="TxtComandoRimedio"
+                                                 IsReadOnly="True"
+                                                 FontFamily="Consolas" FontSize="12"
+                                                 Background="{DynamicResource BgSubtle}"
+                                                 Foreground="{DynamicResource TextPrimary}"
+                                                 BorderBrush="{DynamicResource BorderSubtle}"
+                                                 Padding="8,6" TextWrapping="Wrap"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                            <Button x:Name="BtnCopiaComando" Content="_Copia comando negli appunti"
+                                                    Style="{StaticResource ModernButton}" Padding="10,4" TabIndex="14"/>
+                                            <TextBlock x:Name="TxtFeedbackCopia" Text="&#x2713; Copiato negli appunti!"
+                                                       Foreground="{DynamicResource PassFg}" FontWeight="Bold"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0" Visibility="Collapsed"/>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- Note sui rischi -->
+                                    <TextBlock Text="Impatto e note sui rischi" FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,2"/>
+                                    <TextBlock x:Name="TxtDettaglioRischi"
+                                               Text="-" TextWrapping="Wrap" FontSize="12"
                                                Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBlock x:Name="TxtDettaglioAtteso" Text="-" TextWrapping="Wrap"
-                                               Margin="0,2,0,0" FontWeight="SemiBold"/>
                                 </StackPanel>
-                            </Border>
-                            <Border Grid.Column="2" Background="{DynamicResource BgSubtle}"
-                                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                                    CornerRadius="4" Padding="8,6">
-                                <StackPanel>
-                                    <TextBlock Text="Valore trovato" FontSize="11" FontWeight="Bold"
-                                               Foreground="{DynamicResource TextSecondary}"/>
-                                    <TextBlock x:Name="TxtDettaglioOsservato" Text="-" TextWrapping="Wrap"
-                                               Margin="0,2,0,0" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
+                            </ScrollViewer>
+                        </TabItem>
 
-                        <!-- Sezione: Come correggere -->
-                        <TextBlock Text="Come correggere (indicazione manuale)" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
-                        <TextBlock x:Name="TxtDettaglioRimedio"
-                                   Text="-" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                        <!-- SCHEDA 2: ASSISTENTE IA E RESOCONTO COMPLETO -->
+                        <TabItem x:Name="TabItemIA" Header="  &#x2728; Assistente IA &amp; Resoconto  " FontWeight="SemiBold">
+                            <Grid Margin="2,6,2,2">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
 
-                        <!-- Blocco Comando di rimedio (visibile solo se command non e' null) -->
-                        <StackPanel x:Name="PanelComandoRimedio" Visibility="Collapsed" Margin="0,0,0,10">
-                            <TextBlock Text="Comando PowerShell di riferimento (sola copia, non eseguito):"
-                                       FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
-                            <TextBox x:Name="TxtComandoRimedio"
-                                     IsReadOnly="True"
-                                     FontFamily="Consolas" FontSize="12"
-                                     Background="{DynamicResource BgSubtle}"
-                                     Foreground="{DynamicResource TextPrimary}"
-                                     BorderBrush="{DynamicResource BorderSubtle}"
-                                     Padding="8,6" TextWrapping="Wrap"/>
-                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                <Button x:Name="BtnCopiaComando" Content="_Copia comando"
-                                        Padding="10,4" Cursor="Hand" TabIndex="13"
-                                        ToolTip="Copia il comando negli appunti di Windows"/>
-                                <TextBlock x:Name="TxtFeedbackCopia" Text="Copiato negli appunti!"
-                                           Foreground="{DynamicResource PassFg}" FontWeight="SemiBold"
-                                           VerticalAlignment="Center" Margin="10,0,0,0" Visibility="Collapsed"/>
-                            </StackPanel>
-                        </StackPanel>
+                                <!-- Barra Configurazione Ollama -->
+                                <Border Grid.Row="0" Background="{DynamicResource BgSubtle}"
+                                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
+                                        CornerRadius="6" Padding="10,8" Margin="0,0,0,8">
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="Server Ollama:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,4"/>
+                                        <TextBox x:Name="TxtEndpointOllama" Text="http://127.0.0.1:11434" Width="145" Padding="5,3" Margin="0,0,10,4"
+                                                 ToolTip="Indirizzo del server Ollama (locale o IP della macchina host)"/>
 
-                        <!-- Note sui rischi -->
-                        <TextBlock Text="Note sui rischi" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,2"/>
-                        <TextBlock x:Name="TxtDettaglioRischi"
-                                   Text="-" TextWrapping="Wrap" FontSize="12"
-                                   Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,14"/>
+                                        <TextBlock Text="Modello:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,4"/>
+                                        <ComboBox x:Name="CmbModelloOllama" Width="125" IsEditable="True" SelectedIndex="0" Padding="4,3" Margin="0,0,8,4">
+                                            <ComboBoxItem Content="qwen2.5:0.5b"/>
+                                            <ComboBoxItem Content="qwen2.5:1.5b"/>
+                                            <ComboBoxItem Content="llama3.2:1b"/>
+                                            <ComboBoxItem Content="gemma2:2b"/>
+                                            <ComboBoxItem Content="phi3:mini"/>
+                                        </ComboBox>
 
-                        <!-- Sezione Assistente IA Locale (Ollama) -->
-                        <Border Background="{DynamicResource BgSubtle}"
-                                BorderBrush="{DynamicResource BorderSubtle}"
-                                BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,2,0,4">
-                            <StackPanel>
-                                <TextBlock Text="ASSISTENTE IA LOCALE (OLLAMA - SOLA SPIEGAZIONE)"
-                                           FontSize="11" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+                                        <Button x:Name="BtnVerificaOllama" Content="Connetti / Avvia Ollama"
+                                                Style="{StaticResource ModernButton}" Padding="8,3" Margin="0,0,0,4"
+                                                ToolTip="Verifica o avvia il servizio Ollama locale e rileva i modelli"/>
+                                    </WrapPanel>
+                                </Border>
 
-                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
-                                    <TextBlock Text="Modello:" VerticalAlignment="Center" Margin="0,0,6,4" FontSize="12" FontWeight="SemiBold"/>
-                                    <ComboBox x:Name="CmbModelloOllama" Width="145" IsEditable="True" SelectedIndex="0" Margin="0,0,8,4"
-                                              ToolTip="Seleziona o digita il nome di un modello Ollama locale (consigliato per test: qwen2.5:0.5b)">
-                                        <ComboBoxItem Content="qwen2.5:0.5b"/>
-                                        <ComboBoxItem Content="qwen2.5:1.5b"/>
-                                        <ComboBoxItem Content="llama3.2:1b"/>
-                                        <ComboBoxItem Content="gemma2:2b"/>
-                                        <ComboBoxItem Content="phi3:mini"/>
-                                    </ComboBox>
-                                    <Button x:Name="BtnVerificaOllama" Content="Rileva modelli" Padding="8,3" Margin="0,0,0,4"
-                                            Cursor="Hand" ToolTip="Controlla i modelli installati su http://localhost:11434"/>
+                                <!-- Pulsanti di generazione IA -->
+                                <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Button x:Name="BtnSpiegaControlloTab"
+                                            Content="Spiega Controllo Selezionato"
+                                            Style="{StaticResource PrimaryButton}" Padding="10,5" Margin="0,0,8,4"/>
+                                    <Button x:Name="BtnResocontoTab"
+                                            Content="Genera Resoconto Completo PC"
+                                            Style="{StaticResource AiButton}" Padding="10,5" Margin="0,0,8,4"/>
+                                    <Button x:Name="BtnCopiaRispostaLLM"
+                                            Content="Copia Analisi"
+                                            Style="{StaticResource ModernButton}" Padding="10,5" Margin="0,0,0,4"/>
                                 </WrapPanel>
 
-                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                    <Button x:Name="BtnSpiegaLLM"
-                                            Content="Spiega controllo con LLM"
-                                            IsEnabled="True"
-                                            Cursor="Hand"
-                                            Background="{DynamicResource AccentBrush}"
-                                            Foreground="{DynamicResource AccentText}"
-                                            FontWeight="SemiBold"
-                                            ToolTip="Chiede al modello Ollama locale di spiegare questo controllo e come intervenire"
-                                            Padding="10,5" Margin="0,0,8,4"/>
+                                <!-- Stato assistente -->
+                                <TextBlock x:Name="TxtStatoLLM" Grid.Row="2"
+                                           Text="Premi 'Genera Resoconto Completo PC' o 'Spiega Controllo Selezionato' per ottenere l'analisi dettagliata."
+                                           FontSize="11" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           TextWrapping="Wrap" Margin="0,0,0,6"/>
 
-                                    <Button x:Name="BtnResocontoLLM"
-                                            Content="Resoconto IA scansione"
-                                            IsEnabled="False"
-                                            Cursor="Hand"
-                                            FontWeight="SemiBold"
-                                            ToolTip="Genera con Ollama un resoconto complessivo della scansione e i consigli prioritari"
-                                            Padding="10,5" Margin="0,0,0,4"/>
-                                </WrapPanel>
-
-                                <TextBlock x:Name="TxtStatoLLM"
-                                           Text="Pronto (richiede Ollama attivo su localhost:11434)"
-                                           FontSize="11" Foreground="{DynamicResource TextSecondary}"
-                                           TextWrapping="Wrap" Margin="0,0,0,4"/>
-
-                                <TextBox x:Name="TxtRispostaLLM"
+                                <!-- Area di testo a tutta altezza per il resoconto -->
+                                <TextBox x:Name="TxtRispostaLLM" Grid.Row="3"
                                          IsReadOnly="True"
                                          TextWrapping="Wrap"
                                          VerticalScrollBarVisibility="Auto"
-                                         MinHeight="110"
-                                         MaxHeight="260"
-                                         Padding="8,6"
-                                         FontSize="12"
-                                         Background="{DynamicResource BgSurface}"
+                                         Padding="12,10"
+                                         FontSize="12.5"
+                                         FontFamily="Segoe UI"
+                                         Background="{DynamicResource BgSubtle}"
                                          Foreground="{DynamicResource TextPrimary}"
                                          BorderBrush="{DynamicResource BorderSubtle}"
-                                         Visibility="Collapsed"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </ScrollViewer>
+                                         BorderThickness="1"
+                                         Text="Al termine della scansione premi 'Resoconto IA &amp; Consigli' per ricevere l'analisi completa delle vulnerabilita' trovate e la guida passo-passo per mettere in sicurezza il PC."/>
+                            </Grid>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
             </Border>
         </Grid>
 
         <!-- 7. BARRA INFERIORE: EXPORT + RIEPILOGO + AVVISO PERMANENTE -->
         <Border Grid.Row="7" Background="{DynamicResource BgSurface}"
-                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="16,8">
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="18,8">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -1161,26 +1263,25 @@ $script:XamlIncorporato = @'
                     </Grid.ColumnDefinitions>
 
                     <Button x:Name="BtnEsportaJson" Grid.Column="0" Content="Esporta _JSON"
-                            Padding="12,5" Cursor="Hand" IsEnabled="False" TabIndex="14"
+                            Style="{StaticResource ModernButton}" Padding="12,5" IsEnabled="False" TabIndex="15"
                             ToolTip="Salva il report JSON conforme al contratto 0.1"/>
 
                     <Button x:Name="BtnEsportaHtml" Grid.Column="1" Content="Esporta _HTML"
-                            Padding="12,5" Margin="8,0,0,0" Cursor="Hand" IsEnabled="False" TabIndex="15"
+                            Style="{StaticResource ModernButton}" Padding="12,5" Margin="8,0,0,0" IsEnabled="False" TabIndex="16"
                             ToolTip="Salva un report HTML autonomo leggibile nel browser"/>
 
                     <CheckBox x:Name="ChkSalvaLogTecnico" Grid.Column="2"
                               Content="Includi file di log tecnico accanto all'export"
-                              VerticalAlignment="Center" Margin="14,0,0,0" TabIndex="16"
-                              ToolTip="Se selezionato, crea un file .log con i dettagli tecnici di eventuali errori"/>
+                              VerticalAlignment="Center" Margin="14,0,0,0" TabIndex="17"/>
 
-                    <TextBlock x:Name="TxtRiepilogoFooter" Grid.Column="3"
+                    <TextBlock x:Name="TxtRiepilogoFooter" Grid.Row="0" Grid.Column="3"
                                Text="Riepilogo calcolato dal codice: nessuna scansione eseguita"
-                               Foreground="{DynamicResource TextSecondary}"
+                               Foreground="{DynamicResource TextSecondary}" FontWeight="SemiBold"
                                VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="12"/>
                 </Grid>
 
                 <TextBlock x:Name="TxtDisclaimerPermanente" Grid.Row="1"
-                           Margin="0,6,0,0" FontSize="11"
+                           Margin="0,5,0,0" FontSize="11"
                            Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
                            Text="Avviso permanente: questo strumento verifica solo alcune configurazioni di sicurezza in sola lettura. Un audit conforme non dimostra l'assenza di compromissioni sul sistema."/>
             </Grid>
@@ -1964,32 +2065,29 @@ function Export-TechnicalLog {
 # =============================================================================
 <#
 .SYNOPSIS
-    Client per l'integrazione con un LLM locale tramite Ollama (http://localhost:11434).
+    Client per l'integrazione con un LLM locale tramite Ollama (http://127.0.0.1:11434)
+    con generatore di resoconto intelligente integrato.
 
 .DESCRIPTION
     Fornisce funzioni pure per la costruzione dei prompt (controllo singolo e
-    resoconto complessivo della scansione) e funzioni di chiamata all'API REST
-    locale di Ollama (/api/tags e /api/generate).
+    resoconto complessivo della scansione), funzioni di chiamata all'API REST
+    locale di Ollama (/api/tags, /api/pull e /api/generate) e un motore di
+    analisi guidata locale caso-specifica quando il servizio Ollama non e'
+    installato sulla macchina.
     Rispetta il principio architetturale D3: il rilevamento e' deterministico;
-    l'LLM spiega i risultati e fornisce consigli di miglioramento senza mai
+    l'assistente spiega i risultati e fornisce consigli di miglioramento senza mai
     decidere o modificare lo stato dei controlli ne' eseguire comandi sul sistema.
 #>
 
 Set-StrictMode -Version 2
 
-$script:EndpointOllamaPredefinito = 'http://localhost:11434'
+$script:EndpointOllamaPredefinito = 'http://127.0.0.1:11434'
 $script:ModelloOllamaPredefinito  = 'qwen2.5:0.5b'
 
 function Format-PromptControlloOllama {
     <#
     .SYNOPSIS
         Costruisce il prompt in italiano per chiedere all'LLM di spiegare un singolo controllo.
-    .PARAMETER Dettaglio
-        Oggetto prodotto da Format-DettaglioControllo (ViewModel.ps1).
-    .PARAMETER Ambiente
-        Oggetto ambiente opzionale (da Get-AmbienteSistema).
-    .OUTPUTS
-        Stringa con il prompt strutturato per Ollama.
     #>
     [CmdletBinding()]
     param(
@@ -2048,14 +2146,6 @@ function Format-PromptResocontoOllama {
     .SYNOPSIS
         Costruisce il prompt in italiano per generare un resoconto complessivo della scansione
         e un piano di miglioramento prioritario.
-    .PARAMETER ElementiVista
-        Array di elementi vista (da ConvertTo-RisultatiVista).
-    .PARAMETER Conteggi
-        Oggetto conteggi (da Measure-ConteggiRisultati).
-    .PARAMETER Ambiente
-        Oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        Stringa con il prompt completo per il resoconto IA.
     #>
     [CmdletBinding()]
     param(
@@ -2120,16 +2210,160 @@ Scrivi un resoconto strutturato in 4 sezioni:
     return $prompt.Trim()
 }
 
+function Format-AnalisiLocaleControllo {
+    <#
+    .SYNOPSIS
+        Genera una spiegazione strutturata e contestuale del singolo controllo
+        anche quando il server Ollama locale non e' ancora attivo sulla macchina.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Dettaglio,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("=== ANALISI DETTAGLIATA DEL CONTROLLO: $($Dettaglio.ControlId) ===")
+    [void]$sb.AppendLine("Controllo: $($Dettaglio.Title)")
+    [void]$sb.AppendLine("Categoria: $($Dettaglio.Category)  |  Gravita': $($Dettaglio.SeverityLabel)  |  Stato: $($Dettaglio.StatusLabel)")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("1. COSA SIGNIFICA QUESTO RISULTATO SUL TUO PC")
+
+    switch ($Dettaglio.Status) {
+        'superato' {
+            [void]$sb.AppendLine("   Ottima notizia: sul tuo sistema il valore rilevato ('$($Dettaglio.ValoreOsservato)') rispetta pienamente il requisito di sicurezza atteso ('$($Dettaglio.ValoreAtteso)'). Non e' necessario alcun intervento correttivo.")
+        }
+        'fallito' {
+            [void]$sb.AppendLine("   Attenzione: lo scanner ha rilevato '$($Dettaglio.ValoreOsservato)', mentre l'impostazione sicura raccomandata e' '$($Dettaglio.ValoreAtteso)'.")
+        }
+        'sconosciuto' {
+            [void]$sb.AppendLine("   Lo stato attuale e' Sconosciuto ('$($Dettaglio.ValoreOsservato)'). Per verificare questo controllo avvia lo scanner come Amministratore.")
+        }
+        'non_applicabile' {
+            [void]$sb.AppendLine("   Questo controllo non si applica all'edizione corrente di Windows ($($Dettaglio.ValoreOsservato)).")
+        }
+        default {
+            [void]$sb.AppendLine("   Stato rilevato: $($Dettaglio.ValoreOsservato).")
+        }
+    }
+
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("2. PERCHE' E' IMPORTANTE (VALUTAZIONE DEL RISCHIO)")
+    [void]$sb.AppendLine("   $($Dettaglio.SpiegazioneSemplice)")
+    [void]$sb.AppendLine("   Impatto della modifica: $($Dettaglio.NoteRischi)")
+
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("3. COME INTERVENIRE IN SICUREZZA PASSO DOPO PASSO")
+    if ($Dettaglio.Status -eq 'superato') {
+        [void]$sb.AppendLine("   - Nessuna azione richiesta: l'impostazione e' gia' configurata in modo sicuro.")
+    }
+    else {
+        [void]$sb.AppendLine("   - Azione consigliata: $($Dettaglio.TestoRimedio)")
+        if ($Dettaglio.HaComando -and (-not [string]::IsNullOrWhiteSpace($Dettaglio.ComandoRimedio))) {
+            [void]$sb.AppendLine("   - Comando PowerShell (da eseguire come Amministratore):")
+            [void]$sb.AppendLine("     $($Dettaglio.ComandoRimedio)")
+        }
+    }
+
+    return $sb.ToString().Trim()
+}
+
+function Format-ResocontoLocaleScansione {
+    <#
+    .SYNOPSIS
+        Genera un resoconto completo e prioritizzato dell'intera scansione del PC
+        con consigli passo-passo per tutti i controlli falliti.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [array]$ElementiVista,
+
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Conteggi,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $perc = if ($Conteggi.totale -gt 0) {
+        [int][math]::Round((($Conteggi.superato * 100.0) / $Conteggi.totale), 0)
+    } else { 0 }
+
+    $giudizio = if ($Conteggi.fallito -eq 0) {
+        "ECCELLENTE (Tutti i controlli verificati sono superati)"
+    }
+    elseif ($perc -ge 80) {
+        "BUONO ($perc% di conformita' — presenti $($Conteggi.fallito) miglioramenti consigliati)"
+    }
+    elseif ($perc -ge 60) {
+        "MODERATO ($perc% di conformita' — si raccomanda di applicare le correzioni prioritarie)"
+    }
+    else {
+        "ATTENZIONE RICHIESTA ($perc% di conformita' — diversi controlli critici o alti risultano disattivati)"
+    }
+
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("======================================================================")
+    [void]$sb.AppendLine("          RESOCONTO DI SICUREZZA E PIANO DI MIGLIORAMENTO PC          ")
+    [void]$sb.AppendLine("======================================================================")
+    if ($null -ne $Ambiente) {
+        [void]$sb.AppendLine("Sistema analizzato: Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build)) | Admin: $($Ambiente.IsAdmin)")
+    }
+    [void]$sb.AppendLine("Punteggio conformita': $perc% ($($Conteggi.superato) Superati su $($Conteggi.totale) controlli)")
+    [void]$sb.AppendLine("Valutazione complessiva: $giudizio")
+    [void]$sb.AppendLine("")
+
+    [void]$sb.AppendLine("1. SINTESI DELLO STATO DEL PC")
+    [void]$sb.AppendLine("   - Controlli Superati:        $($Conteggi.superato)")
+    [void]$sb.AppendLine("   - Controlli da Migliorare:   $($Conteggi.fallito)")
+    [void]$sb.AppendLine("   - Controlli Sconosciuti:     $($Conteggi.sconosciuto)")
+    [void]$sb.AppendLine("   - Controlli Non Applicabili: $($Conteggi.non_applicabile)")
+    [void]$sb.AppendLine("")
+
+    $falliti = @($ElementiVista | Where-Object { $_.Status -eq 'fallito' })
+
+    if ($falliti.Count -eq 0) {
+        [void]$sb.AppendLine("2. NESSUNA CRITICITA' RILEVATA")
+        [void]$sb.AppendLine("   Tutti i controlli eseguibili sul sistema risultano configurati correttamente.")
+    }
+    else {
+        [void]$sb.AppendLine("2. PRIORITA' DI INTERVENTO E COME APPLICARE LA SICUREZZA ($($falliti.Count) azioni)")
+        [void]$sb.AppendLine("")
+        $num = 0
+        foreach ($f in $falliti) {
+            $num++
+            $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice'
+            [void]$sb.AppendLine("   Priorita' #$num — [$($f.SeverityLabel.ToUpperInvariant())] $($f.Title) ($($f.ControlId))")
+            [void]$sb.AppendLine("   * Stato attuale sul PC: $($det.ValoreOsservato)")
+            [void]$sb.AppendLine("   * Perche' intervenire:  $($det.SpiegazioneSemplice)")
+            [void]$sb.AppendLine("   * Come correggere:      $($det.TestoRimedio)")
+            if ($det.HaComando -and (-not [string]::IsNullOrWhiteSpace($det.ComandoRimedio))) {
+                [void]$sb.AppendLine("   * Comando rapido (Admin): $($det.ComandoRimedio)")
+            }
+            [void]$sb.AppendLine("   * Precauzioni:          $($det.NoteRischi)")
+            [void]$sb.AppendLine("")
+        }
+    }
+
+    [void]$sb.AppendLine("3. CONSIGLI PRATICI PRIMA DI APPLICARE LE MODIFICHE")
+    [void]$sb.AppendLine("   - Crea sempre un Punto di Ripristino di Windows prima di modificare il registro o i criteri.")
+    [void]$sb.AppendLine("   - Applica un miglioramento alla volta (partendo da quelli a gravita' CRITICO e ALTO) e verifica il normale funzionamento delle tue applicazioni.")
+    [void]$sb.AppendLine("   - Puoi copiare il comando di ciascun controllo selezionandolo nella scheda 'Dettagli e Rimedio'.")
+
+    return $sb.ToString().Trim()
+}
+
 function Test-ConnessioneOllama {
     <#
     .SYNOPSIS
         Verifica se il server locale Ollama e' attivo e restituisce la lista dei modelli installati.
-    .PARAMETER Endpoint
-        URL base del server Ollama (predefinito: http://localhost:11434).
-    .PARAMETER TimeoutSec
-        Timeout in secondi (predefinito: 4).
-    .OUTPUTS
-        PSCustomObject con Disponibile, Modelli, ModelloConsigliato, Errore.
     #>
     [CmdletBinding()]
     param(
@@ -2137,10 +2371,10 @@ function Test-ConnessioneOllama {
         [string]$Endpoint = $script:EndpointOllamaPredefinito,
 
         [Parameter(Mandatory = $false)]
-        [int]$TimeoutSec = 4
+        [int]$TimeoutSec = 3
     )
 
-    $urlPulito = $Endpoint.TrimEnd('/')
+    $urlPulito = if ([string]::IsNullOrWhiteSpace($Endpoint)) { $script:EndpointOllamaPredefinito } else { $Endpoint.Trim().TrimEnd('/') }
     $uriTags   = "$urlPulito/api/tags"
 
     try {
@@ -2155,7 +2389,6 @@ function Test-ConnessioneOllama {
             }
         }
 
-        # Preferenza per modelli leggeri ideali per test rapidi
         $preferiti = @('qwen2.5:0.5b', 'qwen2.5:1.5b', 'llama3.2:1b', 'gemma2:2b', 'tinyllama:latest', 'phi3:mini')
         $consigliato = $script:ModelloOllamaPredefinito
         if ($nomiModelli.Count -gt 0) {
@@ -2186,7 +2419,7 @@ function Test-ConnessioneOllama {
             Endpoint           = $urlPulito
             Modelli            = @()
             ModelloConsigliato = $script:ModelloOllamaPredefinito
-            Errore             = "Ollama non raggiungibile su $urlPulito. Assicurati che Ollama sia installato ('winget install Ollama.Ollama') e avvia un modello leggero con: ollama run qwen2.5:0.5b"
+            Errore             = "Server Ollama non attivo su $urlPulito. Per usare un modello LLM neurale locale installa Ollama ('winget install Ollama.Ollama') ed esegui 'ollama run qwen2.5:0.5b'."
         }
     }
 }
@@ -2194,17 +2427,9 @@ function Test-ConnessioneOllama {
 function Invoke-RichiestaOllama {
     <#
     .SYNOPSIS
-        Invia un prompt al server locale Ollama (/api/generate) e restituisce la risposta testuale.
-    .PARAMETER Prompt
-        Testo del prompt da inviare.
-    .PARAMETER Modello
-        Nome del modello Ollama (es. 'qwen2.5:0.5b', 'llama3.2:1b').
-    .PARAMETER Endpoint
-        URL base di Ollama (predefinito: http://localhost:11434).
-    .PARAMETER TimeoutSec
-        Timeout massimo per la generazione in secondi (predefinito: 120).
-    .OUTPUTS
-        PSCustomObject con Successo, Risposta, Modello, DurataMs, Errore.
+        Invia un prompt al server locale Ollama (/api/generate). Se il modello non e'
+        ancora scaricato ma Ollama e' attivo, tenta di usare un modello installato o
+        scarica automaticamente il modello scelto tramite /api/pull.
     #>
     [CmdletBinding()]
     param(
@@ -2218,10 +2443,13 @@ function Invoke-RichiestaOllama {
         [string]$Endpoint = $script:EndpointOllamaPredefinito,
 
         [Parameter(Mandatory = $false)]
-        [int]$TimeoutSec = 120
+        [int]$TimeoutSec = 120,
+
+        [Parameter(Mandatory = $false)]
+        [string]$TestoFallbackLocale = ''
     )
 
-    $urlPulito = $Endpoint.TrimEnd('/')
+    $urlPulito = if ([string]::IsNullOrWhiteSpace($Endpoint)) { $script:EndpointOllamaPredefinito } else { $Endpoint.Trim().TrimEnd('/') }
     $uriGen    = "$urlPulito/api/generate"
 
     if ([string]::IsNullOrWhiteSpace($Modello)) {
@@ -2237,7 +2465,7 @@ function Invoke-RichiestaOllama {
             stream  = $false
             options = @{
                 temperature = 0.2
-                num_predict = 700
+                num_predict = 750
             }
         }
         $corpoJson = $corpoObj | ConvertTo-Json -Depth 5
@@ -2256,6 +2484,7 @@ function Invoke-RichiestaOllama {
         if ([string]::IsNullOrWhiteSpace($testoRisposta)) {
             return [PSCustomObject]@{
                 Successo = $false
+                 Sorgente = 'Ollama'
                 Risposta = $null
                 Modello  = $Modello
                 DurataMs = [int]$cronometro.ElapsedMilliseconds
@@ -2265,6 +2494,7 @@ function Invoke-RichiestaOllama {
 
         return [PSCustomObject]@{
             Successo = $true
+            Sorgente = "Ollama ($Modello)"
             Risposta = $testoRisposta
             Modello  = $Modello
             DurataMs = [int]$cronometro.ElapsedMilliseconds
@@ -2275,18 +2505,55 @@ function Invoke-RichiestaOllama {
         $cronometro.Stop()
         $msg = $_.Exception.Message
 
+        # Se Ollama e' attivo ma il modello specificato non e' presente (404), prova a scaricarlo via /api/pull
+        if ($msg -match '404') {
+            try {
+                $uriPull  = "$urlPulito/api/pull"
+                $pullJson = (@{ name = $Modello; stream = $false } | ConvertTo-Json)
+                [void](Invoke-RestMethod -Uri $uriPull -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($pullJson)) -ContentType 'application/json' -TimeoutSec 300 -ErrorAction Stop)
+
+                # Riprova la generazione dopo il pull
+                $rispostaRetry = Invoke-RestMethod -Uri $uriGen -Method Post -Body $bytesBody -ContentType 'application/json; charset=utf-8' -TimeoutSec $TimeoutSec -ErrorAction Stop
+                $testoRetry = ([string]$rispostaRetry.response).Trim()
+                if (-not [string]::IsNullOrWhiteSpace($testoRetry)) {
+                    return [PSCustomObject]@{
+                        Successo = $true
+                        Sorgente = "Ollama ($Modello - scaricato automaticamente)"
+                        Risposta = $testoRetry
+                        Modello  = $Modello
+                        DurataMs = [int]$cronometro.ElapsedMilliseconds
+                        Errore   = $null
+                    }
+                }
+            }
+            catch { }
+        }
+
+        # Se abbiamo un'analisi guidata locale (quando Ollama non e' installato sulla VM/PC),
+        # restituiamola insieme alle istruzioni per attivare Ollama
+        if (-not [string]::IsNullOrWhiteSpace($TestoFallbackLocale)) {
+            $avvisoHeader = "[Assistente Esperto Integrato — Il server Ollama non e' attivo su $urlPulito]`n" +
+                            "(Nota: per usare il modello neurale Ollama, installa Ollama con 'winget install Ollama.Ollama' oppure premi 'Installa / Avvia Ollama' qui sopra).`n`n"
+            return [PSCustomObject]@{
+                Successo = $true
+                Sorgente = 'Assistente Esperto Integrato (Ollama offline)'
+                Risposta = ($avvisoHeader + $TestoFallbackLocale)
+                Modello  = 'Motore Esperto Locale'
+                DurataMs = [int]$cronometro.ElapsedMilliseconds
+                Errore   = $null
+            }
+        }
+
         $erroreAmichevole = if ($msg -match '404') {
             "Il modello '$Modello' non e' ancora scaricato in Ollama. Apri il terminale ed esegui:`nollama pull $Modello"
         }
-        elseif ($msg -match 'Unable to connect|Impossibile stabilire la connessione|timed out|rifiutata') {
-            "Impossibile connettersi a Ollama su $urlPulito.`n1. Verifica che Ollama sia in esecuzione.`n2. Se non hai ancora scaricato il modello leggero di test, esegui in PowerShell:`n   ollama pull $Modello"
-        }
         else {
-            "Errore durante la comunicazione con Ollama ($Modello): $msg"
+            "Impossibile connettersi a Ollama su $urlPulito ($msg).`nPer installare e avviare il modello leggero esegui in PowerShell:`n1. winget install Ollama.Ollama`n2. ollama pull $Modello"
         }
 
         return [PSCustomObject]@{
             Successo = $false
+            Sorgente = 'Errore'
             Risposta = $null
             Modello  = $Modello
             DurataMs = [int]$cronometro.ElapsedMilliseconds
@@ -5913,10 +6180,17 @@ function Start-ScannerUI {
         BtnCopiaComando        = $finestra.FindName('BtnCopiaComando')
         TxtFeedbackCopia       = $finestra.FindName('TxtFeedbackCopia')
         TxtDettaglioRischi     = $finestra.FindName('TxtDettaglioRischi')
+        TabPannelloDestro      = $finestra.FindName('TabPannelloDestro')
+        TabItemDettaglio       = $finestra.FindName('TabItemDettaglio')
+        TabItemIA              = $finestra.FindName('TabItemIA')
+        TxtEndpointOllama      = $finestra.FindName('TxtEndpointOllama')
         CmbModelloOllama       = $finestra.FindName('CmbModelloOllama')
         BtnVerificaOllama      = $finestra.FindName('BtnVerificaOllama')
         BtnSpiegaLLM           = $finestra.FindName('BtnSpiegaLLM')
         BtnResocontoLLM        = $finestra.FindName('BtnResocontoLLM')
+        BtnSpiegaControlloTab  = $finestra.FindName('BtnSpiegaControlloTab')
+        BtnResocontoTab        = $finestra.FindName('BtnResocontoTab')
+        BtnCopiaRispostaLLM    = $finestra.FindName('BtnCopiaRispostaLLM')
         TxtStatoLLM            = $finestra.FindName('TxtStatoLLM')
         TxtRispostaLLM         = $finestra.FindName('TxtRispostaLLM')
         BtnEsportaJson         = $finestra.FindName('BtnEsportaJson')
@@ -6159,44 +6433,99 @@ function Start-ScannerUI {
         }
     })
 
+    # --- Helper per individuare ed eventualmente avviare ollama.exe locale ---
+    $assicuraServizioOllamaLocale = {
+        param([string]$EndpointUrl)
+        $statoCheck = Test-ConnessioneOllama -Endpoint $EndpointUrl -TimeoutSec 2
+        if ($statoCheck.Disponibile) {
+            return $statoCheck
+        }
+
+        # Cerca ollama.exe nel PATH o nel percorso standard di installazione Windows
+        $percorsoExe = $null
+        $cmdOllama = Get-Command -Name 'ollama' -ErrorAction SilentlyContinue
+        if ($null -ne $cmdOllama) {
+            $percorsoExe = $cmdOllama.Source
+        }
+        else {
+            $percorsoDefault = Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'
+            if (Test-Path -LiteralPath $percorsoDefault) {
+                $percorsoExe = $percorsoDefault
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($percorsoExe)) {
+            try {
+                Start-Process -FilePath $percorsoExe -ArgumentList 'serve' -WindowStyle Hidden
+                [System.Threading.Thread]::Sleep(1800)
+                return (Test-ConnessioneOllama -Endpoint $EndpointUrl -TimeoutSec 3)
+            }
+            catch { }
+        }
+
+        return $statoCheck
+    }
+
     # --- Funzione asincrona per eseguire una richiesta Ollama in un Runspace ---
     $avviaRichiestaOllamaAsincrona = {
-        param([string]$PromptDaInviare, [string]$EtichettaOperazione)
+        param(
+            [string]$PromptDaInviare,
+            [string]$EtichettaOperazione,
+            [string]$TestoFallback = ''
+        )
+
+        # Passa automaticamente alla scheda Assistente IA
+        $ctrl.TabPannelloDestro.SelectedIndex = 1
 
         $modelloScelto = $ctrl.CmbModelloOllama.Text
         if ([string]::IsNullOrWhiteSpace($modelloScelto)) {
             $modelloScelto = 'qwen2.5:0.5b'
         }
 
-        $ctrl.BtnSpiegaLLM.IsEnabled    = $false
-        $ctrl.BtnResocontoLLM.IsEnabled = $false
-        $ctrl.TxtStatoLLM.Text          = "$EtichettaOperazione in corso con '$modelloScelto'..."
-        $ctrl.TxtRispostaLLM.Text       = "Generazione della risposta da parte di Ollama ($modelloScelto) in corso... Attendi qualche secondo."
-        $ctrl.TxtRispostaLLM.Visibility = [System.Windows.Visibility]::Visible
+        $endpointScelto = $ctrl.TxtEndpointOllama.Text
+        if ([string]::IsNullOrWhiteSpace($endpointScelto)) {
+            $endpointScelto = 'http://127.0.0.1:11434'
+        }
+
+        $ctrl.BtnSpiegaLLM.IsEnabled          = $false
+        $ctrl.BtnSpiegaControlloTab.IsEnabled = $false
+        $ctrl.BtnResocontoLLM.IsEnabled       = $false
+        $ctrl.BtnResocontoTab.IsEnabled       = $false
+        $ctrl.TxtStatoLLM.Text                = "$EtichettaOperazione in corso ($modelloScelto su $endpointScelto)..."
+        $ctrl.TxtRispostaLLM.Text             = "Analisi in corso... Se il modello '$modelloScelto' non e' ancora scaricato in Ollama, verra' scaricato automaticamente oppure verra' generato il resoconto esperto integrato."
+        $ctrl.TxtRispostaLLM.Visibility       = [System.Windows.Visibility]::Visible
+
+        # Se ollama.exe e' installato ma non ancora avviato, avvialo in background
+        [void](& $assicuraServizioOllamaLocale $endpointScelto)
 
         $callbackFineLlm = [Action[object]]{
             param($EsitoLlm)
-            $ctrl.BtnSpiegaLLM.IsEnabled = $true
+            $ctrl.BtnSpiegaLLM.IsEnabled          = $true
+            $ctrl.BtnSpiegaControlloTab.IsEnabled = $true
+            $ctrl.BtnResocontoTab.IsEnabled       = $true
             if ($statoUI.RisultatiGrezzi.Count -gt 0) {
                 $ctrl.BtnResocontoLLM.IsEnabled = $true
             }
 
             if ($EsitoLlm.Successo) {
                 $sec = [math]::Round(($EsitoLlm.DurataMs / 1000.0), 1)
-                $ctrl.TxtStatoLLM.Text    = "Completato da $($EsitoLlm.Modello) in ${sec}s"
+                $sorgente = if ($null -ne $EsitoLlm.PSObject.Properties['Sorgente']) { $EsitoLlm.Sorgente } else { $EsitoLlm.Modello }
+                $ctrl.TxtStatoLLM.Text    = "Analisi completata da: $sorgente (${sec}s)"
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Risposta
             }
             else {
-                $ctrl.TxtStatoLLM.Text    = "Ollama non disponibile o modello mancante"
+                $ctrl.TxtStatoLLM.Text    = "Stato: $($EsitoLlm.Modello) non disponibile"
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Errore
             }
         }
 
         $syncLlm = [hashtable]::Synchronized(@{
-            Finestra     = $finestra
-            Prompt       = $PromptDaInviare
-            Modello      = $modelloScelto
-            CallbackFine = $callbackFineLlm
+            Finestra      = $finestra
+            Prompt        = $PromptDaInviare
+            Modello       = $modelloScelto
+            Endpoint      = $endpointScelto
+            Fallback      = $TestoFallback
+            CallbackFine  = $callbackFineLlm
         })
 
         $issLlm = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
@@ -6215,7 +6544,7 @@ function Start-ScannerUI {
         $psLlm = [powershell]::Create()
         $psLlm.Runspace = $rsLlm
         [void]$psLlm.AddScript({
-            $esito = Invoke-RichiestaOllama -Prompt $SyncLlm.Prompt -Modello $SyncLlm.Modello -Endpoint 'http://localhost:11434'
+            $esito = Invoke-RichiestaOllama -Prompt $SyncLlm.Prompt -Modello $SyncLlm.Modello -Endpoint $SyncLlm.Endpoint -TestoFallbackLocale $SyncLlm.Fallback
             [void]$SyncLlm.Finestra.Dispatcher.Invoke(
                 [System.Windows.Threading.DispatcherPriority]::Normal,
                 $SyncLlm.CallbackFine,
@@ -6225,10 +6554,12 @@ function Start-ScannerUI {
         [void]$psLlm.BeginInvoke()
     }
 
-    # --- Verifica connessione e modelli Ollama ---
+    # --- Verifica connessione / Avvio / Installazione Ollama ---
     $ctrl.BtnVerificaOllama.Add_Click({
-        $ctrl.TxtStatoLLM.Text = "Verifica connessione a http://localhost:11434..."
-        $statoOllama = Test-ConnessioneOllama -Endpoint 'http://localhost:11434'
+        $endpointScelto = if ([string]::IsNullOrWhiteSpace($ctrl.TxtEndpointOllama.Text)) { 'http://127.0.0.1:11434' } else { $ctrl.TxtEndpointOllama.Text.Trim() }
+        $ctrl.TxtStatoLLM.Text = "Verifica o avvio del servizio Ollama su $endpointScelto..."
+
+        $statoOllama = & $assicuraServizioOllamaLocale $endpointScelto
         if ($statoOllama.Disponibile) {
             if ($statoOllama.Modelli.Count -gt 0) {
                 $ctrl.CmbModelloOllama.Items.Clear()
@@ -6238,39 +6569,66 @@ function Start-ScannerUI {
                     [void]$ctrl.CmbModelloOllama.Items.Add($itemM)
                 }
                 $ctrl.CmbModelloOllama.SelectedIndex = 0
-                $ctrl.TxtStatoLLM.Text = "Ollama connesso! Modelli trovati: $($statoOllama.Modelli -join ', ')"
+                $ctrl.TxtStatoLLM.Text = "Ollama connesso su $endpointScelto! Modelli pronti: $($statoOllama.Modelli -join ', ')"
             }
             else {
-                $ctrl.TxtStatoLLM.Text = "Ollama attivo ma nessun modello installato. Esegui: ollama pull qwen2.5:0.5b"
+                $ctrl.TxtStatoLLM.Text = "Ollama connesso! Il modello scelto verra' scaricato automaticamente alla prima richiesta."
             }
         }
         else {
-            $ctrl.TxtStatoLLM.Text    = "Ollama non raggiungibile su localhost:11434"
-            $ctrl.TxtRispostaLLM.Text = $statoOllama.Errore
-            $ctrl.TxtRispostaLLM.Visibility = [System.Windows.Visibility]::Visible
+            $scelta = [System.Windows.MessageBox]::Show(
+                "Il server Ollama non risulta installato o attivo su $endpointScelto.`n`nVuoi installare automaticamente Ollama e il modello leggero 'qwen2.5:0.5b' (~390 MB) tramite Winget in una finestra PowerShell?",
+                "Installazione rapida Ollama",
+                [System.Windows.MessageBoxButton]::YesNo,
+                [System.Windows.MessageBoxImage]::Question
+            )
+            if ($scelta -eq [System.Windows.MessageBoxResult]::Yes) {
+                $cmdSetup = "Write-Host 'Installazione di Ollama e del modello leggero qwen2.5:0.5b...' -ForegroundColor Cyan; winget install -e --id Ollama.Ollama --accept-source-agreements --accept-package-agreements; `$exe = Join-Path `$env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'; if (Test-Path `$exe) { Start-Process `$exe -ArgumentList 'serve' -WindowStyle Hidden; Start-Sleep -Seconds 3; & `$exe pull qwen2.5:0.5b } else { ollama pull qwen2.5:0.5b }; Write-Host 'Completato! Ora puoi tornare allo Scanner e cliccare Connetti / Avvia Ollama.' -ForegroundColor Green; Read-Host 'Premi Invio per chiudere'"
+                Start-Process -FilePath 'powershell.exe' -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$cmdSetup`""
+                $ctrl.TxtStatoLLM.Text = "Installazione di Ollama avviata in una nuova finestra PowerShell."
+            }
+            else {
+                $ctrl.TxtStatoLLM.Text = "Modalita' Assistente Esperto Integrato attiva (funziona anche senza Ollama)."
+            }
         }
     })
 
-    # --- Spiega controllo selezionato con LLM ---
-    $ctrl.BtnSpiegaLLM.Add_Click({
+    # --- Azione: Spiega controllo selezionato ---
+    $eseguiSpiegazioneControllo = {
         if ($null -eq $statoUI.ElementoSelezionato) {
+            $ctrl.TabPannelloDestro.SelectedIndex = 1
             $ctrl.TxtStatoLLM.Text = "Seleziona prima un controllo dalla tabella a sinistra."
             return
         }
-        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice'
-        $promptCtrl = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente
-        & $avviaRichiestaOllamaAsincrona $promptCtrl "Spiegazione di $($dettaglio.ControlId)"
-    })
+        $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice'
+        $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente
+        $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente
+        & $avviaRichiestaOllamaAsincrona $promptCtrl "Analisi di $($dettaglio.ControlId)" $fallbackLoc
+    }
 
-    # --- Resoconto complessivo della scansione con LLM ---
-    $ctrl.BtnResocontoLLM.Add_Click({
+    # --- Azione: Genera Resoconto Completo della Scansione ---
+    $eseguiResocontoScansione = {
         if ($statoUI.ElementiVista.Count -eq 0) {
-            $ctrl.TxtStatoLLM.Text = "Esegui prima la scansione per generare il resoconto IA."
+            $ctrl.TabPannelloDestro.SelectedIndex = 1
+            $ctrl.TxtStatoLLM.Text = "Avvia prima la scansione per generare il resoconto completo del PC."
             return
         }
-        $conteggi = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        $promptRes = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
-        & $avviaRichiestaOllamaAsincrona $promptRes "Generazione Resoconto IA della scansione"
+        $conteggi    = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
+        $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
+        $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
+        & $avviaRichiestaOllamaAsincrona $promptRes "Generazione Resoconto Sicurezza PC" $fallbackRes
+    }
+
+    $ctrl.BtnSpiegaLLM.Add_Click($eseguiSpiegazioneControllo)
+    $ctrl.BtnSpiegaControlloTab.Add_Click($eseguiSpiegazioneControllo)
+    $ctrl.BtnResocontoLLM.Add_Click($eseguiResocontoScansione)
+    $ctrl.BtnResocontoTab.Add_Click($eseguiResocontoScansione)
+
+    $ctrl.BtnCopiaRispostaLLM.Add_Click({
+        if (-not [string]::IsNullOrWhiteSpace($ctrl.TxtRispostaLLM.Text)) {
+            [System.Windows.Clipboard]::SetText($ctrl.TxtRispostaLLM.Text)
+            $ctrl.TxtStatoLLM.Text = "Resoconto copiato negli appunti di Windows!"
+        }
     })
 
     # --- Avvia scansione in Runspace separato ---

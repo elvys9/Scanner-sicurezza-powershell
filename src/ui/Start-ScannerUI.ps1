@@ -204,10 +204,17 @@ function Start-ScannerUI {
         BtnCopiaComando        = $finestra.FindName('BtnCopiaComando')
         TxtFeedbackCopia       = $finestra.FindName('TxtFeedbackCopia')
         TxtDettaglioRischi     = $finestra.FindName('TxtDettaglioRischi')
+        TabPannelloDestro      = $finestra.FindName('TabPannelloDestro')
+        TabItemDettaglio       = $finestra.FindName('TabItemDettaglio')
+        TabItemIA              = $finestra.FindName('TabItemIA')
+        TxtEndpointOllama      = $finestra.FindName('TxtEndpointOllama')
         CmbModelloOllama       = $finestra.FindName('CmbModelloOllama')
         BtnVerificaOllama      = $finestra.FindName('BtnVerificaOllama')
         BtnSpiegaLLM           = $finestra.FindName('BtnSpiegaLLM')
         BtnResocontoLLM        = $finestra.FindName('BtnResocontoLLM')
+        BtnSpiegaControlloTab  = $finestra.FindName('BtnSpiegaControlloTab')
+        BtnResocontoTab        = $finestra.FindName('BtnResocontoTab')
+        BtnCopiaRispostaLLM    = $finestra.FindName('BtnCopiaRispostaLLM')
         TxtStatoLLM            = $finestra.FindName('TxtStatoLLM')
         TxtRispostaLLM         = $finestra.FindName('TxtRispostaLLM')
         BtnEsportaJson         = $finestra.FindName('BtnEsportaJson')
@@ -450,44 +457,99 @@ function Start-ScannerUI {
         }
     })
 
+    # --- Helper per individuare ed eventualmente avviare ollama.exe locale ---
+    $assicuraServizioOllamaLocale = {
+        param([string]$EndpointUrl)
+        $statoCheck = Test-ConnessioneOllama -Endpoint $EndpointUrl -TimeoutSec 2
+        if ($statoCheck.Disponibile) {
+            return $statoCheck
+        }
+
+        # Cerca ollama.exe nel PATH o nel percorso standard di installazione Windows
+        $percorsoExe = $null
+        $cmdOllama = Get-Command -Name 'ollama' -ErrorAction SilentlyContinue
+        if ($null -ne $cmdOllama) {
+            $percorsoExe = $cmdOllama.Source
+        }
+        else {
+            $percorsoDefault = Join-Path $env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'
+            if (Test-Path -LiteralPath $percorsoDefault) {
+                $percorsoExe = $percorsoDefault
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($percorsoExe)) {
+            try {
+                Start-Process -FilePath $percorsoExe -ArgumentList 'serve' -WindowStyle Hidden
+                [System.Threading.Thread]::Sleep(1800)
+                return (Test-ConnessioneOllama -Endpoint $EndpointUrl -TimeoutSec 3)
+            }
+            catch { }
+        }
+
+        return $statoCheck
+    }
+
     # --- Funzione asincrona per eseguire una richiesta Ollama in un Runspace ---
     $avviaRichiestaOllamaAsincrona = {
-        param([string]$PromptDaInviare, [string]$EtichettaOperazione)
+        param(
+            [string]$PromptDaInviare,
+            [string]$EtichettaOperazione,
+            [string]$TestoFallback = ''
+        )
+
+        # Passa automaticamente alla scheda Assistente IA
+        $ctrl.TabPannelloDestro.SelectedIndex = 1
 
         $modelloScelto = $ctrl.CmbModelloOllama.Text
         if ([string]::IsNullOrWhiteSpace($modelloScelto)) {
             $modelloScelto = 'qwen2.5:0.5b'
         }
 
-        $ctrl.BtnSpiegaLLM.IsEnabled    = $false
-        $ctrl.BtnResocontoLLM.IsEnabled = $false
-        $ctrl.TxtStatoLLM.Text          = "$EtichettaOperazione in corso con '$modelloScelto'..."
-        $ctrl.TxtRispostaLLM.Text       = "Generazione della risposta da parte di Ollama ($modelloScelto) in corso... Attendi qualche secondo."
-        $ctrl.TxtRispostaLLM.Visibility = [System.Windows.Visibility]::Visible
+        $endpointScelto = $ctrl.TxtEndpointOllama.Text
+        if ([string]::IsNullOrWhiteSpace($endpointScelto)) {
+            $endpointScelto = 'http://127.0.0.1:11434'
+        }
+
+        $ctrl.BtnSpiegaLLM.IsEnabled          = $false
+        $ctrl.BtnSpiegaControlloTab.IsEnabled = $false
+        $ctrl.BtnResocontoLLM.IsEnabled       = $false
+        $ctrl.BtnResocontoTab.IsEnabled       = $false
+        $ctrl.TxtStatoLLM.Text                = "$EtichettaOperazione in corso ($modelloScelto su $endpointScelto)..."
+        $ctrl.TxtRispostaLLM.Text             = "Analisi in corso... Se il modello '$modelloScelto' non e' ancora scaricato in Ollama, verra' scaricato automaticamente oppure verra' generato il resoconto esperto integrato."
+        $ctrl.TxtRispostaLLM.Visibility       = [System.Windows.Visibility]::Visible
+
+        # Se ollama.exe e' installato ma non ancora avviato, avvialo in background
+        [void](& $assicuraServizioOllamaLocale $endpointScelto)
 
         $callbackFineLlm = [Action[object]]{
             param($EsitoLlm)
-            $ctrl.BtnSpiegaLLM.IsEnabled = $true
+            $ctrl.BtnSpiegaLLM.IsEnabled          = $true
+            $ctrl.BtnSpiegaControlloTab.IsEnabled = $true
+            $ctrl.BtnResocontoTab.IsEnabled       = $true
             if ($statoUI.RisultatiGrezzi.Count -gt 0) {
                 $ctrl.BtnResocontoLLM.IsEnabled = $true
             }
 
             if ($EsitoLlm.Successo) {
                 $sec = [math]::Round(($EsitoLlm.DurataMs / 1000.0), 1)
-                $ctrl.TxtStatoLLM.Text    = "Completato da $($EsitoLlm.Modello) in ${sec}s"
+                $sorgente = if ($null -ne $EsitoLlm.PSObject.Properties['Sorgente']) { $EsitoLlm.Sorgente } else { $EsitoLlm.Modello }
+                $ctrl.TxtStatoLLM.Text    = "Analisi completata da: $sorgente (${sec}s)"
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Risposta
             }
             else {
-                $ctrl.TxtStatoLLM.Text    = "Ollama non disponibile o modello mancante"
+                $ctrl.TxtStatoLLM.Text    = "Stato: $($EsitoLlm.Modello) non disponibile"
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Errore
             }
         }
 
         $syncLlm = [hashtable]::Synchronized(@{
-            Finestra     = $finestra
-            Prompt       = $PromptDaInviare
-            Modello      = $modelloScelto
-            CallbackFine = $callbackFineLlm
+            Finestra      = $finestra
+            Prompt        = $PromptDaInviare
+            Modello       = $modelloScelto
+            Endpoint      = $endpointScelto
+            Fallback      = $TestoFallback
+            CallbackFine  = $callbackFineLlm
         })
 
         $issLlm = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
@@ -506,7 +568,7 @@ function Start-ScannerUI {
         $psLlm = [powershell]::Create()
         $psLlm.Runspace = $rsLlm
         [void]$psLlm.AddScript({
-            $esito = Invoke-RichiestaOllama -Prompt $SyncLlm.Prompt -Modello $SyncLlm.Modello -Endpoint 'http://localhost:11434'
+            $esito = Invoke-RichiestaOllama -Prompt $SyncLlm.Prompt -Modello $SyncLlm.Modello -Endpoint $SyncLlm.Endpoint -TestoFallbackLocale $SyncLlm.Fallback
             [void]$SyncLlm.Finestra.Dispatcher.Invoke(
                 [System.Windows.Threading.DispatcherPriority]::Normal,
                 $SyncLlm.CallbackFine,
@@ -516,10 +578,12 @@ function Start-ScannerUI {
         [void]$psLlm.BeginInvoke()
     }
 
-    # --- Verifica connessione e modelli Ollama ---
+    # --- Verifica connessione / Avvio / Installazione Ollama ---
     $ctrl.BtnVerificaOllama.Add_Click({
-        $ctrl.TxtStatoLLM.Text = "Verifica connessione a http://localhost:11434..."
-        $statoOllama = Test-ConnessioneOllama -Endpoint 'http://localhost:11434'
+        $endpointScelto = if ([string]::IsNullOrWhiteSpace($ctrl.TxtEndpointOllama.Text)) { 'http://127.0.0.1:11434' } else { $ctrl.TxtEndpointOllama.Text.Trim() }
+        $ctrl.TxtStatoLLM.Text = "Verifica o avvio del servizio Ollama su $endpointScelto..."
+
+        $statoOllama = & $assicuraServizioOllamaLocale $endpointScelto
         if ($statoOllama.Disponibile) {
             if ($statoOllama.Modelli.Count -gt 0) {
                 $ctrl.CmbModelloOllama.Items.Clear()
@@ -529,39 +593,66 @@ function Start-ScannerUI {
                     [void]$ctrl.CmbModelloOllama.Items.Add($itemM)
                 }
                 $ctrl.CmbModelloOllama.SelectedIndex = 0
-                $ctrl.TxtStatoLLM.Text = "Ollama connesso! Modelli trovati: $($statoOllama.Modelli -join ', ')"
+                $ctrl.TxtStatoLLM.Text = "Ollama connesso su $endpointScelto! Modelli pronti: $($statoOllama.Modelli -join ', ')"
             }
             else {
-                $ctrl.TxtStatoLLM.Text = "Ollama attivo ma nessun modello installato. Esegui: ollama pull qwen2.5:0.5b"
+                $ctrl.TxtStatoLLM.Text = "Ollama connesso! Il modello scelto verra' scaricato automaticamente alla prima richiesta."
             }
         }
         else {
-            $ctrl.TxtStatoLLM.Text    = "Ollama non raggiungibile su localhost:11434"
-            $ctrl.TxtRispostaLLM.Text = $statoOllama.Errore
-            $ctrl.TxtRispostaLLM.Visibility = [System.Windows.Visibility]::Visible
+            $scelta = [System.Windows.MessageBox]::Show(
+                "Il server Ollama non risulta installato o attivo su $endpointScelto.`n`nVuoi installare automaticamente Ollama e il modello leggero 'qwen2.5:0.5b' (~390 MB) tramite Winget in una finestra PowerShell?",
+                "Installazione rapida Ollama",
+                [System.Windows.MessageBoxButton]::YesNo,
+                [System.Windows.MessageBoxImage]::Question
+            )
+            if ($scelta -eq [System.Windows.MessageBoxResult]::Yes) {
+                $cmdSetup = "Write-Host 'Installazione di Ollama e del modello leggero qwen2.5:0.5b...' -ForegroundColor Cyan; winget install -e --id Ollama.Ollama --accept-source-agreements --accept-package-agreements; `$exe = Join-Path `$env:LOCALAPPDATA 'Programs\Ollama\ollama.exe'; if (Test-Path `$exe) { Start-Process `$exe -ArgumentList 'serve' -WindowStyle Hidden; Start-Sleep -Seconds 3; & `$exe pull qwen2.5:0.5b } else { ollama pull qwen2.5:0.5b }; Write-Host 'Completato! Ora puoi tornare allo Scanner e cliccare Connetti / Avvia Ollama.' -ForegroundColor Green; Read-Host 'Premi Invio per chiudere'"
+                Start-Process -FilePath 'powershell.exe' -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"$cmdSetup`""
+                $ctrl.TxtStatoLLM.Text = "Installazione di Ollama avviata in una nuova finestra PowerShell."
+            }
+            else {
+                $ctrl.TxtStatoLLM.Text = "Modalita' Assistente Esperto Integrato attiva (funziona anche senza Ollama)."
+            }
         }
     })
 
-    # --- Spiega controllo selezionato con LLM ---
-    $ctrl.BtnSpiegaLLM.Add_Click({
+    # --- Azione: Spiega controllo selezionato ---
+    $eseguiSpiegazioneControllo = {
         if ($null -eq $statoUI.ElementoSelezionato) {
+            $ctrl.TabPannelloDestro.SelectedIndex = 1
             $ctrl.TxtStatoLLM.Text = "Seleziona prima un controllo dalla tabella a sinistra."
             return
         }
-        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice'
-        $promptCtrl = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente
-        & $avviaRichiestaOllamaAsincrona $promptCtrl "Spiegazione di $($dettaglio.ControlId)"
-    })
+        $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice'
+        $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente
+        $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente
+        & $avviaRichiestaOllamaAsincrona $promptCtrl "Analisi di $($dettaglio.ControlId)" $fallbackLoc
+    }
 
-    # --- Resoconto complessivo della scansione con LLM ---
-    $ctrl.BtnResocontoLLM.Add_Click({
+    # --- Azione: Genera Resoconto Completo della Scansione ---
+    $eseguiResocontoScansione = {
         if ($statoUI.ElementiVista.Count -eq 0) {
-            $ctrl.TxtStatoLLM.Text = "Esegui prima la scansione per generare il resoconto IA."
+            $ctrl.TabPannelloDestro.SelectedIndex = 1
+            $ctrl.TxtStatoLLM.Text = "Avvia prima la scansione per generare il resoconto completo del PC."
             return
         }
-        $conteggi = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        $promptRes = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
-        & $avviaRichiestaOllamaAsincrona $promptRes "Generazione Resoconto IA della scansione"
+        $conteggi    = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
+        $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
+        $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
+        & $avviaRichiestaOllamaAsincrona $promptRes "Generazione Resoconto Sicurezza PC" $fallbackRes
+    }
+
+    $ctrl.BtnSpiegaLLM.Add_Click($eseguiSpiegazioneControllo)
+    $ctrl.BtnSpiegaControlloTab.Add_Click($eseguiSpiegazioneControllo)
+    $ctrl.BtnResocontoLLM.Add_Click($eseguiResocontoScansione)
+    $ctrl.BtnResocontoTab.Add_Click($eseguiResocontoScansione)
+
+    $ctrl.BtnCopiaRispostaLLM.Add_Click({
+        if (-not [string]::IsNullOrWhiteSpace($ctrl.TxtRispostaLLM.Text)) {
+            [System.Windows.Clipboard]::SetText($ctrl.TxtRispostaLLM.Text)
+            $ctrl.TxtStatoLLM.Text = "Resoconto copiato negli appunti di Windows!"
+        }
     })
 
     # --- Avvia scansione in Runspace separato ---

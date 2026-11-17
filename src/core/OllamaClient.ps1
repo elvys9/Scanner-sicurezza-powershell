@@ -1,31 +1,28 @@
 ﻿<#
 .SYNOPSIS
-    Client per l'integrazione con un LLM locale tramite Ollama (http://localhost:11434).
+    Client per l'integrazione con un LLM locale tramite Ollama (http://127.0.0.1:11434)
+    con generatore di resoconto intelligente integrato.
 
 .DESCRIPTION
     Fornisce funzioni pure per la costruzione dei prompt (controllo singolo e
-    resoconto complessivo della scansione) e funzioni di chiamata all'API REST
-    locale di Ollama (/api/tags e /api/generate).
+    resoconto complessivo della scansione), funzioni di chiamata all'API REST
+    locale di Ollama (/api/tags, /api/pull e /api/generate) e un motore di
+    analisi guidata locale caso-specifica quando il servizio Ollama non e'
+    installato sulla macchina.
     Rispetta il principio architetturale D3: il rilevamento e' deterministico;
-    l'LLM spiega i risultati e fornisce consigli di miglioramento senza mai
+    l'assistente spiega i risultati e fornisce consigli di miglioramento senza mai
     decidere o modificare lo stato dei controlli ne' eseguire comandi sul sistema.
 #>
 
 Set-StrictMode -Version 2
 
-$script:EndpointOllamaPredefinito = 'http://localhost:11434'
+$script:EndpointOllamaPredefinito = 'http://127.0.0.1:11434'
 $script:ModelloOllamaPredefinito  = 'qwen2.5:0.5b'
 
 function Format-PromptControlloOllama {
     <#
     .SYNOPSIS
         Costruisce il prompt in italiano per chiedere all'LLM di spiegare un singolo controllo.
-    .PARAMETER Dettaglio
-        Oggetto prodotto da Format-DettaglioControllo (ViewModel.ps1).
-    .PARAMETER Ambiente
-        Oggetto ambiente opzionale (da Get-AmbienteSistema).
-    .OUTPUTS
-        Stringa con il prompt strutturato per Ollama.
     #>
     [CmdletBinding()]
     param(
@@ -84,14 +81,6 @@ function Format-PromptResocontoOllama {
     .SYNOPSIS
         Costruisce il prompt in italiano per generare un resoconto complessivo della scansione
         e un piano di miglioramento prioritario.
-    .PARAMETER ElementiVista
-        Array di elementi vista (da ConvertTo-RisultatiVista).
-    .PARAMETER Conteggi
-        Oggetto conteggi (da Measure-ConteggiRisultati).
-    .PARAMETER Ambiente
-        Oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        Stringa con il prompt completo per il resoconto IA.
     #>
     [CmdletBinding()]
     param(
@@ -156,16 +145,160 @@ Scrivi un resoconto strutturato in 4 sezioni:
     return $prompt.Trim()
 }
 
+function Format-AnalisiLocaleControllo {
+    <#
+    .SYNOPSIS
+        Genera una spiegazione strutturata e contestuale del singolo controllo
+        anche quando il server Ollama locale non e' ancora attivo sulla macchina.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Dettaglio,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("=== ANALISI DETTAGLIATA DEL CONTROLLO: $($Dettaglio.ControlId) ===")
+    [void]$sb.AppendLine("Controllo: $($Dettaglio.Title)")
+    [void]$sb.AppendLine("Categoria: $($Dettaglio.Category)  |  Gravita': $($Dettaglio.SeverityLabel)  |  Stato: $($Dettaglio.StatusLabel)")
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("1. COSA SIGNIFICA QUESTO RISULTATO SUL TUO PC")
+
+    switch ($Dettaglio.Status) {
+        'superato' {
+            [void]$sb.AppendLine("   Ottima notizia: sul tuo sistema il valore rilevato ('$($Dettaglio.ValoreOsservato)') rispetta pienamente il requisito di sicurezza atteso ('$($Dettaglio.ValoreAtteso)'). Non e' necessario alcun intervento correttivo.")
+        }
+        'fallito' {
+            [void]$sb.AppendLine("   Attenzione: lo scanner ha rilevato '$($Dettaglio.ValoreOsservato)', mentre l'impostazione sicura raccomandata e' '$($Dettaglio.ValoreAtteso)'.")
+        }
+        'sconosciuto' {
+            [void]$sb.AppendLine("   Lo stato attuale e' Sconosciuto ('$($Dettaglio.ValoreOsservato)'). Per verificare questo controllo avvia lo scanner come Amministratore.")
+        }
+        'non_applicabile' {
+            [void]$sb.AppendLine("   Questo controllo non si applica all'edizione corrente di Windows ($($Dettaglio.ValoreOsservato)).")
+        }
+        default {
+            [void]$sb.AppendLine("   Stato rilevato: $($Dettaglio.ValoreOsservato).")
+        }
+    }
+
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("2. PERCHE' E' IMPORTANTE (VALUTAZIONE DEL RISCHIO)")
+    [void]$sb.AppendLine("   $($Dettaglio.SpiegazioneSemplice)")
+    [void]$sb.AppendLine("   Impatto della modifica: $($Dettaglio.NoteRischi)")
+
+    [void]$sb.AppendLine("")
+    [void]$sb.AppendLine("3. COME INTERVENIRE IN SICUREZZA PASSO DOPO PASSO")
+    if ($Dettaglio.Status -eq 'superato') {
+        [void]$sb.AppendLine("   - Nessuna azione richiesta: l'impostazione e' gia' configurata in modo sicuro.")
+    }
+    else {
+        [void]$sb.AppendLine("   - Azione consigliata: $($Dettaglio.TestoRimedio)")
+        if ($Dettaglio.HaComando -and (-not [string]::IsNullOrWhiteSpace($Dettaglio.ComandoRimedio))) {
+            [void]$sb.AppendLine("   - Comando PowerShell (da eseguire come Amministratore):")
+            [void]$sb.AppendLine("     $($Dettaglio.ComandoRimedio)")
+        }
+    }
+
+    return $sb.ToString().Trim()
+}
+
+function Format-ResocontoLocaleScansione {
+    <#
+    .SYNOPSIS
+        Genera un resoconto completo e prioritizzato dell'intera scansione del PC
+        con consigli passo-passo per tutti i controlli falliti.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [array]$ElementiVista,
+
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Conteggi,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $perc = if ($Conteggi.totale -gt 0) {
+        [int][math]::Round((($Conteggi.superato * 100.0) / $Conteggi.totale), 0)
+    } else { 0 }
+
+    $giudizio = if ($Conteggi.fallito -eq 0) {
+        "ECCELLENTE (Tutti i controlli verificati sono superati)"
+    }
+    elseif ($perc -ge 80) {
+        "BUONO ($perc% di conformita' — presenti $($Conteggi.fallito) miglioramenti consigliati)"
+    }
+    elseif ($perc -ge 60) {
+        "MODERATO ($perc% di conformita' — si raccomanda di applicare le correzioni prioritarie)"
+    }
+    else {
+        "ATTENZIONE RICHIESTA ($perc% di conformita' — diversi controlli critici o alti risultano disattivati)"
+    }
+
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine("======================================================================")
+    [void]$sb.AppendLine("          RESOCONTO DI SICUREZZA E PIANO DI MIGLIORAMENTO PC          ")
+    [void]$sb.AppendLine("======================================================================")
+    if ($null -ne $Ambiente) {
+        [void]$sb.AppendLine("Sistema analizzato: Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build)) | Admin: $($Ambiente.IsAdmin)")
+    }
+    [void]$sb.AppendLine("Punteggio conformita': $perc% ($($Conteggi.superato) Superati su $($Conteggi.totale) controlli)")
+    [void]$sb.AppendLine("Valutazione complessiva: $giudizio")
+    [void]$sb.AppendLine("")
+
+    [void]$sb.AppendLine("1. SINTESI DELLO STATO DEL PC")
+    [void]$sb.AppendLine("   - Controlli Superati:        $($Conteggi.superato)")
+    [void]$sb.AppendLine("   - Controlli da Migliorare:   $($Conteggi.fallito)")
+    [void]$sb.AppendLine("   - Controlli Sconosciuti:     $($Conteggi.sconosciuto)")
+    [void]$sb.AppendLine("   - Controlli Non Applicabili: $($Conteggi.non_applicabile)")
+    [void]$sb.AppendLine("")
+
+    $falliti = @($ElementiVista | Where-Object { $_.Status -eq 'fallito' })
+
+    if ($falliti.Count -eq 0) {
+        [void]$sb.AppendLine("2. NESSUNA CRITICITA' RILEVATA")
+        [void]$sb.AppendLine("   Tutti i controlli eseguibili sul sistema risultano configurati correttamente.")
+    }
+    else {
+        [void]$sb.AppendLine("2. PRIORITA' DI INTERVENTO E COME APPLICARE LA SICUREZZA ($($falliti.Count) azioni)")
+        [void]$sb.AppendLine("")
+        $num = 0
+        foreach ($f in $falliti) {
+            $num++
+            $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice'
+            [void]$sb.AppendLine("   Priorita' #$num — [$($f.SeverityLabel.ToUpperInvariant())] $($f.Title) ($($f.ControlId))")
+            [void]$sb.AppendLine("   * Stato attuale sul PC: $($det.ValoreOsservato)")
+            [void]$sb.AppendLine("   * Perche' intervenire:  $($det.SpiegazioneSemplice)")
+            [void]$sb.AppendLine("   * Come correggere:      $($det.TestoRimedio)")
+            if ($det.HaComando -and (-not [string]::IsNullOrWhiteSpace($det.ComandoRimedio))) {
+                [void]$sb.AppendLine("   * Comando rapido (Admin): $($det.ComandoRimedio)")
+            }
+            [void]$sb.AppendLine("   * Precauzioni:          $($det.NoteRischi)")
+            [void]$sb.AppendLine("")
+        }
+    }
+
+    [void]$sb.AppendLine("3. CONSIGLI PRATICI PRIMA DI APPLICARE LE MODIFICHE")
+    [void]$sb.AppendLine("   - Crea sempre un Punto di Ripristino di Windows prima di modificare il registro o i criteri.")
+    [void]$sb.AppendLine("   - Applica un miglioramento alla volta (partendo da quelli a gravita' CRITICO e ALTO) e verifica il normale funzionamento delle tue applicazioni.")
+    [void]$sb.AppendLine("   - Puoi copiare il comando di ciascun controllo selezionandolo nella scheda 'Dettagli e Rimedio'.")
+
+    return $sb.ToString().Trim()
+}
+
 function Test-ConnessioneOllama {
     <#
     .SYNOPSIS
         Verifica se il server locale Ollama e' attivo e restituisce la lista dei modelli installati.
-    .PARAMETER Endpoint
-        URL base del server Ollama (predefinito: http://localhost:11434).
-    .PARAMETER TimeoutSec
-        Timeout in secondi (predefinito: 4).
-    .OUTPUTS
-        PSCustomObject con Disponibile, Modelli, ModelloConsigliato, Errore.
     #>
     [CmdletBinding()]
     param(
@@ -173,10 +306,10 @@ function Test-ConnessioneOllama {
         [string]$Endpoint = $script:EndpointOllamaPredefinito,
 
         [Parameter(Mandatory = $false)]
-        [int]$TimeoutSec = 4
+        [int]$TimeoutSec = 3
     )
 
-    $urlPulito = $Endpoint.TrimEnd('/')
+    $urlPulito = if ([string]::IsNullOrWhiteSpace($Endpoint)) { $script:EndpointOllamaPredefinito } else { $Endpoint.Trim().TrimEnd('/') }
     $uriTags   = "$urlPulito/api/tags"
 
     try {
@@ -191,7 +324,6 @@ function Test-ConnessioneOllama {
             }
         }
 
-        # Preferenza per modelli leggeri ideali per test rapidi
         $preferiti = @('qwen2.5:0.5b', 'qwen2.5:1.5b', 'llama3.2:1b', 'gemma2:2b', 'tinyllama:latest', 'phi3:mini')
         $consigliato = $script:ModelloOllamaPredefinito
         if ($nomiModelli.Count -gt 0) {
@@ -222,7 +354,7 @@ function Test-ConnessioneOllama {
             Endpoint           = $urlPulito
             Modelli            = @()
             ModelloConsigliato = $script:ModelloOllamaPredefinito
-            Errore             = "Ollama non raggiungibile su $urlPulito. Assicurati che Ollama sia installato ('winget install Ollama.Ollama') e avvia un modello leggero con: ollama run qwen2.5:0.5b"
+            Errore             = "Server Ollama non attivo su $urlPulito. Per usare un modello LLM neurale locale installa Ollama ('winget install Ollama.Ollama') ed esegui 'ollama run qwen2.5:0.5b'."
         }
     }
 }
@@ -230,17 +362,9 @@ function Test-ConnessioneOllama {
 function Invoke-RichiestaOllama {
     <#
     .SYNOPSIS
-        Invia un prompt al server locale Ollama (/api/generate) e restituisce la risposta testuale.
-    .PARAMETER Prompt
-        Testo del prompt da inviare.
-    .PARAMETER Modello
-        Nome del modello Ollama (es. 'qwen2.5:0.5b', 'llama3.2:1b').
-    .PARAMETER Endpoint
-        URL base di Ollama (predefinito: http://localhost:11434).
-    .PARAMETER TimeoutSec
-        Timeout massimo per la generazione in secondi (predefinito: 120).
-    .OUTPUTS
-        PSCustomObject con Successo, Risposta, Modello, DurataMs, Errore.
+        Invia un prompt al server locale Ollama (/api/generate). Se il modello non e'
+        ancora scaricato ma Ollama e' attivo, tenta di usare un modello installato o
+        scarica automaticamente il modello scelto tramite /api/pull.
     #>
     [CmdletBinding()]
     param(
@@ -254,10 +378,13 @@ function Invoke-RichiestaOllama {
         [string]$Endpoint = $script:EndpointOllamaPredefinito,
 
         [Parameter(Mandatory = $false)]
-        [int]$TimeoutSec = 120
+        [int]$TimeoutSec = 120,
+
+        [Parameter(Mandatory = $false)]
+        [string]$TestoFallbackLocale = ''
     )
 
-    $urlPulito = $Endpoint.TrimEnd('/')
+    $urlPulito = if ([string]::IsNullOrWhiteSpace($Endpoint)) { $script:EndpointOllamaPredefinito } else { $Endpoint.Trim().TrimEnd('/') }
     $uriGen    = "$urlPulito/api/generate"
 
     if ([string]::IsNullOrWhiteSpace($Modello)) {
@@ -273,7 +400,7 @@ function Invoke-RichiestaOllama {
             stream  = $false
             options = @{
                 temperature = 0.2
-                num_predict = 700
+                num_predict = 750
             }
         }
         $corpoJson = $corpoObj | ConvertTo-Json -Depth 5
@@ -292,6 +419,7 @@ function Invoke-RichiestaOllama {
         if ([string]::IsNullOrWhiteSpace($testoRisposta)) {
             return [PSCustomObject]@{
                 Successo = $false
+                 Sorgente = 'Ollama'
                 Risposta = $null
                 Modello  = $Modello
                 DurataMs = [int]$cronometro.ElapsedMilliseconds
@@ -301,6 +429,7 @@ function Invoke-RichiestaOllama {
 
         return [PSCustomObject]@{
             Successo = $true
+            Sorgente = "Ollama ($Modello)"
             Risposta = $testoRisposta
             Modello  = $Modello
             DurataMs = [int]$cronometro.ElapsedMilliseconds
@@ -311,18 +440,55 @@ function Invoke-RichiestaOllama {
         $cronometro.Stop()
         $msg = $_.Exception.Message
 
+        # Se Ollama e' attivo ma il modello specificato non e' presente (404), prova a scaricarlo via /api/pull
+        if ($msg -match '404') {
+            try {
+                $uriPull  = "$urlPulito/api/pull"
+                $pullJson = (@{ name = $Modello; stream = $false } | ConvertTo-Json)
+                [void](Invoke-RestMethod -Uri $uriPull -Method Post -Body ([System.Text.Encoding]::UTF8.GetBytes($pullJson)) -ContentType 'application/json' -TimeoutSec 300 -ErrorAction Stop)
+
+                # Riprova la generazione dopo il pull
+                $rispostaRetry = Invoke-RestMethod -Uri $uriGen -Method Post -Body $bytesBody -ContentType 'application/json; charset=utf-8' -TimeoutSec $TimeoutSec -ErrorAction Stop
+                $testoRetry = ([string]$rispostaRetry.response).Trim()
+                if (-not [string]::IsNullOrWhiteSpace($testoRetry)) {
+                    return [PSCustomObject]@{
+                        Successo = $true
+                        Sorgente = "Ollama ($Modello - scaricato automaticamente)"
+                        Risposta = $testoRetry
+                        Modello  = $Modello
+                        DurataMs = [int]$cronometro.ElapsedMilliseconds
+                        Errore   = $null
+                    }
+                }
+            }
+            catch { }
+        }
+
+        # Se abbiamo un'analisi guidata locale (quando Ollama non e' installato sulla VM/PC),
+        # restituiamola insieme alle istruzioni per attivare Ollama
+        if (-not [string]::IsNullOrWhiteSpace($TestoFallbackLocale)) {
+            $avvisoHeader = "[Assistente Esperto Integrato — Il server Ollama non e' attivo su $urlPulito]`n" +
+                            "(Nota: per usare il modello neurale Ollama, installa Ollama con 'winget install Ollama.Ollama' oppure premi 'Installa / Avvia Ollama' qui sopra).`n`n"
+            return [PSCustomObject]@{
+                Successo = $true
+                Sorgente = 'Assistente Esperto Integrato (Ollama offline)'
+                Risposta = ($avvisoHeader + $TestoFallbackLocale)
+                Modello  = 'Motore Esperto Locale'
+                DurataMs = [int]$cronometro.ElapsedMilliseconds
+                Errore   = $null
+            }
+        }
+
         $erroreAmichevole = if ($msg -match '404') {
             "Il modello '$Modello' non e' ancora scaricato in Ollama. Apri il terminale ed esegui:`nollama pull $Modello"
         }
-        elseif ($msg -match 'Unable to connect|Impossibile stabilire la connessione|timed out|rifiutata') {
-            "Impossibile connettersi a Ollama su $urlPulito.`n1. Verifica che Ollama sia in esecuzione.`n2. Se non hai ancora scaricato il modello leggero di test, esegui in PowerShell:`n   ollama pull $Modello"
-        }
         else {
-            "Errore durante la comunicazione con Ollama ($Modello): $msg"
+            "Impossibile connettersi a Ollama su $urlPulito ($msg).`nPer installare e avviare il modello leggero esegui in PowerShell:`n1. winget install Ollama.Ollama`n2. ollama pull $Modello"
         }
 
         return [PSCustomObject]@{
             Successo = $false
+            Sorgente = 'Errore'
             Risposta = $null
             Modello  = $Modello
             DurataMs = [int]$cronometro.ElapsedMilliseconds

@@ -109,14 +109,43 @@ Describe 'OllamaClient — Prompt e Chiamate API Locali' {
             $esito.Modello  | Should -Be 'qwen2.5:0.5b'
         }
 
-        It 'Invoke-RichiestaOllama gestisce in modo amichevole il caso in cui Ollama non sia avviato' {
+        It 'Invoke-RichiestaOllama usa il motore esperto integrato quando Ollama non e attivo e viene fornito TestoFallbackLocale' {
             Mock Invoke-RestMethod {
-                throw [System.Net.WebException]::new("Unable to connect to the remote server")
+                throw [System.Net.WebException]::new("Impossibile effettuare la connessione al server remoto")
             }
 
-            $esito = Invoke-RichiestaOllama -Prompt 'Test' -Modello 'qwen2.5:0.5b'
-            $esito.Successo | Should -Be $false
-            $esito.Errore   | Should -Match 'ollama pull qwen2\.5:0\.5b'
+            $esito = Invoke-RichiestaOllama -Prompt 'Test' -Modello 'qwen2.5:0.5b' -TestoFallbackLocale 'Piano di sicurezza generato localmente'
+            $esito.Successo | Should -Be $true
+            $esito.Risposta | Should -Match 'Piano di sicurezza generato localmente'
+        }
+
+        It 'Format-ResocontoLocaleScansione genera il resoconto prioritizzato per i controlli falliti' {
+            $elementi = @(
+                [PSCustomObject]@{
+                    ControlId     = 'HOME-ENC-001'
+                    Title         = 'BitLocker attivo sul disco di sistema'
+                    Category      = 'Crittografia'
+                    Severity      = 'alto'
+                    SeverityLabel = 'Alto'
+                    Status        = 'fallito'
+                    StatusLabel   = '[X] Fallito'
+                    Observed      = 'BootStatus = 0'
+                    Expected      = 'BootStatus = 1'
+                }
+            )
+            $conteggi = [PSCustomObject]@{
+                totale          = 34
+                superato        = 29
+                fallito         = 5
+                sconosciuto     = 0
+                non_applicabile = 0
+                errore          = 0
+            }
+
+            $resoconto = Format-ResocontoLocaleScansione -ElementiVista $elementi -Conteggi $conteggi -Ambiente $ambienteTest
+            $resoconto | Should -Match 'RESOCONTO DI SICUREZZA E PIANO DI MIGLIORAMENTO PC'
+            $resoconto | Should -Match 'HOME-ENC-001'
+            $resoconto | Should -Match 'Priorita'' #1'
         }
     }
 }
