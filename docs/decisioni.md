@@ -43,3 +43,12 @@ esecuzione (codice), rendendo l'aggiunta di nuovi controlli un'operazione
 prevalentemente dichiarativa. Un nuovo controllo su registro richiede solo
 l'aggiunta nel catalogo; uno con logica complessa richiede una funzione in
 `Checks/` e il riferimento `command_ref`.
+
+## D6 — Scelta di WPF (PresentationFramework) in PowerShell 5.1 per l'interfaccia grafica (2026-11-17)
+
+Per l'interfaccia grafica (in stile winutil) viene scelto **WPF (`PresentationFramework`)** eseguito direttamente da Windows PowerShell 5.1 in modalita' `-STA`, con layout dichiarato in un file XAML separato (`src/ui/MainWindow.xaml`) caricato tramite `XamlReader` e logica di presentazione pura isolata in `src/ui/ViewModel.ps1`.
+
+Motivazione:
+- **Zero dipendenze esterne**: `PresentationFramework`, `PresentationCore` e `WindowsBase` sono preinstallati su tutte le edizioni di Windows 11 (Home e Pro), rispettando il vincolo di eseguibilita' immediata senza installare runtime aggiuntivi.
+- **Scalabilita' DPI e accessibilita'**: a differenza di Windows Forms, WPF utilizza unita' indipendenti dai dispositivi (DIP) e layout fluidi (`Grid`, `UniformGrid`, `WrapPanel`, `ScrollViewer`) che scalano nitidamente a 100%, 125% e 150% di DPI, oltre a supportare dizionari di risorse dinamici (`DynamicResource`) per il cambio istantaneo tra Tema Chiaro e Tema Scuro.
+- **Reattivita' e testabilita'**: l'esecuzione della scansione in un `[runspace]` separato con aggiornamento tramite `Dispatcher` evita il blocco della finestra, mentre l'isolamento delle funzioni pure nel `ViewModel.ps1` consente il test automatizzato con Pester 5 senza dover istanziare la finestra grafica.
