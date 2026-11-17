@@ -23,6 +23,10 @@ function Invoke-Controlli {
         Array opzionale di ID di controllo da eseguire. Se vuoto, esegue tutti.
     .PARAMETER CartellaChecks
         Percorso della cartella contenente gli script di controllo.
+    .PARAMETER OnProgress
+        Scriptblock opzionale invocato dopo ogni controllo: riceve ($IndiceCorrente, $Totale, $Risultato).
+    .PARAMETER ShouldCancel
+        Scriptblock opzionale invocato prima di ogni controllo: se restituisce $true interrompe la scansione.
     .OUTPUTS
         Array di PSCustomObject con i risultati dei controlli.
     #>
@@ -38,7 +42,13 @@ function Invoke-Controlli {
         [string[]]$ControlId = @(),
 
         [Parameter(Mandatory = $true)]
-        [string]$CartellaChecks
+        [string]$CartellaChecks,
+
+        [Parameter(Mandatory = $false)]
+        [scriptblock]$OnProgress = $null,
+
+        [Parameter(Mandatory = $false)]
+        [scriptblock]$ShouldCancel = $null
     )
 
     $risultati = @()
@@ -56,13 +66,29 @@ function Invoke-Controlli {
         }
     }
 
-    foreach ($controllo in $Catalogo.controls) {
-        # Filtra per ID se specificato
-        if ($idFiltro.Count -gt 0) {
-            if ($idFiltro -notcontains $controllo.id) {
-                continue
+    # Determina la lista di controlli da eseguire per avere il totale esatto
+    $controlliDaEseguire = @()
+    foreach ($c in $Catalogo.controls) {
+        if ($idFiltro.Count -gt 0 -and ($idFiltro -notcontains $c.id)) {
+            continue
+        }
+        $controlliDaEseguire += $c
+    }
+
+    $totale = $controlliDaEseguire.Count
+    $indiceCorrente = 0
+
+    foreach ($controllo in $controlliDaEseguire) {
+        # Verifica eventuale richiesta di annullamento prima di iniziare il controllo
+        if ($null -ne $ShouldCancel) {
+            $annulla = & $ShouldCancel
+            if ($annulla) {
+                break
             }
         }
+
+        $indiceCorrente++
+        $elementoRisultato = $null
 
         # Verifica se il controllo ha i campi check necessari
         $haCheck = ($null -ne $controllo.PSObject.Properties['check'] -and $null -ne $controllo.check)
@@ -80,14 +106,14 @@ function Invoke-Controlli {
             # Verifica se ha check.command_ref
             if ($null -ne $controllo.check.PSObject.Properties['command_ref'] -and
                 $null -ne $controllo.check.command_ref -and
-                $controllo.check.command_ref -ne '') {
+                $null -ne $controllo.check.command_ref -ne '') {
                 $haCommandRef = $true
             }
         }
 
         # Se non ha ne' registry ne' command_ref, il controllo non e' implementato
         if (-not $haRegistry -and -not $haCommandRef) {
-            $risultati += [PSCustomObject]@{
+            $elementoRisultato = [PSCustomObject]@{
                 control_id  = $controllo.id
                 status      = 'sconosciuto'
                 observed    = 'Controllo non ancora implementato'
@@ -95,6 +121,10 @@ function Invoke-Controlli {
                 evidence    = $null
                 error       = $null
                 duration_ms = 0
+            }
+            $risultati += $elementoRisultato
+            if ($null -ne $OnProgress) {
+                & $OnProgress $indiceCorrente $totale $elementoRisultato
             }
             continue
         }
@@ -105,7 +135,7 @@ function Invoke-Controlli {
             $edizioni += $ed
         }
         if ($edizioni.Count -gt 0 -and $edizioni -notcontains $Ambiente.Edition) {
-            $risultati += [PSCustomObject]@{
+            $elementoRisultato = [PSCustomObject]@{
                 control_id  = $controllo.id
                 status      = 'non_applicabile'
                 observed    = "Edizione $($Ambiente.Edition) non in: $($edizioni -join ', ')"
@@ -113,6 +143,10 @@ function Invoke-Controlli {
                 evidence    = @{ EditioneMacchina = $Ambiente.Edition; EdizioniControllo = $edizioni }
                 error       = $null
                 duration_ms = 0
+            }
+            $risultati += $elementoRisultato
+            if ($null -ne $OnProgress) {
+                & $OnProgress $indiceCorrente $totale $elementoRisultato
             }
             continue
         }
@@ -153,7 +187,7 @@ function Invoke-Controlli {
 
             $cronometro.Stop()
 
-            $risultati += [PSCustomObject]@{
+            $elementoRisultato = [PSCustomObject]@{
                 control_id  = $controllo.id
                 status      = $risultatoControllo.Status
                 observed    = $risultatoControllo.Observed
@@ -166,7 +200,7 @@ function Invoke-Controlli {
         catch {
             $cronometro.Stop()
             # Un errore nel controllo produce status "errore", non ferma gli altri
-            $risultati += [PSCustomObject]@{
+            $elementoRisultato = [PSCustomObject]@{
                 control_id  = $controllo.id
                 status      = 'errore'
                 observed    = $null
@@ -175,6 +209,11 @@ function Invoke-Controlli {
                 error       = $_.Exception.Message
                 duration_ms = [int]$cronometro.ElapsedMilliseconds
             }
+        }
+
+        $risultati += $elementoRisultato
+        if ($null -ne $OnProgress) {
+            & $OnProgress $indiceCorrente $totale $elementoRisultato
         }
     }
 
