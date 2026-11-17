@@ -204,7 +204,12 @@ function Start-ScannerUI {
         BtnCopiaComando        = $finestra.FindName('BtnCopiaComando')
         TxtFeedbackCopia       = $finestra.FindName('TxtFeedbackCopia')
         TxtDettaglioRischi     = $finestra.FindName('TxtDettaglioRischi')
+        CmbModelloOllama       = $finestra.FindName('CmbModelloOllama')
+        BtnVerificaOllama      = $finestra.FindName('BtnVerificaOllama')
         BtnSpiegaLLM           = $finestra.FindName('BtnSpiegaLLM')
+        BtnResocontoLLM        = $finestra.FindName('BtnResocontoLLM')
+        TxtStatoLLM            = $finestra.FindName('TxtStatoLLM')
+        TxtRispostaLLM         = $finestra.FindName('TxtRispostaLLM')
         BtnEsportaJson         = $finestra.FindName('BtnEsportaJson')
         BtnEsportaHtml         = $finestra.FindName('BtnEsportaHtml')
         ChkSalvaLogTecnico     = $finestra.FindName('ChkSalvaLogTecnico')
@@ -445,6 +450,120 @@ function Start-ScannerUI {
         }
     })
 
+    # --- Funzione asincrona per eseguire una richiesta Ollama in un Runspace ---
+    $avviaRichiestaOllamaAsincrona = {
+        param([string]$PromptDaInviare, [string]$EtichettaOperazione)
+
+        $modelloScelto = $ctrl.CmbModelloOllama.Text
+        if ([string]::IsNullOrWhiteSpace($modelloScelto)) {
+            $modelloScelto = 'qwen2.5:0.5b'
+        }
+
+        $ctrl.BtnSpiegaLLM.IsEnabled    = $false
+        $ctrl.BtnResocontoLLM.IsEnabled = $false
+        $ctrl.TxtStatoLLM.Text          = "$EtichettaOperazione in corso con '$modelloScelto'..."
+        $ctrl.TxtRispostaLLM.Text       = "Generazione della risposta da parte di Ollama ($modelloScelto) in corso... Attendi qualche secondo."
+        $ctrl.TxtRispostaLLM.Visibility = [System.Windows.Visibility]::Visible
+
+        $callbackFineLlm = [Action[object]]{
+            param($EsitoLlm)
+            $ctrl.BtnSpiegaLLM.IsEnabled = $true
+            if ($statoUI.RisultatiGrezzi.Count -gt 0) {
+                $ctrl.BtnResocontoLLM.IsEnabled = $true
+            }
+
+            if ($EsitoLlm.Successo) {
+                $sec = [math]::Round(($EsitoLlm.DurataMs / 1000.0), 1)
+                $ctrl.TxtStatoLLM.Text    = "Completato da $($EsitoLlm.Modello) in ${sec}s"
+                $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Risposta
+            }
+            else {
+                $ctrl.TxtStatoLLM.Text    = "Ollama non disponibile o modello mancante"
+                $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Errore
+            }
+        }
+
+        $syncLlm = [hashtable]::Synchronized(@{
+            Finestra     = $finestra
+            Prompt       = $PromptDaInviare
+            Modello      = $modelloScelto
+            CallbackFine = $callbackFineLlm
+        })
+
+        $issLlm = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+        $fnOllama = Get-Command -Name 'Invoke-RichiestaOllama' -ErrorAction SilentlyContinue
+        if ($null -ne $fnOllama) {
+            $entryOllama = New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fnOllama.Name, $fnOllama.Definition)
+            [void]$issLlm.Commands.Add($entryOllama)
+        }
+
+        $rsLlm = [runspacefactory]::CreateRunspace($issLlm)
+        $rsLlm.ApartmentState = 'STA'
+        $rsLlm.ThreadOptions  = 'ReuseThread'
+        $rsLlm.Open()
+        $rsLlm.SessionStateProxy.SetVariable('SyncLlm', $syncLlm)
+
+        $psLlm = [powershell]::Create()
+        $psLlm.Runspace = $rsLlm
+        [void]$psLlm.AddScript({
+            $esito = Invoke-RichiestaOllama -Prompt $SyncLlm.Prompt -Modello $SyncLlm.Modello -Endpoint 'http://localhost:11434'
+            [void]$SyncLlm.Finestra.Dispatcher.Invoke(
+                [System.Windows.Threading.DispatcherPriority]::Normal,
+                $SyncLlm.CallbackFine,
+                $esito
+            )
+        })
+        [void]$psLlm.BeginInvoke()
+    }
+
+    # --- Verifica connessione e modelli Ollama ---
+    $ctrl.BtnVerificaOllama.Add_Click({
+        $ctrl.TxtStatoLLM.Text = "Verifica connessione a http://localhost:11434..."
+        $statoOllama = Test-ConnessioneOllama -Endpoint 'http://localhost:11434'
+        if ($statoOllama.Disponibile) {
+            if ($statoOllama.Modelli.Count -gt 0) {
+                $ctrl.CmbModelloOllama.Items.Clear()
+                foreach ($m in $statoOllama.Modelli) {
+                    $itemM = New-Object System.Windows.Controls.ComboBoxItem
+                    $itemM.Content = $m
+                    [void]$ctrl.CmbModelloOllama.Items.Add($itemM)
+                }
+                $ctrl.CmbModelloOllama.SelectedIndex = 0
+                $ctrl.TxtStatoLLM.Text = "Ollama connesso! Modelli trovati: $($statoOllama.Modelli -join ', ')"
+            }
+            else {
+                $ctrl.TxtStatoLLM.Text = "Ollama attivo ma nessun modello installato. Esegui: ollama pull qwen2.5:0.5b"
+            }
+        }
+        else {
+            $ctrl.TxtStatoLLM.Text    = "Ollama non raggiungibile su localhost:11434"
+            $ctrl.TxtRispostaLLM.Text = $statoOllama.Errore
+            $ctrl.TxtRispostaLLM.Visibility = [System.Windows.Visibility]::Visible
+        }
+    })
+
+    # --- Spiega controllo selezionato con LLM ---
+    $ctrl.BtnSpiegaLLM.Add_Click({
+        if ($null -eq $statoUI.ElementoSelezionato) {
+            $ctrl.TxtStatoLLM.Text = "Seleziona prima un controllo dalla tabella a sinistra."
+            return
+        }
+        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice'
+        $promptCtrl = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente
+        & $avviaRichiestaOllamaAsincrona $promptCtrl "Spiegazione di $($dettaglio.ControlId)"
+    })
+
+    # --- Resoconto complessivo della scansione con LLM ---
+    $ctrl.BtnResocontoLLM.Add_Click({
+        if ($statoUI.ElementiVista.Count -eq 0) {
+            $ctrl.TxtStatoLLM.Text = "Esegui prima la scansione per generare il resoconto IA."
+            return
+        }
+        $conteggi = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
+        $promptRes = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
+        & $avviaRichiestaOllamaAsincrona $promptRes "Generazione Resoconto IA della scansione"
+    })
+
     # --- Avvia scansione in Runspace separato ---
     $ctrl.BtnAvvia.Add_Click({
         if ($statoUI.ScansioneInCorso) { return }
@@ -490,8 +609,9 @@ function Start-ScannerUI {
 
             $nValutati = $statoUI.RisultatiGrezzi.Count
             if ($nValutati -gt 0) {
-                $ctrl.BtnEsportaJson.IsEnabled = $true
-                $ctrl.BtnEsportaHtml.IsEnabled = $true
+                $ctrl.BtnEsportaJson.IsEnabled  = $true
+                $ctrl.BtnEsportaHtml.IsEnabled  = $true
+                $ctrl.BtnResocontoLLM.IsEnabled = $true
             }
 
             if ($null -ne $statoUI.SyncRunspace -and $statoUI.SyncRunspace.ErroreFatale) {

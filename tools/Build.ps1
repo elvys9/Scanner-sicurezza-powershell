@@ -37,6 +37,7 @@ $fileModuli = @(
     'src\core\Catalog.ps1',
     'src\core\Runner.ps1',
     'src\core\Report.ps1',
+    'src\core\OllamaClient.ps1',
     'src\core\Checks\Registry.ps1',
     'src\core\Checks\Firewall.ps1',
     'src\core\Checks\Accounts.ps1',

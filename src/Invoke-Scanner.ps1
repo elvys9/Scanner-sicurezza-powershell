@@ -100,6 +100,7 @@ $percorsoJson     = Join-Path $percorsoCatalogo 'home_profile.json'
 . (Join-Path $percorsoCore 'Catalog.ps1')
 . (Join-Path $percorsoCore 'Runner.ps1')
 . (Join-Path $percorsoCore 'Report.ps1')
+. (Join-Path $percorsoCore 'OllamaClient.ps1')
 
 # Carica i file di controllo
 . (Join-Path $percorsoChecks 'Registry.ps1')

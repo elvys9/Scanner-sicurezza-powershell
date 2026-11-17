@@ -414,13 +414,68 @@
                                    Text="-" TextWrapping="Wrap" FontSize="12"
                                    Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,14"/>
 
-                        <!-- Pulsante segnaposto LLM (DISATTIVATO) -->
-                        <Button x:Name="BtnSpiegaLLM"
-                                Content="Spiega con LLM (Ollama)"
-                                IsEnabled="False"
-                                ToolTipService.ShowOnDisabled="True"
-                                ToolTip="Disponibile in una fase successiva"
-                                Padding="12,6" HorizontalAlignment="Left"/>
+                        <!-- Sezione Assistente IA Locale (Ollama) -->
+                        <Border Background="{DynamicResource BgSubtle}"
+                                BorderBrush="{DynamicResource BorderSubtle}"
+                                BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,2,0,4">
+                            <StackPanel>
+                                <TextBlock Text="ASSISTENTE IA LOCALE (OLLAMA - SOLA SPIEGAZIONE)"
+                                           FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+
+                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                    <TextBlock Text="Modello:" VerticalAlignment="Center" Margin="0,0,6,4" FontSize="12" FontWeight="SemiBold"/>
+                                    <ComboBox x:Name="CmbModelloOllama" Width="145" IsEditable="True" SelectedIndex="0" Margin="0,0,8,4"
+                                              ToolTip="Seleziona o digita il nome di un modello Ollama locale (consigliato per test: qwen2.5:0.5b)">
+                                        <ComboBoxItem Content="qwen2.5:0.5b"/>
+                                        <ComboBoxItem Content="qwen2.5:1.5b"/>
+                                        <ComboBoxItem Content="llama3.2:1b"/>
+                                        <ComboBoxItem Content="gemma2:2b"/>
+                                        <ComboBoxItem Content="phi3:mini"/>
+                                    </ComboBox>
+                                    <Button x:Name="BtnVerificaOllama" Content="Rileva modelli" Padding="8,3" Margin="0,0,0,4"
+                                            Cursor="Hand" ToolTip="Controlla i modelli installati su http://localhost:11434"/>
+                                </WrapPanel>
+
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Button x:Name="BtnSpiegaLLM"
+                                            Content="Spiega controllo con LLM"
+                                            IsEnabled="True"
+                                            Cursor="Hand"
+                                            Background="{DynamicResource AccentBrush}"
+                                            Foreground="{DynamicResource AccentText}"
+                                            FontWeight="SemiBold"
+                                            ToolTip="Chiede al modello Ollama locale di spiegare questo controllo e come intervenire"
+                                            Padding="10,5" Margin="0,0,8,4"/>
+
+                                    <Button x:Name="BtnResocontoLLM"
+                                            Content="Resoconto IA scansione"
+                                            IsEnabled="False"
+                                            Cursor="Hand"
+                                            FontWeight="SemiBold"
+                                            ToolTip="Genera con Ollama un resoconto complessivo della scansione e i consigli prioritari"
+                                            Padding="10,5" Margin="0,0,0,4"/>
+                                </WrapPanel>
+
+                                <TextBlock x:Name="TxtStatoLLM"
+                                           Text="Pronto (richiede Ollama attivo su localhost:11434)"
+                                           FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                           TextWrapping="Wrap" Margin="0,0,0,4"/>
+
+                                <TextBox x:Name="TxtRispostaLLM"
+                                         IsReadOnly="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         MinHeight="110"
+                                         MaxHeight="260"
+                                         Padding="8,6"
+                                         FontSize="12"
+                                         Background="{DynamicResource BgSurface}"
+                                         Foreground="{DynamicResource TextPrimary}"
+                                         BorderBrush="{DynamicResource BorderSubtle}"
+                                         Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Border>

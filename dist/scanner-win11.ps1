@@ -1076,13 +1076,68 @@ $script:XamlIncorporato = @'
                                    Text="-" TextWrapping="Wrap" FontSize="12"
                                    Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,14"/>
 
-                        <!-- Pulsante segnaposto LLM (DISATTIVATO) -->
-                        <Button x:Name="BtnSpiegaLLM"
-                                Content="Spiega con LLM (Ollama)"
-                                IsEnabled="False"
-                                ToolTipService.ShowOnDisabled="True"
-                                ToolTip="Disponibile in una fase successiva"
-                                Padding="12,6" HorizontalAlignment="Left"/>
+                        <!-- Sezione Assistente IA Locale (Ollama) -->
+                        <Border Background="{DynamicResource BgSubtle}"
+                                BorderBrush="{DynamicResource BorderSubtle}"
+                                BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,2,0,4">
+                            <StackPanel>
+                                <TextBlock Text="ASSISTENTE IA LOCALE (OLLAMA - SOLA SPIEGAZIONE)"
+                                           FontSize="11" FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
+
+                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                    <TextBlock Text="Modello:" VerticalAlignment="Center" Margin="0,0,6,4" FontSize="12" FontWeight="SemiBold"/>
+                                    <ComboBox x:Name="CmbModelloOllama" Width="145" IsEditable="True" SelectedIndex="0" Margin="0,0,8,4"
+                                              ToolTip="Seleziona o digita il nome di un modello Ollama locale (consigliato per test: qwen2.5:0.5b)">
+                                        <ComboBoxItem Content="qwen2.5:0.5b"/>
+                                        <ComboBoxItem Content="qwen2.5:1.5b"/>
+                                        <ComboBoxItem Content="llama3.2:1b"/>
+                                        <ComboBoxItem Content="gemma2:2b"/>
+                                        <ComboBoxItem Content="phi3:mini"/>
+                                    </ComboBox>
+                                    <Button x:Name="BtnVerificaOllama" Content="Rileva modelli" Padding="8,3" Margin="0,0,0,4"
+                                            Cursor="Hand" ToolTip="Controlla i modelli installati su http://localhost:11434"/>
+                                </WrapPanel>
+
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Button x:Name="BtnSpiegaLLM"
+                                            Content="Spiega controllo con LLM"
+                                            IsEnabled="True"
+                                            Cursor="Hand"
+                                            Background="{DynamicResource AccentBrush}"
+                                            Foreground="{DynamicResource AccentText}"
+                                            FontWeight="SemiBold"
+                                            ToolTip="Chiede al modello Ollama locale di spiegare questo controllo e come intervenire"
+                                            Padding="10,5" Margin="0,0,8,4"/>
+
+                                    <Button x:Name="BtnResocontoLLM"
+                                            Content="Resoconto IA scansione"
+                                            IsEnabled="False"
+                                            Cursor="Hand"
+                                            FontWeight="SemiBold"
+                                            ToolTip="Genera con Ollama un resoconto complessivo della scansione e i consigli prioritari"
+                                            Padding="10,5" Margin="0,0,0,4"/>
+                                </WrapPanel>
+
+                                <TextBlock x:Name="TxtStatoLLM"
+                                           Text="Pronto (richiede Ollama attivo su localhost:11434)"
+                                           FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                                           TextWrapping="Wrap" Margin="0,0,0,4"/>
+
+                                <TextBox x:Name="TxtRispostaLLM"
+                                         IsReadOnly="True"
+                                         TextWrapping="Wrap"
+                                         VerticalScrollBarVisibility="Auto"
+                                         MinHeight="110"
+                                         MaxHeight="260"
+                                         Padding="8,6"
+                                         FontSize="12"
+                                         Background="{DynamicResource BgSurface}"
+                                         Foreground="{DynamicResource TextPrimary}"
+                                         BorderBrush="{DynamicResource BorderSubtle}"
+                                         Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </ScrollViewer>
             </Border>
@@ -1902,6 +1957,342 @@ function Export-TechnicalLog {
 
     $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
     [System.IO.File]::WriteAllText($PercorsoFile, $sb.ToString(), $utf8NoBom)
+}
+
+# =============================================================================
+# MODULO: src\core\OllamaClient.ps1
+# =============================================================================
+<#
+.SYNOPSIS
+    Client per l'integrazione con un LLM locale tramite Ollama (http://localhost:11434).
+
+.DESCRIPTION
+    Fornisce funzioni pure per la costruzione dei prompt (controllo singolo e
+    resoconto complessivo della scansione) e funzioni di chiamata all'API REST
+    locale di Ollama (/api/tags e /api/generate).
+    Rispetta il principio architetturale D3: il rilevamento e' deterministico;
+    l'LLM spiega i risultati e fornisce consigli di miglioramento senza mai
+    decidere o modificare lo stato dei controlli ne' eseguire comandi sul sistema.
+#>
+
+Set-StrictMode -Version 2
+
+$script:EndpointOllamaPredefinito = 'http://localhost:11434'
+$script:ModelloOllamaPredefinito  = 'qwen2.5:0.5b'
+
+function Format-PromptControlloOllama {
+    <#
+    .SYNOPSIS
+        Costruisce il prompt in italiano per chiedere all'LLM di spiegare un singolo controllo.
+    .PARAMETER Dettaglio
+        Oggetto prodotto da Format-DettaglioControllo (ViewModel.ps1).
+    .PARAMETER Ambiente
+        Oggetto ambiente opzionale (da Get-AmbienteSistema).
+    .OUTPUTS
+        Stringa con il prompt strutturato per Ollama.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Dettaglio,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $infoOs = if ($null -ne $Ambiente) {
+        "Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build), Admin: $($Ambiente.IsAdmin))"
+    }
+    else {
+        "Windows 11"
+    }
+
+    $cmdRif = if ($Dettaglio.HaComando -and (-not [string]::IsNullOrWhiteSpace($Dettaglio.ComandoRimedio))) {
+        $Dettaglio.ComandoRimedio
+    }
+    else {
+        "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)"
+    }
+
+    $prompt = @"
+Sei un assistente esperto di sicurezza informatica per utenti domestici Windows 11.
+Rispondi SOLO in lingua italiana, in modo chiaro, conciso e pratico.
+Non inventare dati e non cambiare lo stato del controllo (che e' gia' stato verificato in modo deterministico dallo scanner).
+
+CONTESTO SISTEMA: $infoOs
+CONTROLLO ANALIZZATO:
+- ID: $($Dettaglio.ControlId)
+- Titolo: $($Dettaglio.Title)
+- Categoria: $($Dettaglio.Category)
+- Gravita': $($Dettaglio.SeverityLabel)
+- Stato rilevato: $($Dettaglio.StatusLabel)
+- Valore atteso: $($Dettaglio.ValoreAtteso)
+- Valore trovato sul PC: $($Dettaglio.ValoreOsservato)
+- Spiegazione base: $($Dettaglio.SpiegazioneSemplice)
+- Rimedio consigliato: $($Dettaglio.TestoRimedio)
+- Comando di riferimento: $cmdRif
+- Note sui rischi: $($Dettaglio.NoteRischi)
+
+Fornisci una risposta strutturata in 3 brevi punti:
+1. COSA SIGNIFICA: spiega in parole semplici cosa e' stato trovato sul PC.
+2. PERCHE' E' IMPORTANTE: spiega il rischio concreto per l'utente domestico.
+3. COME MIGLIORARE IN SICUREZZA: spiega passo dopo passo cosa fare (se lo stato e' Fallito o Sconosciuto) o conferma che l'impostazione e' gia' ottimale (se Superato), ricordando eventuali precauzioni.
+"@
+
+    return $prompt.Trim()
+}
+
+function Format-PromptResocontoOllama {
+    <#
+    .SYNOPSIS
+        Costruisce il prompt in italiano per generare un resoconto complessivo della scansione
+        e un piano di miglioramento prioritario.
+    .PARAMETER ElementiVista
+        Array di elementi vista (da ConvertTo-RisultatiVista).
+    .PARAMETER Conteggi
+        Oggetto conteggi (da Measure-ConteggiRisultati).
+    .PARAMETER Ambiente
+        Oggetto ambiente (da Get-AmbienteSistema).
+    .OUTPUTS
+        Stringa con il prompt completo per il resoconto IA.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyCollection()]
+        [array]$ElementiVista,
+
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Conteggi,
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $infoOs = if ($null -ne $Ambiente) {
+        "Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build), Eseguito come Admin: $($Ambiente.IsAdmin))"
+    }
+    else {
+        "Windows 11"
+    }
+
+    $sbFalliti = New-Object System.Text.StringBuilder
+    $nFalliti = 0
+
+    foreach ($el in $ElementiVista) {
+        if ($el.Status -eq 'fallito') {
+            $nFalliti++
+            $det = Format-DettaglioControllo -Elemento $el -Modalita 'Semplice'
+            [void]$sbFalliti.AppendLine("- [$($el.SeverityLabel.ToUpperInvariant())] $($el.ControlId) - $($el.Title)")
+            [void]$sbFalliti.AppendLine("  Trovato: $($det.ValoreOsservato) (Atteso: $($det.ValoreAtteso))")
+            [void]$sbFalliti.AppendLine("  Come correggere: $($det.TestoRimedio)")
+        }
+    }
+
+    if ($nFalliti -eq 0) {
+        [void]$sbFalliti.AppendLine("Nessun controllo fallito! Tutti i controlli applicabili sono superati o richiedono verifica con privilegi amministrativi.")
+    }
+
+    $prompt = @"
+Sei un consulente di sicurezza informatica per utenti domestici su Windows 11.
+Analizza il seguente report generato dallo scanner deterministico in sola lettura e scrivi un resoconto chiaro in lingua italiana con consigli pratici per migliorare la sicurezza del PC.
+
+SISTEMA: $infoOs
+RIEPILOGO SCANSIONE:
+- Totale controlli eseguiti: $($Conteggi.totale)
+- Superati: $($Conteggi.superato)
+- Falliti (da migliorare): $($Conteggi.fallito)
+- Sconosciuti: $($Conteggi.sconosciuto)
+- Non applicabili: $($Conteggi.non_applicabile)
+
+DETTAGLIO CONTROLLI FALLITI (ORDINATI PER GRAVITA'):
+$($sbFalliti.ToString().Trim())
+
+Scrivi un resoconto strutturato in 4 sezioni:
+1. STATO GENERALE DEL PC: sintesi chiara del livello di sicurezza attuale.
+2. PRIORITA' IMMEDIATE: quali problemi risolvere per primi (partendo da quelli Critici e Alti) e perche'.
+3. GUIDA PRATICA PASSO-PASSO: istruzioni semplici per applicare i miglioramenti consigliati su Windows 11.
+4. BUONE PRATICHE DI SICUREZZA: consiglio finale (es. creare un punto di ripristino prima di modificare impostazioni di sistema).
+"@
+
+    return $prompt.Trim()
+}
+
+function Test-ConnessioneOllama {
+    <#
+    .SYNOPSIS
+        Verifica se il server locale Ollama e' attivo e restituisce la lista dei modelli installati.
+    .PARAMETER Endpoint
+        URL base del server Ollama (predefinito: http://localhost:11434).
+    .PARAMETER TimeoutSec
+        Timeout in secondi (predefinito: 4).
+    .OUTPUTS
+        PSCustomObject con Disponibile, Modelli, ModelloConsigliato, Errore.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string]$Endpoint = $script:EndpointOllamaPredefinito,
+
+        [Parameter(Mandatory = $false)]
+        [int]$TimeoutSec = 4
+    )
+
+    $urlPulito = $Endpoint.TrimEnd('/')
+    $uriTags   = "$urlPulito/api/tags"
+
+    try {
+        $risposta = Invoke-RestMethod -Uri $uriTags -Method Get -TimeoutSec $TimeoutSec -ErrorAction Stop
+        $nomiModelli = @()
+
+        if ($null -ne $risposta -and $null -ne $risposta.PSObject.Properties['models'] -and $null -ne $risposta.models) {
+            foreach ($m in $risposta.models) {
+                if ($null -ne $m.PSObject.Properties['name'] -and (-not [string]::IsNullOrWhiteSpace([string]$m.name))) {
+                    $nomiModelli += [string]$m.name
+                }
+            }
+        }
+
+        # Preferenza per modelli leggeri ideali per test rapidi
+        $preferiti = @('qwen2.5:0.5b', 'qwen2.5:1.5b', 'llama3.2:1b', 'gemma2:2b', 'tinyllama:latest', 'phi3:mini')
+        $consigliato = $script:ModelloOllamaPredefinito
+        if ($nomiModelli.Count -gt 0) {
+            $trovatoPreferito = $false
+            foreach ($pref in $preferiti) {
+                if ($nomiModelli -contains $pref) {
+                    $consigliato = $pref
+                    $trovatoPreferito = $true
+                    break
+                }
+            }
+            if (-not $trovatoPreferito) {
+                $consigliato = $nomiModelli[0]
+            }
+        }
+
+        return [PSCustomObject]@{
+            Disponibile        = $true
+            Endpoint           = $urlPulito
+            Modelli            = $nomiModelli
+            ModelloConsigliato = $consigliato
+            Errore             = $null
+        }
+    }
+    catch {
+        return [PSCustomObject]@{
+            Disponibile        = $false
+            Endpoint           = $urlPulito
+            Modelli            = @()
+            ModelloConsigliato = $script:ModelloOllamaPredefinito
+            Errore             = "Ollama non raggiungibile su $urlPulito. Assicurati che Ollama sia installato ('winget install Ollama.Ollama') e avvia un modello leggero con: ollama run qwen2.5:0.5b"
+        }
+    }
+}
+
+function Invoke-RichiestaOllama {
+    <#
+    .SYNOPSIS
+        Invia un prompt al server locale Ollama (/api/generate) e restituisce la risposta testuale.
+    .PARAMETER Prompt
+        Testo del prompt da inviare.
+    .PARAMETER Modello
+        Nome del modello Ollama (es. 'qwen2.5:0.5b', 'llama3.2:1b').
+    .PARAMETER Endpoint
+        URL base di Ollama (predefinito: http://localhost:11434).
+    .PARAMETER TimeoutSec
+        Timeout massimo per la generazione in secondi (predefinito: 120).
+    .OUTPUTS
+        PSCustomObject con Successo, Risposta, Modello, DurataMs, Errore.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Prompt,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Modello = $script:ModelloOllamaPredefinito,
+
+        [Parameter(Mandatory = $false)]
+        [string]$Endpoint = $script:EndpointOllamaPredefinito,
+
+        [Parameter(Mandatory = $false)]
+        [int]$TimeoutSec = 120
+    )
+
+    $urlPulito = $Endpoint.TrimEnd('/')
+    $uriGen    = "$urlPulito/api/generate"
+
+    if ([string]::IsNullOrWhiteSpace($Modello)) {
+        $Modello = $script:ModelloOllamaPredefinito
+    }
+
+    $cronometro = [System.Diagnostics.Stopwatch]::StartNew()
+
+    try {
+        $corpoObj = @{
+            model   = $Modello
+            prompt  = $Prompt
+            stream  = $false
+            options = @{
+                temperature = 0.2
+                num_predict = 700
+            }
+        }
+        $corpoJson = $corpoObj | ConvertTo-Json -Depth 5
+        $bytesBody = [System.Text.Encoding]::UTF8.GetBytes($corpoJson)
+
+        $risposta = Invoke-RestMethod -Uri $uriGen -Method Post -Body $bytesBody -ContentType 'application/json; charset=utf-8' -TimeoutSec $TimeoutSec -ErrorAction Stop
+        $cronometro.Stop()
+
+        $testoRisposta = if ($null -ne $risposta -and $null -ne $risposta.PSObject.Properties['response']) {
+            ([string]$risposta.response).Trim()
+        }
+        else {
+            ''
+        }
+
+        if ([string]::IsNullOrWhiteSpace($testoRisposta)) {
+            return [PSCustomObject]@{
+                Successo = $false
+                Risposta = $null
+                Modello  = $Modello
+                DurataMs = [int]$cronometro.ElapsedMilliseconds
+                Errore   = "Ollama ha restituito una risposta vuota per il modello '$Modello'."
+            }
+        }
+
+        return [PSCustomObject]@{
+            Successo = $true
+            Risposta = $testoRisposta
+            Modello  = $Modello
+            DurataMs = [int]$cronometro.ElapsedMilliseconds
+            Errore   = $null
+        }
+    }
+    catch {
+        $cronometro.Stop()
+        $msg = $_.Exception.Message
+
+        $erroreAmichevole = if ($msg -match '404') {
+            "Il modello '$Modello' non e' ancora scaricato in Ollama. Apri il terminale ed esegui:`nollama pull $Modello"
+        }
+        elseif ($msg -match 'Unable to connect|Impossibile stabilire la connessione|timed out|rifiutata') {
+            "Impossibile connettersi a Ollama su $urlPulito.`n1. Verifica che Ollama sia in esecuzione.`n2. Se non hai ancora scaricato il modello leggero di test, esegui in PowerShell:`n   ollama pull $Modello"
+        }
+        else {
+            "Errore durante la comunicazione con Ollama ($Modello): $msg"
+        }
+
+        return [PSCustomObject]@{
+            Successo = $false
+            Risposta = $null
+            Modello  = $Modello
+            DurataMs = [int]$cronometro.ElapsedMilliseconds
+            Errore   = $erroreAmichevole
+        }
+    }
 }
 
 # =============================================================================
@@ -5522,7 +5913,12 @@ function Start-ScannerUI {
         BtnCopiaComando        = $finestra.FindName('BtnCopiaComando')
         TxtFeedbackCopia       = $finestra.FindName('TxtFeedbackCopia')
         TxtDettaglioRischi     = $finestra.FindName('TxtDettaglioRischi')
+        CmbModelloOllama       = $finestra.FindName('CmbModelloOllama')
+        BtnVerificaOllama      = $finestra.FindName('BtnVerificaOllama')
         BtnSpiegaLLM           = $finestra.FindName('BtnSpiegaLLM')
+        BtnResocontoLLM        = $finestra.FindName('BtnResocontoLLM')
+        TxtStatoLLM            = $finestra.FindName('TxtStatoLLM')
+        TxtRispostaLLM         = $finestra.FindName('TxtRispostaLLM')
         BtnEsportaJson         = $finestra.FindName('BtnEsportaJson')
         BtnEsportaHtml         = $finestra.FindName('BtnEsportaHtml')
         ChkSalvaLogTecnico     = $finestra.FindName('ChkSalvaLogTecnico')
@@ -5763,6 +6159,120 @@ function Start-ScannerUI {
         }
     })
 
+    # --- Funzione asincrona per eseguire una richiesta Ollama in un Runspace ---
+    $avviaRichiestaOllamaAsincrona = {
+        param([string]$PromptDaInviare, [string]$EtichettaOperazione)
+
+        $modelloScelto = $ctrl.CmbModelloOllama.Text
+        if ([string]::IsNullOrWhiteSpace($modelloScelto)) {
+            $modelloScelto = 'qwen2.5:0.5b'
+        }
+
+        $ctrl.BtnSpiegaLLM.IsEnabled    = $false
+        $ctrl.BtnResocontoLLM.IsEnabled = $false
+        $ctrl.TxtStatoLLM.Text          = "$EtichettaOperazione in corso con '$modelloScelto'..."
+        $ctrl.TxtRispostaLLM.Text       = "Generazione della risposta da parte di Ollama ($modelloScelto) in corso... Attendi qualche secondo."
+        $ctrl.TxtRispostaLLM.Visibility = [System.Windows.Visibility]::Visible
+
+        $callbackFineLlm = [Action[object]]{
+            param($EsitoLlm)
+            $ctrl.BtnSpiegaLLM.IsEnabled = $true
+            if ($statoUI.RisultatiGrezzi.Count -gt 0) {
+                $ctrl.BtnResocontoLLM.IsEnabled = $true
+            }
+
+            if ($EsitoLlm.Successo) {
+                $sec = [math]::Round(($EsitoLlm.DurataMs / 1000.0), 1)
+                $ctrl.TxtStatoLLM.Text    = "Completato da $($EsitoLlm.Modello) in ${sec}s"
+                $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Risposta
+            }
+            else {
+                $ctrl.TxtStatoLLM.Text    = "Ollama non disponibile o modello mancante"
+                $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Errore
+            }
+        }
+
+        $syncLlm = [hashtable]::Synchronized(@{
+            Finestra     = $finestra
+            Prompt       = $PromptDaInviare
+            Modello      = $modelloScelto
+            CallbackFine = $callbackFineLlm
+        })
+
+        $issLlm = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+        $fnOllama = Get-Command -Name 'Invoke-RichiestaOllama' -ErrorAction SilentlyContinue
+        if ($null -ne $fnOllama) {
+            $entryOllama = New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fnOllama.Name, $fnOllama.Definition)
+            [void]$issLlm.Commands.Add($entryOllama)
+        }
+
+        $rsLlm = [runspacefactory]::CreateRunspace($issLlm)
+        $rsLlm.ApartmentState = 'STA'
+        $rsLlm.ThreadOptions  = 'ReuseThread'
+        $rsLlm.Open()
+        $rsLlm.SessionStateProxy.SetVariable('SyncLlm', $syncLlm)
+
+        $psLlm = [powershell]::Create()
+        $psLlm.Runspace = $rsLlm
+        [void]$psLlm.AddScript({
+            $esito = Invoke-RichiestaOllama -Prompt $SyncLlm.Prompt -Modello $SyncLlm.Modello -Endpoint 'http://localhost:11434'
+            [void]$SyncLlm.Finestra.Dispatcher.Invoke(
+                [System.Windows.Threading.DispatcherPriority]::Normal,
+                $SyncLlm.CallbackFine,
+                $esito
+            )
+        })
+        [void]$psLlm.BeginInvoke()
+    }
+
+    # --- Verifica connessione e modelli Ollama ---
+    $ctrl.BtnVerificaOllama.Add_Click({
+        $ctrl.TxtStatoLLM.Text = "Verifica connessione a http://localhost:11434..."
+        $statoOllama = Test-ConnessioneOllama -Endpoint 'http://localhost:11434'
+        if ($statoOllama.Disponibile) {
+            if ($statoOllama.Modelli.Count -gt 0) {
+                $ctrl.CmbModelloOllama.Items.Clear()
+                foreach ($m in $statoOllama.Modelli) {
+                    $itemM = New-Object System.Windows.Controls.ComboBoxItem
+                    $itemM.Content = $m
+                    [void]$ctrl.CmbModelloOllama.Items.Add($itemM)
+                }
+                $ctrl.CmbModelloOllama.SelectedIndex = 0
+                $ctrl.TxtStatoLLM.Text = "Ollama connesso! Modelli trovati: $($statoOllama.Modelli -join ', ')"
+            }
+            else {
+                $ctrl.TxtStatoLLM.Text = "Ollama attivo ma nessun modello installato. Esegui: ollama pull qwen2.5:0.5b"
+            }
+        }
+        else {
+            $ctrl.TxtStatoLLM.Text    = "Ollama non raggiungibile su localhost:11434"
+            $ctrl.TxtRispostaLLM.Text = $statoOllama.Errore
+            $ctrl.TxtRispostaLLM.Visibility = [System.Windows.Visibility]::Visible
+        }
+    })
+
+    # --- Spiega controllo selezionato con LLM ---
+    $ctrl.BtnSpiegaLLM.Add_Click({
+        if ($null -eq $statoUI.ElementoSelezionato) {
+            $ctrl.TxtStatoLLM.Text = "Seleziona prima un controllo dalla tabella a sinistra."
+            return
+        }
+        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice'
+        $promptCtrl = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente
+        & $avviaRichiestaOllamaAsincrona $promptCtrl "Spiegazione di $($dettaglio.ControlId)"
+    })
+
+    # --- Resoconto complessivo della scansione con LLM ---
+    $ctrl.BtnResocontoLLM.Add_Click({
+        if ($statoUI.ElementiVista.Count -eq 0) {
+            $ctrl.TxtStatoLLM.Text = "Esegui prima la scansione per generare il resoconto IA."
+            return
+        }
+        $conteggi = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
+        $promptRes = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
+        & $avviaRichiestaOllamaAsincrona $promptRes "Generazione Resoconto IA della scansione"
+    })
+
     # --- Avvia scansione in Runspace separato ---
     $ctrl.BtnAvvia.Add_Click({
         if ($statoUI.ScansioneInCorso) { return }
@@ -5808,8 +6318,9 @@ function Start-ScannerUI {
 
             $nValutati = $statoUI.RisultatiGrezzi.Count
             if ($nValutati -gt 0) {
-                $ctrl.BtnEsportaJson.IsEnabled = $true
-                $ctrl.BtnEsportaHtml.IsEnabled = $true
+                $ctrl.BtnEsportaJson.IsEnabled  = $true
+                $ctrl.BtnEsportaHtml.IsEnabled  = $true
+                $ctrl.BtnResocontoLLM.IsEnabled = $true
             }
 
             if ($null -ne $statoUI.SyncRunspace -and $statoUI.SyncRunspace.ErroreFatale) {
