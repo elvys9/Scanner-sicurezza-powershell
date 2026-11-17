@@ -22,7 +22,7 @@ $script:ModelloOllamaPredefinito  = 'qwen2.5:0.5b'
 function Format-PromptControlloOllama {
     <#
     .SYNOPSIS
-        Costruisce il prompt in italiano per chiedere all'LLM di spiegare un singolo controllo.
+        Costruisce il prompt (in italiano o inglese) per chiedere all'LLM di spiegare un singolo controllo.
     #>
     [CmdletBinding()]
     param(
@@ -31,7 +31,11 @@ function Format-PromptControlloOllama {
 
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [PSCustomObject]$Ambiente = $null
+        [PSCustomObject]$Ambiente = $null,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
 
     $infoOs = if ($null -ne $Ambiente) {
@@ -45,7 +49,35 @@ function Format-PromptControlloOllama {
         $Dettaglio.ComandoRimedio
     }
     else {
-        "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)"
+        if ($Lingua -eq 'EN') { "No terminal command (manual Windows/BIOS setting)" } else { "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)" }
+    }
+
+    if ($Lingua -eq 'EN') {
+        $promptEn = @"
+You are a cybersecurity expert for Windows 11 home users.
+Reply ONLY in clear, concise, practical English.
+Do not invent data and do not change the control status (which was already deterministically verified by the scanner).
+
+SYSTEM CONTEXT: $infoOs
+ANALYZED CONTROL:
+- ID: $($Dettaglio.ControlId)
+- Title: $($Dettaglio.Title)
+- Category: $($Dettaglio.Category)
+- Severity: $($Dettaglio.SeverityLabel)
+- Detected Status: $($Dettaglio.StatusLabel)
+- Expected Value: $($Dettaglio.ValoreAtteso)
+- Observed Value on PC: $($Dettaglio.ValoreOsservato)
+- Rationale: $($Dettaglio.SpiegazioneSemplice)
+- Recommended Remediation: $($Dettaglio.TestoRimedio)
+- Reference Command: $cmdRif
+- Risk Notes: $($Dettaglio.NoteRischi)
+
+Provide a response structured in 3 short points:
+1. WHAT IT MEANS: explain in simple English what was found on the PC.
+2. WHY IT MATTERS: explain the concrete security risk for the user.
+3. HOW TO FIX SAFELY: explain step-by-step what to do (if Failed or Unknown) or confirm that the setting is already optimal (if Passed), noting any precautions.
+"@
+        return $promptEn.Trim()
     }
 
     $prompt = @"
@@ -79,8 +111,7 @@ Fornisci una risposta strutturata in 3 brevi punti:
 function Format-PromptResocontoOllama {
     <#
     .SYNOPSIS
-        Costruisce il prompt in italiano per generare un resoconto complessivo della scansione
-        e un piano di miglioramento prioritario.
+        Costruisce il prompt (in italiano o inglese) per generare un resoconto complessivo della scansione.
     #>
     [CmdletBinding()]
     param(
@@ -93,11 +124,15 @@ function Format-PromptResocontoOllama {
 
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [PSCustomObject]$Ambiente = $null
+        [PSCustomObject]$Ambiente = $null,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
 
     $infoOs = if ($null -ne $Ambiente) {
-        "Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build), Eseguito come Admin: $($Ambiente.IsAdmin))"
+        "Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build), Admin: $($Ambiente.IsAdmin))"
     }
     else {
         "Windows 11"
@@ -111,13 +146,38 @@ function Format-PromptResocontoOllama {
             $nFalliti++
             $det = Format-DettaglioControllo -Elemento $el -Modalita 'Semplice'
             [void]$sbFalliti.AppendLine("- [$($el.SeverityLabel.ToUpperInvariant())] $($el.ControlId) - $($el.Title)")
-            [void]$sbFalliti.AppendLine("  Trovato: $($det.ValoreOsservato) (Atteso: $($det.ValoreAtteso))")
-            [void]$sbFalliti.AppendLine("  Come correggere: $($det.TestoRimedio)")
+            [void]$sbFalliti.AppendLine("  Observed: $($det.ValoreOsservato) (Expected: $($det.ValoreAtteso))")
+            [void]$sbFalliti.AppendLine("  Remediation: $($det.TestoRimedio)")
         }
     }
 
     if ($nFalliti -eq 0) {
-        [void]$sbFalliti.AppendLine("Nessun controllo fallito! Tutti i controlli applicabili sono superati o richiedono verifica con privilegi amministrativi.")
+        [void]$sbFalliti.AppendLine("No failed controls! All applicable checks passed.")
+    }
+
+    if ($Lingua -eq 'EN') {
+        $promptEn = @"
+You are a cybersecurity advisor for Windows 11 users.
+Analyze the following read-only deterministic security scan report and write a clear report in English with practical step-by-step recommendations to improve PC security.
+
+SYSTEM: $infoOs
+SCAN SUMMARY:
+- Total controls evaluated: $($Conteggi.totale)
+- Passed: $($Conteggi.superato)
+- Failed (needs attention): $($Conteggi.fallito)
+- Unknown: $($Conteggi.sconosciuto)
+- Not Applicable: $($Conteggi.non_applicabile)
+
+FAILED CONTROLS (ORDERED BY SEVERITY):
+$($sbFalliti.ToString().Trim())
+
+Write a structured report in 4 sections:
+1. OVERALL SECURITY POSTURE: clear summary of the current security level.
+2. IMMEDIATE PRIORITIES: which issues to fix first (starting with Critical and High severity) and why.
+3. STEP-BY-STEP REMEDIATION GUIDE: simple instructions to apply the recommended improvements on Windows 11.
+4. SAFETY BEST PRACTICES: final reminder (e.g. create a System Restore Point before modifying system settings).
+"@
+        return $promptEn.Trim()
     }
 
     $prompt = @"
@@ -148,7 +208,7 @@ Scrivi un resoconto strutturato in 4 sezioni:
 function Format-AnalisiLocaleControllo {
     <#
     .SYNOPSIS
-        Genera una spiegazione strutturata e contestuale del singolo controllo.
+        Genera una spiegazione strutturata e contestuale del singolo controllo (IT o EN).
     #>
     [CmdletBinding()]
     param(
@@ -157,10 +217,50 @@ function Format-AnalisiLocaleControllo {
 
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [PSCustomObject]$Ambiente = $null
+        [PSCustomObject]$Ambiente = $null,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
 
     $sb = New-Object System.Text.StringBuilder
+
+    if ($Lingua -eq 'EN') {
+        [void]$sb.AppendLine("=== DETAILED CONTROL ANALYSIS: $($Dettaglio.ControlId) ===")
+        [void]$sb.AppendLine("Control: $($Dettaglio.Title)")
+        [void]$sb.AppendLine("Category: $($Dettaglio.Category)  |  Severity: $($Dettaglio.SeverityLabel)  |  Status: $($Dettaglio.StatusLabel)")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("1. WHAT THIS RESULT MEANS ON YOUR PC")
+        switch ($Dettaglio.Status) {
+            'superato' {
+                [void]$sb.AppendLine("   Good news: the observed value ('$($Dettaglio.ValoreOsservato)') meets the expected security baseline ('$($Dettaglio.ValoreAtteso)'). No action is needed.")
+            }
+            'fallito' {
+                [void]$sb.AppendLine("   Attention required: the scanner detected '$($Dettaglio.ValoreOsservato)', while the recommended secure setting is '$($Dettaglio.ValoreAtteso)'.")
+            }
+            default {
+                [void]$sb.AppendLine("   Current observed state: '$($Dettaglio.ValoreOsservato)'.")
+            }
+        }
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("2. WHY IT MATTERS & RISK NOTES")
+        [void]$sb.AppendLine("   $($Dettaglio.SpiegazioneSemplice)")
+        [void]$sb.AppendLine("   Impact notes: $($Dettaglio.NoteRischi)")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("3. HOW TO REMEDIATE SAFELY")
+        if ($Dettaglio.Status -eq 'superato') {
+            [void]$sb.AppendLine("   - No changes required: this control is already properly configured.")
+        }
+        else {
+            [void]$sb.AppendLine("   - Guidance: $($Dettaglio.TestoRimedio)")
+            if ($Dettaglio.HaComando -and (-not [string]::IsNullOrWhiteSpace($Dettaglio.ComandoRimedio))) {
+                [void]$sb.AppendLine("   - Reference PowerShell Command (Run as Administrator):")
+                [void]$sb.AppendLine("     $($Dettaglio.ComandoRimedio)")
+            }
+        }
+        return $sb.ToString().Trim()
+    }
     [void]$sb.AppendLine("=== ANALISI DETTAGLIATA DEL CONTROLLO: $($Dettaglio.ControlId) ===")
     [void]$sb.AppendLine("Controllo: $($Dettaglio.Title)")
     [void]$sb.AppendLine("Categoria: $($Dettaglio.Category)  |  Gravita': $($Dettaglio.SeverityLabel)  |  Stato: $($Dettaglio.StatusLabel)")
@@ -209,7 +309,7 @@ function Format-AnalisiLocaleControllo {
 function Format-ResocontoLocaleScansione {
     <#
     .SYNOPSIS
-        Genera un resoconto completo e prioritizzato dell'intera scansione del PC.
+        Genera un resoconto completo e prioritizzato dell'intera scansione del PC (IT o EN).
     #>
     [CmdletBinding()]
     param(
@@ -222,12 +322,61 @@ function Format-ResocontoLocaleScansione {
 
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [PSCustomObject]$Ambiente = $null
+        [PSCustomObject]$Ambiente = $null,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
 
     $perc = if ($Conteggi.totale -gt 0) {
         [int][math]::Round((($Conteggi.superato * 100.0) / $Conteggi.totale), 0)
     } else { 0 }
+
+    if ($Lingua -eq 'EN') {
+        $sbEn = New-Object System.Text.StringBuilder
+        [void]$sbEn.AppendLine("======================================================================")
+        [void]$sbEn.AppendLine("           WINDOWS 11 SECURITY REPORT & IMPROVEMENT PLAN              ")
+        [void]$sbEn.AppendLine("======================================================================")
+        if ($null -ne $Ambiente) {
+            [void]$sbEn.AppendLine("Analyzed System: Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build)) | Admin: $($Ambiente.IsAdmin)")
+        }
+        [void]$sbEn.AppendLine("Compliance Score: $perc% ($($Conteggi.superato) Passed out of $($Conteggi.totale) controls)")
+        [void]$sbEn.AppendLine("")
+        [void]$sbEn.AppendLine("1. EXECUTIVE SUMMARY")
+        [void]$sbEn.AppendLine("   - Passed Controls:         $($Conteggi.superato)")
+        [void]$sbEn.AppendLine("   - Failed (Needs Action):   $($Conteggi.fallito)")
+        [void]$sbEn.AppendLine("   - Unknown Controls:        $($Conteggi.sconosciuto)")
+        [void]$sbEn.AppendLine("   - Not Applicable Controls: $($Conteggi.non_applicabile)")
+        [void]$sbEn.AppendLine("")
+
+        $fallitiEn = @($ElementiVista | Where-Object { $_.Status -eq 'fallito' })
+        if ($fallitiEn.Count -eq 0) {
+            [void]$sbEn.AppendLine("2. NO CRITICAL ISSUES FOUND")
+            [void]$sbEn.AppendLine("   All evaluated controls meet the recommended security configuration.")
+        }
+        else {
+            [void]$sbEn.AppendLine("2. PRIORITY REMEDIATION PLAN ($($fallitiEn.Count) recommended actions)")
+            [void]$sbEn.AppendLine("")
+            $idxEn = 0
+            foreach ($f in $fallitiEn) {
+                $idxEn++
+                $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice'
+                [void]$sbEn.AppendLine("   Priority #$idxEn — [$($f.SeverityLabel.ToUpperInvariant())] $($f.Title) ($($f.ControlId))")
+                [void]$sbEn.AppendLine("   * Observed on PC: $($det.ValoreOsservato) (Expected: $($det.ValoreAtteso))")
+                [void]$sbEn.AppendLine("   * Why it matters: $($det.SpiegazioneSemplice)")
+                [void]$sbEn.AppendLine("   * How to fix:     $($det.TestoRimedio)")
+                if ($det.HaComando -and (-not [string]::IsNullOrWhiteSpace($det.ComandoRimedio))) {
+                    [void]$sbEn.AppendLine("   * PowerShell Cmd: $($det.ComandoRimedio)")
+                }
+                [void]$sbEn.AppendLine("")
+            }
+        }
+        [void]$sbEn.AppendLine("3. SAFETY BEST PRACTICES")
+        [void]$sbEn.AppendLine("   - Always create a Windows System Restore Point before modifying registry or security policies.")
+        [void]$sbEn.AppendLine("   - Apply changes one at a time starting from CRITICAL and HIGH severity controls.")
+        return $sbEn.ToString().Trim()
+    }
 
     $giudizio = if ($Conteggi.fallito -eq 0) {
         "ECCELLENTE (Tutti i controlli verificati sono superati)"

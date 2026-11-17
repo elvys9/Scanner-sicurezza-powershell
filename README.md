@@ -1,156 +1,148 @@
-# Windows 11 Security Scanner (PowerShell 5.1 & WPF)
+# Windows 11 Security Scanner (PowerShell 5.1 & WPF + Local Ollama AI)
 
-> **Read-only, zero-dependency security configuration scanner for Windows 11 (Home & Pro), inspired by [winutil](https://github.com/ChrisTitusTech/winutil).**  
-> Built natively for Windows PowerShell 5.1 with a responsive WPF graphical interface (Light/Dark theme) and a headless JSON/HTML reporting engine.
+> **A zero-dependency, 100% read-only security configuration, antivirus, and suspicious file scanner for Windows 11 (Home & Pro), inspired by [winutil](https://github.com/ChrisTitusTech/winutil).**  
+> Built natively for Windows PowerShell 5.1 with a two-page WPF graphical interface (Light/Dark theme, EN/IT switch), deterministic CIS-aligned checks, and an integrated **Local AI Security Advisor powered by Ollama**.
 
 ---
 
-## Quick Launch (Run from anywhere via PowerShell)
+## 🚀 Quick Start — Run Directly in PowerShell (No Installation Needed)
 
-Open **PowerShell** (recommended: *Run as Administrator*) and run:
+Open **Windows PowerShell** (recommended: **Run as Administrator**) from any folder and paste one of the commands below:
 
+### Option 1: Launch in English (`EN` default)
+```powershell
+irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11-en.ps1 | iex
+```
+
+### Option 2: Launch in Italian (`IT` default)
 ```powershell
 irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1 | iex
 ```
 
----
-
-## Overview (English)
-
-**Windows 11 Security Scanner** is a deterministic, **100% read-only** security auditing tool designed for home and prosumer Windows 11 systems:
-- **Zero Installation & Zero External Dependencies**: runs natively on built-in Windows PowerShell 5.1 and `.NET Framework` (`PresentationFramework` WPF). No external modules or internet connections required at runtime.
-- **Strictly Read-Only**: the scanner **never modifies** system settings, registry keys, or services (enforced via AST static analysis tests). Remediation PowerShell commands are provided strictly for reference and one-click clipboard copy.
-- **Winutil-Style Single-Script Execution**: launch the GUI from any directory or directly from GitHub via `irm ... | iex`.
-- **Responsive WPF GUI**:
-  - Asynchronous background `Runspace` execution (UI never freezes, clean **Cancel** support).
-  - Instant **Light / Dark Theme** switching and DPI scaling (100%, 125%, 150%).
-  - Combinable filters (Status, Severity, Category, Text search) and priority sorting (Failed checks by severity first).
-  - Dual explanation mode (**Simple** for home users / **Technical** with CIS Benchmark references & JSON evidence).
-- **Export Capabilities**: exports machine-readable **JSON** (UTF-8 without BOM, schema v0.1) and standalone self-contained **HTML** reports with embedded CSS.
+*(Note: Inside the GUI you can also switch between **English (`EN`)** and **Italian (`IT`)**, and between **Light** and **Dark** themes at any time with a single click in the top-right corner).*
 
 ---
 
-## Panoramica e Stato Attuale (Italiano)
+## ✨ Key Features
 
-Scanner di sicurezza deterministico in **sola lettura** per Windows 11 (Home/Pro), pensato per utenti domestici e distribuibile come singolo script PowerShell 5.1 senza installare nulla.
-
-### Tutti i 34 controlli di sicurezza implementati (Profilo v0.2)
-
-| ID             | Categoria            | Descrizione                                                                 | Tipo      |
-|----------------|----------------------|-----------------------------------------------------------------------------|-----------|
-| `HOME-FW-001`  | Firewall             | Firewall di Windows attivo su tutti i profili (Domain, Private, Public)     | Funzione  |
-| `HOME-UAC-001` | UAC                  | UAC abilitato (`EnableLUA = 1`)                                             | Registro  |
-| `HOME-UAC-002` | UAC                  | UAC richiede conferma per elevazione (`ConsentPromptBehaviorAdmin != 0`)    | Registro  |
-| `HOME-UAC-003` | UAC                  | UAC rileva installazioni applicazioni (`EnableInstallerDetection = 1`)      | Registro  |
-| `HOME-ACC-001` | Account              | Account Guest disabilitato (`SID -501`)                                     | Funzione  |
-| `HOME-ACC-002` | Account              | Account Administrator predefinito disabilitato (`SID -500`)                 | Funzione  |
-| `HOME-ACC-003` | Account              | Nessun account locale attivo senza password (`PasswordRequired`)            | Funzione  |
-| `HOME-UPD-001` | Aggiornamenti        | Aggiornamenti automatici Windows Update abilitati (`wuauserv`)              | Funzione  |
-| `HOME-UPD-002` | Aggiornamenti        | Server Windows Update ufficiale (nessun dirottamento WSUS non autorizzato)  | Funzione  |
-| `HOME-AV-001`  | Antivirus            | Protezione in tempo reale Windows Defender attiva                           | Funzione  |
-| `HOME-AV-002`  | Antivirus            | Definizioni antivirus aggiornate (`<= 7 giorni`)                            | Funzione  |
-| `HOME-AV-003`  | Antivirus            | Nessun virus o minaccia attiva rilevata da Windows Defender                 | Funzione  |
-| `HOME-AV-004`  | Antivirus            | Scansione file scaricati (`IOAV`) e monitoraggio comportamentale attivi     | Funzione  |
-| `HOME-AV-005`  | Antivirus            | Blocco applicazioni potenzialmente indesiderate (`PUAProtection = 1`)       | Funzione  |
-| `HOME-AV-006`  | Antivirus            | Protezione antimanomissione (`Tamper Protection`) e Cloud `MAPS` attive     | Funzione  |
-| `HOME-AV-007`  | Antivirus            | Scansione antivirus periodica eseguita negli ultimi 14 giorni               | Funzione  |
-| `HOME-AV-008`  | Antivirus            | Nessuna esclusione pericolosa di cartelle o estensioni in Defender          | Funzione  |
-| `HOME-FIL-001` | Controllo File       | Nessun file eseguibile camuffato con doppia estensione (`Download`/`Temp`)  | Funzione  |
-| `HOME-FIL-002` | Controllo File       | Nessun programma sospetto o offuscato nelle chiavi di avvio (`Run`)         | Funzione  |
-| `HOME-FIL-003` | Controllo File       | Integrita' del file `hosts` di Windows (nessun dirottamento sicurezza)      | Funzione  |
-| `HOME-SYS-001` | Impostazioni Windows | Estensioni dei file conosciuti visibili in Esplora file (`HideFileExt = 0`) | Funzione  |
-| `HOME-SYS-002` | Impostazioni Windows | AutoRun e AutoPlay disabilitati per le unita' rimovibili USB                | Funzione  |
-| `HOME-SYS-003` | Impostazioni Windows | Filtro Microsoft Defender SmartScreen attivo per app e file                 | Funzione  |
-| `HOME-SYS-004` | Impostazioni Windows | Isolamento core / Integrita' della memoria (`HVCI`) attivo                  | Funzione  |
-| `HOME-SYS-005` | Impostazioni Windows | Enumerazione anonima degli account locali (`SAM`) bloccata                  | Funzione  |
-| `HOME-RDP-001` | Desktop Remoto       | Desktop remoto disabilitato (`fDenyTSConnections = 1`)                      | Registro  |
-| `HOME-NET-001` | Rete                 | Protocollo SMBv1 disabilitato                                               | Funzione  |
-| `HOME-NET-002` | Rete                 | NetBIOS su TCP/IP disabilitato (`NetbiosOptions = 2`)                       | Funzione  |
-| `HOME-NET-003` | Rete                 | Protocollo multicast LLMNR disabilitato (`EnableMulticast = 0`)             | Funzione  |
-| `HOME-ENC-001` | Crittografia         | Crittografia BitLocker attiva sul disco di sistema                          | Funzione  |
-| `HOME-PRV-001` | Privacy              | Telemetria impostata al livello minimo (`AllowTelemetry <= 1`)              | Funzione  |
-| `HOME-SEC-001` | Sicurezza Avanzata   | Avvio protetto UEFI (Secure Boot) attivo                                    | Funzione  |
-| `HOME-SEC-002` | Sicurezza Avanzata   | Protezione LSA (`RunAsPPL`) abilitata                                       | Funzione  |
-| `HOME-SEC-003` | Sicurezza Avanzata   | PowerShell Script Block Logging abilitato                                   | Funzione  |
+- **100% Read-Only & Deterministic**: The scanner **never modifies** system settings, registry keys, or services (enforced via automated PowerShell AST static analysis tests). All 34 checks are evaluated deterministically; the AI only explains results and recommends prioritized fixes.
+- **Zero External Runtime Dependencies**: Runs out-of-the-box on Windows 11 using built-in Windows PowerShell 5.1 and `.NET Framework` (`PresentationFramework` WPF).
+- **Two-Page Full-Screen WPF Interface**:
+  1. **Page 1 — Security Controls & Technical Details**: Filterable table of 34 security controls (Status, Severity, Category, Search), live progress bar, KPI summary cards, and step-by-step remediation guidance with one-click copyable PowerShell commands.
+  2. **Page 2 — Full-Screen Local AI Security Advisor (Ollama)**: Dedicated full-screen workspace that analyzes all failed controls and generates an executive security report and prioritized remediation plan.
+- **Zero-Touch Ollama Auto-Setup (Works on VMs too)**:
+  - Automatically detects a local Ollama instance (`127.0.0.1:11434`) or a VM Host gateway (`10.0.2.2:11434`).
+  - If Ollama is not installed on the machine/VM, the scanner can **silently download, install, and start Ollama + the lightweight `qwen2.5:0.5b` model (~390 MB) in the background** without manual user intervention, while immediately providing a built-in expert fallback report.
+- **JSON & Standalone HTML Export**: Exports machine-readable JSON reports (UTF-8 without BOM) and standalone HTML reports with embedded CSS.
 
 ---
 
-## Modalita' di Esecuzione / Usage
+## 🛡️ All 34 Implemented Security Controls
+
+| ID             | Category          | Security Check Description                                                  | Type     |
+|----------------|-------------------|-----------------------------------------------------------------------------|----------|
+| `HOME-FW-001`  | Firewall          | Windows Defender Firewall enabled across Domain, Private, and Public profiles | Function |
+| `HOME-UAC-001` | UAC               | User Account Control (UAC) enabled (`EnableLUA = 1`)                        | Registry |
+| `HOME-UAC-002` | UAC               | UAC elevation prompt required for administrators (`ConsentPromptBehaviorAdmin != 0`) | Registry |
+| `HOME-UAC-003` | UAC               | UAC application installer detection enabled (`EnableInstallerDetection = 1`) | Registry |
+| `HOME-ACC-001` | Accounts          | Built-in Guest account disabled (`SID -501`)                                | Function |
+| `HOME-ACC-002` | Accounts          | Built-in local Administrator account disabled (`SID -500`)                  | Function |
+| `HOME-ACC-003` | Accounts          | No active local user accounts without a password (`PasswordRequired = True`) | Function |
+| `HOME-UPD-001` | Updates           | Windows Update automatic updates enabled (`wuauserv` not disabled)          | Function |
+| `HOME-UPD-002` | Updates           | Authentic Windows Update server (no unauthorized WSUS redirection)          | Function |
+| `HOME-AV-001`  | Antivirus         | Windows Defender Real-Time Protection enabled                               | Function |
+| `HOME-AV-002`  | Antivirus         | Windows Defender antivirus signatures up to date (`<= 7 days`)              | Function |
+| `HOME-AV-003`  | Antivirus         | Zero active malware or virus threats detected by Windows Defender           | Function |
+| `HOME-AV-004`  | Antivirus         | Downloaded files scanning (`IOAV`) and Behavior Monitoring enabled          | Function |
+| `HOME-AV-005`  | Antivirus         | Potentially Unwanted Application (`PUAProtection = 1`) blocking enabled     | Function |
+| `HOME-AV-006`  | Antivirus         | Defender Tamper Protection and Cloud `MAPS` protection enabled              | Function |
+| `HOME-AV-007`  | Antivirus         | Periodic antivirus scan completed within the last 14 days                   | Function |
+| `HOME-AV-008`  | Antivirus         | No dangerous folder (`C:\`, `Downloads`, `Temp`) or `.exe`/`.ps1` exclusions in Defender | Function |
+| `HOME-FIL-001` | File Security     | No disguised double-extension executables (`.pdf.exe`, `.jpg.scr`) in `Downloads`, `Desktop`, or `Temp` | Function |
+| `HOME-FIL-002` | File Security     | No suspicious or obfuscated commands (`-enc`, `Temp`, `mshta`) in Startup `Run`/`RunOnce` keys | Function |
+| `HOME-FIL-003` | File Security     | Windows `hosts` file integrity (no hijacking of Microsoft Update or antivirus domains) | Function |
+| `HOME-SYS-001` | Windows Settings  | File extensions visible for known file types in File Explorer (`HideFileExt = 0`) | Function |
+| `HOME-SYS-002` | Windows Settings  | AutoRun and AutoPlay disabled for removable USB drives                      | Function |
+| `HOME-SYS-003` | Windows Settings  | Microsoft Defender SmartScreen enabled for apps and downloaded files        | Function |
+| `HOME-SYS-004` | Windows Settings  | Core Isolation / Memory Integrity (`HVCI`) enabled                          | Function |
+| `HOME-SYS-005` | Windows Settings  | Anonymous enumeration of SAM accounts and shares restricted (`RestrictAnonymousSAM = 1`) | Function |
+| `HOME-RDP-001` | Remote Desktop    | Remote Desktop Protocol (RDP) disabled (`fDenyTSConnections = 1`)           | Registry |
+| `HOME-NET-001` | Network           | Legacy SMBv1 protocol disabled                                              | Function |
+| `HOME-NET-002` | Network           | NetBIOS over TCP/IP disabled (`NetbiosOptions = 2`) across network adapters | Function |
+| `HOME-NET-003` | Network           | Link-Local Multicast Name Resolution (`LLMNR`) disabled (`EnableMulticast = 0`) | Function |
+| `HOME-ENC-001` | Encryption        | BitLocker drive encryption active on the system drive (`C:`)                | Function |
+| `HOME-PRV-001` | Privacy           | Windows diagnostic telemetry set to minimum required level (`AllowTelemetry <= 1`) | Function |
+| `HOME-SEC-001` | Advanced Security | UEFI Secure Boot enabled                                                    | Function |
+| `HOME-SEC-002` | Advanced Security | Local Security Authority (`LSA`) protection (`RunAsPPL`) enabled            | Function |
+| `HOME-SEC-003` | Advanced Security | PowerShell Script Block Logging enabled (`EnableScriptBlockLogging = 1`)    | Function |
+
+---
+
+## 💻 Local & Headless CLI Usage
+
+If you cloned the repository locally:
 
 ```powershell
-# 1. Esecuzione diretta da GitHub (da qualsiasi cartella, in stile winutil):
-irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1 | iex
-
-# 2. Esecuzione dello script singolo autonomo locale da qualsiasi cartella:
-powershell -STA -ExecutionPolicy Bypass -File "dist\scanner-win11.ps1"
-
-# 3. Avvio dai sorgenti del progetto (GUI):
+# 1. Launch the WPF Graphical Interface from source:
 powershell -STA -ExecutionPolicy Bypass -File src\Invoke-Scanner.ps1
 
-# 4. Modalita' Headless (scrive il report JSON su file):
+# 2. Run in Headless CLI mode and export a JSON report:
 powershell -ExecutionPolicy Bypass -File src\Invoke-Scanner.ps1 -Headless -OutFile out.json
+
+# 3. Run only specific controls by ID:
+powershell -ExecutionPolicy Bypass -File src\Invoke-Scanner.ps1 -Headless -OutFile out.json -ControlId HOME-FW-001,HOME-AV-003,HOME-FIL-001
 ```
-
-### Parametri
-
-| Parametro    | Descrizione                                                       |
-|--------------|-------------------------------------------------------------------|
-| `-Gui`       | Avvia l'interfaccia grafica WPF (predefinito senza `-Headless`)   |
-| `-Headless`  | Modalita' senza interfaccia, scrive JSON su file                  |
-| `-OutFile`   | Percorso del file JSON di output (obbligatorio con `-Headless`)   |
-| `-ControlId` | Uno o piu' ID di controllo da eseguire                            |
 
 ---
 
-## Architettura del Repository
+## 📂 Repository Structure
 
 ```
 dist/
-  scanner-win11.ps1        script singolo autonomo compilato (stile winutil)
+  scanner-win11-en.ps1     Standalone single-file bundle (English default, winutil-style)
+  scanner-win11.ps1        Standalone single-file bundle (Italian default, winutil-style)
 src/
-  Invoke-Scanner.ps1       punto d'ingresso (-Gui / -Headless)
+  Invoke-Scanner.ps1       Main CLI & GUI entry point (-Gui / -Headless)
   core/
-    Catalog.ps1            carica e valida il catalogo JSON
-    Environment.ps1        rileva edizione, build, lingua, admin, versione PS
-    Runner.ps1             esegue i controlli (isolamento errori, hook progresso/annulla)
-    Report.ps1             costruisce il risultato e scrive JSON / HTML / Log
+    Catalog.ps1            Loads and validates the JSON security catalog
+    Environment.ps1        Detects Windows edition, build/UBR, language, admin rights, PS version
+    Runner.ps1             Executes security checks with error isolation & progress/cancel hooks
+    Report.ps1             Builds JSON/HTML/Log reports (UTF-8 without BOM)
+    OllamaClient.ps1       Local Ollama REST client, auto-provisioning & built-in expert fallback
     Checks/
-      Registry.ps1         valutatore generico per controlli su registro
-      Firewall.ps1         controllo firewall (profili Domain, Private, Public)
-      Accounts.ps1         controlli account Guest (-501), Admin (-500), PasswordRequired
-      Defender.ps1         controlli protezione in tempo reale e firme Windows Defender
-      Network.ps1          controlli SMBv1 e NetBIOS su TCP/IP
-      SystemSecurity.ps1   controlli Windows Update, BitLocker, Telemetria, Secure Boot, LSA, PS Logging
+      Registry.ps1         Generic declarative registry evaluator
+      Firewall.ps1         Windows Defender Firewall profile checks
+      Accounts.ps1         Guest (-501), Admin (-500), and PasswordRequired checks
+      Defender.ps1         Real-time, signatures, active threats, IOAV, PUA, Tamper, Exclusions
+      FileSecurity.ps1     Double-extension malware scan, Run/RunOnce persistence, hosts integrity
+      Network.ps1          SMBv1, NetBIOS over TCP/IP, and LLMNR checks
+      SystemSecurity.ps1   Windows Update, BitLocker, Telemetry, Secure Boot, LSA, HVCI, SmartScreen
   ui/
-    MainWindow.xaml        layout e stili WPF (tema chiaro e scuro)
-    Start-ScannerUI.ps1    costruisce la finestra, gestisce eventi e Runspace asincrono
-    ViewModel.ps1          funzioni pure: filtri, ordinamento, conteggi, dettaglio
+    MainWindow.xaml        Two-page WPF XAML layout (Light/Dark themes, EN/IT support)
+    Start-ScannerUI.ps1    WPF controller, asynchronous Runspace execution & Ollama integration
+    ViewModel.ps1          Pure functions for sorting, filtering, counters, and detail formatting
 catalog/
-  home_profile.yaml        catalogo sorgente (YAML)
-  home_profile.json        catalogo runtime (JSON, generato)
-  schema.json              schema di validazione (v0.2)
+  home_profile.yaml        Source security catalog (YAML, 34 controls)
+  home_profile.json        Generated runtime catalog (JSON)
+  schema.json              JSON Schema v0.2 validation specification
 tools/
-  Build.ps1                compila i moduli in dist/scanner-win11.ps1
-  yaml_to_json.py          conversione YAML -> JSON + validazione schema
+  Build.ps1                Compiles all modules into dist/scanner-win11.ps1 & dist/scanner-win11-en.ps1
+  yaml_to_json.py          Converts YAML catalog to JSON and validates against schema.json
 tests/
-  *.Tests.ps1              91 test Pester 5 (core, sola lettura AST, ViewModel, 18 controlli, integrazione)
-docs/
-  decisioni.md             decisioni architetturali (D1-D7)
-  diario_sperimentale.md   diario delle attivita'
-  ui.md                    design della GUI e checklist di collaudo manuale
+  *.Tests.ps1              125 Pester 5 automated tests (Unit, AST Read-Only, ViewModel, Ollama, E2E)
 ```
 
 ---
 
-## Sviluppo e Test
+## 🧪 Development & Automated Testing (Pester 5)
 
 ```powershell
-# Rigenerare il catalogo JSON dal sorgente YAML
+# 1. Regenerate catalog/home_profile.json from YAML and validate schema:
 python tools/yaml_to_json.py
 
-# Ricompilare lo script singolo autonomo dist/scanner-win11.ps1
+# 2. Rebuild the standalone single-file scripts in dist/:
 powershell -ExecutionPolicy Bypass -File tools\Build.ps1
 
-# Eseguire tutti i 91 test Pester 5
+# 3. Run the entire Pester 5 test suite (125 tests):
 Invoke-Pester tests -Output Detailed
 ```

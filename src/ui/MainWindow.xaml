@@ -171,9 +171,15 @@
                                Foreground="#E2E8F0" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </Border>
 
-                <Button x:Name="BtnTema" Grid.Column="3" Content="Tema: Scuro"
-                        Style="{StaticResource ModernButton}"
-                        MinWidth="105" TabIndex="1"/>
+                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                    <Button x:Name="BtnLingua" Content="Lang: EN"
+                            Style="{StaticResource ModernButton}"
+                            MinWidth="82" Margin="0,0,8,0"
+                            ToolTip="Switch interface and AI language between Italian (IT) and English (EN)"/>
+                    <Button x:Name="BtnTema" Content="Tema: Scuro"
+                            Style="{StaticResource ModernButton}"
+                            MinWidth="105" TabIndex="1"/>
+                </StackPanel>
             </Grid>
         </Border>
 

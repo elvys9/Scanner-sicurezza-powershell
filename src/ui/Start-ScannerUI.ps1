@@ -136,7 +136,11 @@ function Start-ScannerUI {
         [string[]]$ControlId = @(),
 
         [Parameter(Mandatory = $false)]
-        [string]$VersioneTool = '0.1.0'
+        [string]$VersioneTool = '0.1.0',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$LinguaIniziale = 'IT'
     )
 
     # Verifica che il thread corrente sia STA (obbligatorio per WPF)
@@ -166,6 +170,7 @@ function Start-ScannerUI {
     # Riferimenti ai controlli tramite FindName
     $ctrl = @{
         TxtAmbienteInfo        = $finestra.FindName('TxtAmbienteInfo')
+        BtnLingua              = $finestra.FindName('BtnLingua')
         BtnTema                = $finestra.FindName('BtnTema')
         BannerNonAdmin         = $finestra.FindName('BannerNonAdmin')
         BtnRiavviaAdmin        = $finestra.FindName('BtnRiavviaAdmin')
@@ -230,6 +235,7 @@ function Start-ScannerUI {
     # Stato interno dell'interfaccia
     $totaleControlli = @($Catalogo.controls).Count
     $statoUI = @{
+        LinguaCorrente      = $LinguaIniziale
         TemaCorrente        = 'Chiaro'
         ModalitaDettaglio   = 'Semplice'
         RisultatiGrezzi     = @()
@@ -311,13 +317,22 @@ function Start-ScannerUI {
 
     $aggiornaConteggiERiepilogo = {
         $conteggi = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Superati"
-        $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Falliti"
-        $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Sconosciuti"
-        $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) Non applicabili"
-        $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errori"
-
-        $ctrl.TxtRiepilogoFooter.Text = "Riepilogo calcolato dal codice: $($conteggi.totale) controlli valutati ($($conteggi.superato) superati, $($conteggi.fallito) falliti, $($conteggi.sconosciuto) sconosciuti)"
+        if ($statoUI.LinguaCorrente -eq 'EN') {
+            $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Passed"
+            $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Failed"
+            $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Unknown"
+            $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) N/A"
+            $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errors"
+            $ctrl.TxtRiepilogoFooter.Text     = "Summary: $($conteggi.totale) controls evaluated ($($conteggi.superato) passed, $($conteggi.fallito) failed, $($conteggi.sconosciuto) unknown)"
+        }
+        else {
+            $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Superati"
+            $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Falliti"
+            $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Sconosciuti"
+            $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) Non applicabili"
+            $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errori"
+            $ctrl.TxtRiepilogoFooter.Text     = "Riepilogo calcolato dal codice: $($conteggi.totale) controlli valutati ($($conteggi.superato) superati, $($conteggi.fallito) falliti, $($conteggi.sconosciuto) sconosciuti)"
+        }
 
         if ($conteggi.errore -gt 0) {
             $ctrl.TxtBannerErrore.Text = "Alcuni controlli ($($conteggi.errore)) hanno restituito un imprevisto durante la lettura. Seleziona il controllo per maggiori informazioni o esporta il log tecnico."
@@ -327,6 +342,75 @@ function Start-ScannerUI {
             $ctrl.BannerErrore.Visibility = [System.Windows.Visibility]::Collapsed
         }
     }
+
+    $applicaLinguaUI = {
+        if ($statoUI.LinguaCorrente -eq 'EN') {
+            $finestra.Title                 = "Windows 11 Security Scanner (Read-Only)"
+            $ctrl.BtnLingua.Content         = "Lang: IT"
+            $ctrl.BtnNavScansione.Content   = "1. Security Controls & Details"
+            $ctrl.BtnNavIA.Content          = "2. AI Security Advisor (Ollama)"
+            $ctrl.BtnAvvia.Content          = "_Start Scan ($totaleControlli controls)"
+            $ctrl.BtnAnnulla.Content        = "_Cancel"
+            $ctrl.BtnResocontoLLM.Content   = "Open AI Security Report"
+            $ctrl.BtnResetFiltri.Content    = "Reset Filters"
+            $ctrl.BtnModoSemplice.Content   = "Simple View"
+            $ctrl.BtnModoTecnico.Content    = "Technical Details"
+            $ctrl.BtnSpiegaLLM.Content      = "Explain with AI (Page 2)"
+            $ctrl.BtnCopiaComando.Content   = "_Copy Command"
+            $ctrl.BtnVerificaOllama.Content = "Check / Auto-Setup Ollama"
+            $ctrl.BtnResocontoTab.Content   = "Generate Full PC Security Report"
+            $ctrl.BtnSpiegaControlloTab.Content = "Explain Selected Control"
+            $ctrl.BtnCopiaRispostaLLM.Content   = "Copy AI Report"
+            $ctrl.BtnTornaScansione.Content     = "Back to Controls Table"
+            $ctrl.BtnEsportaJson.Content    = "Export _JSON"
+            $ctrl.BtnEsportaHtml.Content    = "Export _HTML"
+            $ctrl.ChkSalvaLogTecnico.Content= "Include technical error log next to export"
+            $ctrl.ChkAutoInstallaOllama.Content = "If Ollama is missing on VM, silently auto-install and start it in background"
+            if ($statoUI.RisultatiGrezzi.Count -eq 0) {
+                $ctrl.TxtMessaggioGuida.Text = "Click 'Start Scan' to audit all $totaleControlli Windows 11 security controls."
+                $ctrl.TxtProgresso.Text      = "Ready (0/$totaleControlli)"
+            }
+        }
+        else {
+            $finestra.Title                 = "Scanner sicurezza Windows"
+            $ctrl.BtnLingua.Content         = "Lang: EN"
+            $ctrl.BtnNavScansione.Content   = "1. Tabella Controlli & Dettagli"
+            $ctrl.BtnNavIA.Content          = "2. Pagina Resoconto IA (Ollama)"
+            $ctrl.BtnAvvia.Content          = "_Avvia scansione ($totaleControlli controlli)"
+            $ctrl.BtnAnnulla.Content        = "A_nnulla"
+            $ctrl.BtnResocontoLLM.Content   = "Apri Resoconto IA & Consigli"
+            $ctrl.BtnResetFiltri.Content    = "Reimposta filtri"
+            $ctrl.BtnModoSemplice.Content   = "Spiegazione Semplice"
+            $ctrl.BtnModoTecnico.Content    = "Dettagli Tecnici"
+            $ctrl.BtnSpiegaLLM.Content      = "Spiega con IA (Pagina 2)"
+            $ctrl.BtnCopiaComando.Content   = "_Copia comando negli appunti"
+            $ctrl.BtnVerificaOllama.Content = "Verifica / Auto-Configura Ollama"
+            $ctrl.BtnResocontoTab.Content   = "Genera Resoconto Completo PC"
+            $ctrl.BtnSpiegaControlloTab.Content = "Spiega il Controllo Selezionato"
+            $ctrl.BtnCopiaRispostaLLM.Content   = "Copia Resoconto"
+            $ctrl.BtnTornaScansione.Content     = "Torna alla Tabella Controlli"
+            $ctrl.BtnEsportaJson.Content    = "Esporta _JSON"
+            $ctrl.BtnEsportaHtml.Content    = "Esporta _HTML"
+            $ctrl.ChkSalvaLogTecnico.Content= "Includi file di log tecnico accanto all'export"
+            $ctrl.ChkAutoInstallaOllama.Content = "Se Ollama manca sulla VM, installalo e avvialo automaticamente in background"
+            if ($statoUI.RisultatiGrezzi.Count -eq 0) {
+                $ctrl.TxtMessaggioGuida.Text = "Premi 'Avvia scansione' per analizzare i $totaleControlli controlli di sicurezza del PC."
+                $ctrl.TxtProgresso.Text      = "Pronto (0/$totaleControlli)"
+            }
+        }
+        & $aggiornaConteggiERiepilogo
+        & $aggiornaPannelloDettaglio
+    }
+
+    $ctrl.BtnLingua.Add_Click({
+        if ($statoUI.LinguaCorrente -eq 'IT') {
+            $statoUI.LinguaCorrente = 'EN'
+        }
+        else {
+            $statoUI.LinguaCorrente = 'IT'
+        }
+        & $applicaLinguaUI
+    })
 
     $applicaFiltriTabella = {
         $statoSel = if ($null -ne $ctrl.CmbFiltroStato.SelectedItem) { [string]$ctrl.CmbFiltroStato.SelectedItem.Content } else { 'Tutti' }
@@ -682,8 +766,8 @@ function Start-ScannerUI {
             return
         }
         $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice'
-        $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente
-        $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente
+        $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
+        $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
         & $avviaRichiestaOllamaAsincrona $promptCtrl "Analisi di $($dettaglio.ControlId)" $fallbackLoc
     }
 
@@ -695,8 +779,8 @@ function Start-ScannerUI {
             return
         }
         $conteggi    = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
-        $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente
+        $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
+        $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
         & $avviaRichiestaOllamaAsincrona $promptRes "Generazione Resoconto Sicurezza PC" $fallbackRes
     }
 
@@ -960,8 +1044,8 @@ function Start-ScannerUI {
         }
     })
 
-    # Inizializza pannello dettaglio vuoto
-    & $aggiornaPannelloDettaglio
+    # Inizializza lingua e pannello dettaglio vuoto
+    & $applicaLinguaUI
 
     # Mostra la finestra modale
     [void]$finestra.ShowDialog()

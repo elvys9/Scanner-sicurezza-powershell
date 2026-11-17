@@ -68,6 +68,7 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('Set-StrictMode -Version 2')
 [void]$sb.AppendLine('$ErrorActionPreference = ''Stop''')
 [void]$sb.AppendLine('$script:VERSIONE_TOOL = ''0.2.0''')
+[void]$sb.AppendLine('$script:LinguaPredefinita = ''IT''')
 [void]$sb.AppendLine('$script:PercorsoScriptAutonomo = [string](Get-Variable -Name PSCommandPath -ValueOnly -ErrorAction SilentlyContinue)')
 [void]$sb.AppendLine('$script:UrlScriptRemoto = ''https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1''')
 [void]$sb.AppendLine('')
@@ -103,7 +104,9 @@ function Invoke-Win11Scanner {
         [switch]$Gui,
         [switch]$Headless,
         [string]$OutFile,
-        [string[]]$ControlId
+        [string[]]$ControlId,
+        [ValidateSet('IT', 'EN')]
+        [string]$Lang = $script:LinguaPredefinita
     )
 
     if ($Headless -and $Gui) {
@@ -142,6 +145,7 @@ function Invoke-Win11Scanner {
             Ambiente       = $ambiente
             ContenutoXaml  = $script:XamlIncorporato
             VersioneTool   = $script:VERSIONE_TOOL
+            LinguaIniziale = $Lang
         }
         if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
             $paramGui['ControlId'] = $ControlId
@@ -213,5 +217,13 @@ Invoke-Win11Scanner @parametriInvocazione
 
 # Salva in UTF-8 SENZA BOM per compatibilita' con 'irm <url> | iex' (evita il carattere \uFEFF iniziale in Invoke-Expression)
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-[System.IO.File]::WriteAllText($OutFile, $sb.ToString(), $utf8NoBom)
-Write-Host "Script singolo compilato con successo in: $OutFile"
+$testoIt   = $sb.ToString()
+[System.IO.File]::WriteAllText($OutFile, $testoIt, $utf8NoBom)
+Write-Host "Script singolo (IT) compilato con successo in: $OutFile"
+
+# Genera anche la versione con avvio predefinito in Inglese (dist/scanner-win11-en.ps1)
+$outFileEn = Join-Path (Split-Path -Parent $OutFile) 'scanner-win11-en.ps1'
+$testoEn   = $testoIt.Replace('$script:LinguaPredefinita = ''IT''', '$script:LinguaPredefinita = ''EN''')
+$testoEn   = $testoEn.Replace('dist/scanner-win11.ps1', 'dist/scanner-win11-en.ps1')
+[System.IO.File]::WriteAllText($outFileEn, $testoEn, $utf8NoBom)
+Write-Host "Script singolo (EN) compilato con successo in: $outFileEn"
