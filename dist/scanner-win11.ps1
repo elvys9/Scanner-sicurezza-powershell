@@ -12,7 +12,7 @@
 Set-StrictMode -Version 2
 $ErrorActionPreference = 'Stop'
 $script:VERSIONE_TOOL = '0.2.0'
-$script:PercorsoScriptAutonomo = $MyInvocation.MyCommand.Path
+$script:PercorsoScriptAutonomo = [string](Get-Variable -Name PSCommandPath -ValueOnly -ErrorAction SilentlyContinue)
 $script:UrlScriptRemoto = 'https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1'
 
 # --- CATALOGO JSON INCORPORATO ---
@@ -4263,7 +4263,7 @@ function Start-ScannerUI {
                 $finestra.Close()
             }
             elseif (Get-Variable -Name 'UrlScriptRemoto' -Scope Script -ErrorAction SilentlyContinue) {
-                $argomentiRemoti = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
+                $argomentiRemoti = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm '$($script:UrlScriptRemoto)' | iex`""
                 Start-Process -FilePath 'powershell.exe' -ArgumentList $argomentiRemoti -Verb RunAs
                 $finestra.Close()
             }
@@ -4616,7 +4616,7 @@ function Invoke-Win11Scanner {
                 return
             }
             else {
-                $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
+                $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm '$($script:UrlScriptRemoto)' | iex`""
                 $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
                 return
             }
@@ -4662,4 +4662,33 @@ function Invoke-Win11Scanner {
     }
 }
 
-Invoke-Win11Scanner @args
+# Gestione argomenti sia per esecuzione via 'irm ... | iex' sia via 'powershell -File scanner-win11.ps1 ...'
+$argomentiRigaComando = @(Get-Variable -Name args -ValueOnly -ErrorAction SilentlyContinue)
+$parametriInvocazione = @{}
+for ($i = 0; $i -lt $argomentiRigaComando.Count; $i++) {
+    $token = [string]$argomentiRigaComando[$i]
+    switch -Regex ($token) {
+        '^-Gui$'       { $parametriInvocazione['Gui'] = $true }
+        '^-Headless$'  { $parametriInvocazione['Headless'] = $true }
+        '^-OutFile$'   {
+            if ($i + 1 -lt $argomentiRigaComando.Count) {
+                $i++
+                $parametriInvocazione['OutFile'] = [string]$argomentiRigaComando[$i]
+            }
+        }
+        '^-ControlId$' {
+            if ($i + 1 -lt $argomentiRigaComando.Count) {
+                $i++
+                $valId = $argomentiRigaComando[$i]
+                if ($valId -is [array]) {
+                    $parametriInvocazione['ControlId'] = [string[]]$valId
+                }
+                else {
+                    $parametriInvocazione['ControlId'] = @([string]$valId -split ',')
+                }
+            }
+        }
+    }
+}
+
+Invoke-Win11Scanner @parametriInvocazione

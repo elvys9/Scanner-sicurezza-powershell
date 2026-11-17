@@ -382,7 +382,7 @@ function Start-ScannerUI {
                 $finestra.Close()
             }
             elseif (Get-Variable -Name 'UrlScriptRemoto' -Scope Script -ErrorAction SilentlyContinue) {
-                $argomentiRemoti = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
+                $argomentiRemoti = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm '$($script:UrlScriptRemoto)' | iex`""
                 Start-Process -FilePath 'powershell.exe' -ArgumentList $argomentiRemoti -Verb RunAs
                 $finestra.Close()
             }

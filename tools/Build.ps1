@@ -66,7 +66,7 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('Set-StrictMode -Version 2')
 [void]$sb.AppendLine('$ErrorActionPreference = ''Stop''')
 [void]$sb.AppendLine('$script:VERSIONE_TOOL = ''0.2.0''')
-[void]$sb.AppendLine('$script:PercorsoScriptAutonomo = $MyInvocation.MyCommand.Path')
+[void]$sb.AppendLine('$script:PercorsoScriptAutonomo = [string](Get-Variable -Name PSCommandPath -ValueOnly -ErrorAction SilentlyContinue)')
 [void]$sb.AppendLine('$script:UrlScriptRemoto = ''https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1''')
 [void]$sb.AppendLine('')
 [void]$sb.AppendLine('# --- CATALOGO JSON INCORPORATO ---')
@@ -129,7 +129,7 @@ function Invoke-Win11Scanner {
                 return
             }
             else {
-                $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
+                $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; irm '$($script:UrlScriptRemoto)' | iex`""
                 $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
                 return
             }
@@ -175,7 +175,36 @@ function Invoke-Win11Scanner {
     }
 }
 
-Invoke-Win11Scanner @args
+# Gestione argomenti sia per esecuzione via 'irm ... | iex' sia via 'powershell -File scanner-win11.ps1 ...'
+$argomentiRigaComando = @(Get-Variable -Name args -ValueOnly -ErrorAction SilentlyContinue)
+$parametriInvocazione = @{}
+for ($i = 0; $i -lt $argomentiRigaComando.Count; $i++) {
+    $token = [string]$argomentiRigaComando[$i]
+    switch -Regex ($token) {
+        '^-Gui$'       { $parametriInvocazione['Gui'] = $true }
+        '^-Headless$'  { $parametriInvocazione['Headless'] = $true }
+        '^-OutFile$'   {
+            if ($i + 1 -lt $argomentiRigaComando.Count) {
+                $i++
+                $parametriInvocazione['OutFile'] = [string]$argomentiRigaComando[$i]
+            }
+        }
+        '^-ControlId$' {
+            if ($i + 1 -lt $argomentiRigaComando.Count) {
+                $i++
+                $valId = $argomentiRigaComando[$i]
+                if ($valId -is [array]) {
+                    $parametriInvocazione['ControlId'] = [string[]]$valId
+                }
+                else {
+                    $parametriInvocazione['ControlId'] = @([string]$valId -split ',')
+                }
+            }
+        }
+    }
+}
+
+Invoke-Win11Scanner @parametriInvocazione
 '@
 
 [void]$sb.AppendLine($bloccoAvvio)
