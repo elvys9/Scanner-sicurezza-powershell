@@ -60,7 +60,7 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('    File generato automaticamente da tools/Build.ps1.')
 [void]$sb.AppendLine('    Contiene catalogo, motore di scansione, 18 controlli e interfaccia WPF.')
 [void]$sb.AppendLine('    Puo essere eseguito da qualsiasi cartella o direttamente da GitHub:')
-[void]$sb.AppendLine('      irm https://raw.githubusercontent.com/<UTENTE>/<REPO>/main/dist/scanner-win11.ps1 | iex')
+[void]$sb.AppendLine('      irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1 | iex')
 [void]$sb.AppendLine('#>')
 [void]$sb.AppendLine('')
 [void]$sb.AppendLine('[CmdletBinding()]')
@@ -75,6 +75,7 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('$ErrorActionPreference = ''Stop''')
 [void]$sb.AppendLine('$script:VERSIONE_TOOL = ''0.2.0''')
 [void]$sb.AppendLine('$script:PercorsoScriptAutonomo = $MyInvocation.MyCommand.Path')
+[void]$sb.AppendLine('$script:UrlScriptRemoto = ''https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1''')
 [void]$sb.AppendLine('')
 [void]$sb.AppendLine('# --- CATALOGO JSON INCORPORATO ---')
 [void]$sb.AppendLine('$script:CatalogoJsonIncorporato = @''')
@@ -123,6 +124,11 @@ if ($modalitaGui) {
             if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
                 $argSta += " -ControlId $($ControlId -join ',')"
             }
+            $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
+            exit $proc.ExitCode
+        }
+        else {
+            $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
             $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
             exit $proc.ExitCode
         }

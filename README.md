@@ -32,7 +32,7 @@ Scritto in PowerShell 5.1, distribuibile come singolo script senza installare nu
 
 ```powershell
 # 1. Esecuzione diretta da GitHub (da qualsiasi cartella, in stile winutil):
-irm https://raw.githubusercontent.com/<TUO-UTENTE>/<TUO-REPO>/main/dist/scanner-win11.ps1 | iex
+irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1 | iex
 
 # 2. Esecuzione dello script singolo autonomo locale da qualsiasi cartella:
 powershell -STA -ExecutionPolicy Bypass -File "C:\percorso\dist\scanner-win11.ps1"

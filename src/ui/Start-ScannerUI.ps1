@@ -381,6 +381,11 @@ function Start-ScannerUI {
                 Start-Process -FilePath 'powershell.exe' -ArgumentList $argomenti -Verb RunAs
                 $finestra.Close()
             }
+            elseif (Get-Variable -Name 'UrlScriptRemoto' -Scope Script -ErrorAction SilentlyContinue) {
+                $argomentiRemoti = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
+                Start-Process -FilePath 'powershell.exe' -ArgumentList $argomentiRemoti -Verb RunAs
+                $finestra.Close()
+            }
             else {
                 [System.Windows.MessageBox]::Show(
                     "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando.",

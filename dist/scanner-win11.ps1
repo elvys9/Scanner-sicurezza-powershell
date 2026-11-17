@@ -6,7 +6,7 @@
     File generato automaticamente da tools/Build.ps1.
     Contiene catalogo, motore di scansione, 18 controlli e interfaccia WPF.
     Puo essere eseguito da qualsiasi cartella o direttamente da GitHub:
-      irm https://raw.githubusercontent.com/<UTENTE>/<REPO>/main/dist/scanner-win11.ps1 | iex
+      irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1 | iex
 #>
 
 [CmdletBinding()]
@@ -21,6 +21,7 @@ Set-StrictMode -Version 2
 $ErrorActionPreference = 'Stop'
 $script:VERSIONE_TOOL = '0.2.0'
 $script:PercorsoScriptAutonomo = $MyInvocation.MyCommand.Path
+$script:UrlScriptRemoto = 'https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1'
 
 # --- CATALOGO JSON INCORPORATO ---
 $script:CatalogoJsonIncorporato = @'
@@ -4269,6 +4270,11 @@ function Start-ScannerUI {
                 Start-Process -FilePath 'powershell.exe' -ArgumentList $argomenti -Verb RunAs
                 $finestra.Close()
             }
+            elseif (Get-Variable -Name 'UrlScriptRemoto' -Scope Script -ErrorAction SilentlyContinue) {
+                $argomentiRemoti = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
+                Start-Process -FilePath 'powershell.exe' -ArgumentList $argomentiRemoti -Verb RunAs
+                $finestra.Close()
+            }
             else {
                 [System.Windows.MessageBox]::Show(
                     "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando.",
@@ -4605,6 +4611,11 @@ if ($modalitaGui) {
             if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
                 $argSta += " -ControlId $($ControlId -join ',')"
             }
+            $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
+            exit $proc.ExitCode
+        }
+        else {
+            $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
             $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
             exit $proc.ExitCode
         }
