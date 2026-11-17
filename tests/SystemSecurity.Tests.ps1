@@ -132,12 +132,17 @@ Describe 'Copertura completa dei 18 controlli e script singolo stile winutil' {
         }
     }
 
-    It 'Lo script autonomo dist/scanner-win11.ps1 esiste ed e salvato in UTF-8 con BOM' {
+    It 'Lo script autonomo dist/scanner-win11.ps1 esiste ed e compatibile con Invoke-Expression (irm | iex)' {
         $percorsoDist = Join-Path $PSScriptRoot '..\dist\scanner-win11.ps1'
         Test-Path -LiteralPath $percorsoDist | Should -Be $true
 
         $bytes = [System.IO.File]::ReadAllBytes($percorsoDist)
         $haBom = ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF)
-        $haBom | Should -Be $true
+        $haBom | Should -Be $false -Because "Per funzionare con irm | iex non deve avere il carattere BOM iniziale"
+
+        $testo = [System.IO.File]::ReadAllText($percorsoDist)
+        $erroriParse = $null
+        [void][System.Management.Automation.Language.Parser]::ParseInput($testo, [ref]$null, [ref]$erroriParse)
+        @($erroriParse).Count | Should -Be 0
     }
 }

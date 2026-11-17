@@ -63,14 +63,6 @@ $sb = New-Object System.Text.StringBuilder
 [void]$sb.AppendLine('      irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1 | iex')
 [void]$sb.AppendLine('#>')
 [void]$sb.AppendLine('')
-[void]$sb.AppendLine('[CmdletBinding()]')
-[void]$sb.AppendLine('param(')
-[void]$sb.AppendLine('    [switch]$Gui,')
-[void]$sb.AppendLine('    [switch]$Headless,')
-[void]$sb.AppendLine('    [string]$OutFile,')
-[void]$sb.AppendLine('    [string[]]$ControlId')
-[void]$sb.AppendLine(')')
-[void]$sb.AppendLine('')
 [void]$sb.AppendLine('Set-StrictMode -Version 2')
 [void]$sb.AppendLine('$ErrorActionPreference = ''Stop''')
 [void]$sb.AppendLine('$script:VERSIONE_TOOL = ''0.2.0''')
@@ -103,79 +95,92 @@ $bloccoAvvio = @'
 # =============================================================================
 # PUNTO D'INGRESSO AUTONOMO (GUI / HEADLESS / IRM | IEX)
 # =============================================================================
-if ($Headless -and $Gui) {
-    Write-Error "I parametri -Gui e -Headless sono mutuamente esclusivi."
-    exit 1
-}
+function Invoke-Win11Scanner {
+    [CmdletBinding()]
+    param(
+        [switch]$Gui,
+        [switch]$Headless,
+        [string]$OutFile,
+        [string[]]$ControlId
+    )
 
-if ($Headless -and (-not $OutFile)) {
-    Write-Error "Il parametro -OutFile e' obbligatorio in modalita' -Headless."
-    exit 1
-}
+    if ($Headless -and $Gui) {
+        Write-Error "I parametri -Gui e -Headless sono mutuamente esclusivi."
+        return
+    }
 
-$modalitaGui = ($Gui -or (-not $Headless))
-$catalogo    = $script:CatalogoJsonIncorporato | ConvertFrom-Json
-$ambiente    = Get-AmbienteSistema
+    if ($Headless -and (-not $OutFile)) {
+        Write-Error "Il parametro -OutFile e' obbligatorio in modalita' -Headless."
+        return
+    }
 
-if ($modalitaGui) {
-    if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne [System.Threading.ApartmentState]::STA) {
-        if (-not [string]::IsNullOrWhiteSpace($script:PercorsoScriptAutonomo) -and (Test-Path -LiteralPath $script:PercorsoScriptAutonomo)) {
-            $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -File `"$($script:PercorsoScriptAutonomo)`" -Gui"
-            if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
-                $argSta += " -ControlId $($ControlId -join ',')"
+    $modalitaGui = ($Gui -or (-not $Headless))
+    $catalogo    = $script:CatalogoJsonIncorporato | ConvertFrom-Json
+    $ambiente    = Get-AmbienteSistema
+
+    if ($modalitaGui) {
+        if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne [System.Threading.ApartmentState]::STA) {
+            if (-not [string]::IsNullOrWhiteSpace($script:PercorsoScriptAutonomo) -and (Test-Path -LiteralPath $script:PercorsoScriptAutonomo)) {
+                $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -File `"$($script:PercorsoScriptAutonomo)`" -Gui"
+                if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
+                    $argSta += " -ControlId $($ControlId -join ',')"
+                }
+                $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
+                return
             }
-            $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
-            exit $proc.ExitCode
+            else {
+                $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
+                $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
+                return
+            }
         }
-        else {
-            $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -Command `"irm '$($script:UrlScriptRemoto)' | iex`""
-            $proc = Start-Process -FilePath 'powershell.exe' -ArgumentList $argSta -Wait -PassThru
-            exit $proc.ExitCode
+
+        $paramGui = @{
+            Catalogo       = $catalogo
+            Ambiente       = $ambiente
+            ContenutoXaml  = $script:XamlIncorporato
+            VersioneTool   = $script:VERSIONE_TOOL
         }
-    }
+        if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
+            $paramGui['ControlId'] = $ControlId
+        }
 
-    $paramGui = @{
-        Catalogo       = $catalogo
-        Ambiente       = $ambiente
-        ContenutoXaml  = $script:XamlIncorporato
-        VersioneTool   = $script:VERSIONE_TOOL
+        Start-ScannerUI @paramGui
     }
-    if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
-        $paramGui['ControlId'] = $ControlId
-    }
+    else {
+        Write-Host "Scanner di sicurezza Windows 11 v$($script:VERSIONE_TOOL) (Autonomo)"
+        Write-Host "=========================================================="
+        Write-Host "  Edizione:  $($ambiente.Edition) ($($ambiente.EditionId))"
+        Write-Host "  Build:     $($ambiente.Build)"
+        Write-Host "  Admin:     $($ambiente.IsAdmin)"
 
-    Start-ScannerUI @paramGui
+        $paramRunner = @{
+            Catalogo = $catalogo
+            Ambiente = $ambiente
+        }
+        if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
+            $paramRunner['ControlId'] = $ControlId
+        }
+
+        $risultati = Invoke-Controlli @paramRunner
+        $report    = New-Report -Risultati $risultati -Ambiente $ambiente -Catalogo $catalogo -VersioneTool $script:VERSIONE_TOOL
+        Export-ReportJson -Report $report -PercorsoFile $OutFile
+
+        Write-Host "`nReport scritto in: $OutFile"
+        Write-Host "  Superato:        $($report.summary.superato)"
+        Write-Host "  Fallito:         $($report.summary.fallito)"
+        Write-Host "  Non applicabile: $($report.summary.non_applicabile)"
+        Write-Host "  Sconosciuto:     $($report.summary.sconosciuto)"
+        Write-Host "  Errore:          $($report.summary.errore)"
+    }
 }
-else {
-    Write-Host "Scanner di sicurezza Windows 11 v$($script:VERSIONE_TOOL) (Autonomo)"
-    Write-Host "=========================================================="
-    Write-Host "  Edizione:  $($ambiente.Edition) ($($ambiente.EditionId))"
-    Write-Host "  Build:     $($ambiente.Build)"
-    Write-Host "  Admin:     $($ambiente.IsAdmin)"
 
-    $paramRunner = @{
-        Catalogo = $catalogo
-        Ambiente = $ambiente
-    }
-    if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
-        $paramRunner['ControlId'] = $ControlId
-    }
-
-    $risultati = Invoke-Controlli @paramRunner
-    $report    = New-Report -Risultati $risultati -Ambiente $ambiente -Catalogo $catalogo -VersioneTool $script:VERSIONE_TOOL
-    Export-ReportJson -Report $report -PercorsoFile $OutFile
-
-    Write-Host "`nReport scritto in: $OutFile"
-    Write-Host "  Superato:        $($report.summary.superato)"
-    Write-Host "  Fallito:         $($report.summary.fallito)"
-    Write-Host "  Non applicabile: $($report.summary.non_applicabile)"
-    Write-Host "  Sconosciuto:     $($report.summary.sconosciuto)"
-    Write-Host "  Errore:          $($report.summary.errore)"
-}
+Invoke-Win11Scanner @args
 '@
 
 [void]$sb.AppendLine($bloccoAvvio)
 
-# Salva in UTF-8 con BOM per compatibilita' garantita con Windows PowerShell 5.1
-[System.IO.File]::WriteAllText($OutFile, $sb.ToString(), [System.Text.Encoding]::UTF8)
+# Salva in UTF-8 SENZA BOM per compatibilita' con 'irm <url> | iex' (evita il carattere \uFEFF iniziale in Invoke-Expression)
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($OutFile, $sb.ToString(), $utf8NoBom)
 Write-Host "Script singolo compilato con successo in: $OutFile"
