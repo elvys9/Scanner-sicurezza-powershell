@@ -110,7 +110,9 @@ function Start-ScannerUI {
     .PARAMETER Ambiente
         Oggetto ambiente rilevato da Get-AmbienteSistema.
     .PARAMETER PercorsoProgetto
-        Percorso radice del repository.
+        Percorso radice del repository (opzionale in modalita' standalone singolo file).
+    .PARAMETER ContenutoXaml
+        Stringa XAML opzionale (usata nella versione compilata in singolo file in stile winutil).
     .PARAMETER ControlId
         Filtro opzionale di ID di controllo passato da riga di comando.
     .PARAMETER VersioneTool
@@ -124,8 +126,11 @@ function Start-ScannerUI {
         [Parameter(Mandatory = $true)]
         [PSCustomObject]$Ambiente,
 
-        [Parameter(Mandatory = $true)]
-        [string]$PercorsoProgetto,
+        [Parameter(Mandatory = $false)]
+        [string]$PercorsoProgetto = '',
+
+        [Parameter(Mandatory = $false)]
+        [string]$ContenutoXaml = '',
 
         [Parameter(Mandatory = $false)]
         [string[]]$ControlId = @(),
@@ -141,18 +146,20 @@ function Start-ScannerUI {
 
     Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
-    $percorsoUi     = Join-Path $PercorsoProgetto 'src\ui'
-    $percorsoCore   = Join-Path $PercorsoProgetto 'src\core'
-    $percorsoChecks = Join-Path $percorsoCore 'Checks'
-    $percorsoXaml   = Join-Path $percorsoUi 'MainWindow.xaml'
+    $percorsoUi     = if ($PercorsoProgetto) { Join-Path $PercorsoProgetto 'src\ui' } else { '' }
+    $percorsoCore   = if ($PercorsoProgetto) { Join-Path $PercorsoProgetto 'src\core' } else { '' }
+    $percorsoChecks = if ($percorsoCore) { Join-Path $percorsoCore 'Checks' } else { '' }
 
-    if (-not (Test-Path -LiteralPath $percorsoXaml)) {
-        throw "File XAML dell'interfaccia non trovato: $percorsoXaml"
+    if ([string]::IsNullOrWhiteSpace($ContenutoXaml)) {
+        $percorsoXaml = Join-Path $percorsoUi 'MainWindow.xaml'
+        if (-not (Test-Path -LiteralPath $percorsoXaml)) {
+            throw "File XAML dell'interfaccia non trovato: $percorsoXaml"
+        }
+        $ContenutoXaml = Get-Content -LiteralPath $percorsoXaml -Raw -Encoding UTF8
     }
 
-    # Carica il file XAML con XamlReader
-    $contenutoXaml = Get-Content -LiteralPath $percorsoXaml -Raw -Encoding UTF8
-    [xml]$xmlXaml = $contenutoXaml
+    # Carica il contenuto XAML con XamlReader
+    [xml]$xmlXaml = $ContenutoXaml
     $lettoreXml = New-Object System.Xml.XmlNodeReader($xmlXaml)
     $finestra = [System.Windows.Markup.XamlReader]::Load($lettoreXml)
 
@@ -356,13 +363,32 @@ function Start-ScannerUI {
     # --- Evento Riavvia come Amministratore ---
     $ctrl.BtnRiavviaAdmin.Add_Click({
         try {
-            $percorsoEntry = Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'
-            $argomenti = "-NoProfile -ExecutionPolicy Bypass -STA -File `"$percorsoEntry`" -Gui"
-            if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
-                $argomenti += " -ControlId $($ControlId -join ',')"
+            $percorsoEntry = if ($PercorsoProgetto -and (Test-Path -LiteralPath (Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'))) {
+                Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'
             }
-            Start-Process -FilePath 'powershell.exe' -ArgumentList $argomenti -Verb RunAs
-            $finestra.Close()
+            elseif (Get-Variable -Name 'PercorsoScriptAutonomo' -Scope Script -ErrorAction SilentlyContinue) {
+                $script:PercorsoScriptAutonomo
+            }
+            else {
+                ''
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($percorsoEntry) -and (Test-Path -LiteralPath $percorsoEntry)) {
+                $argomenti = "-NoProfile -ExecutionPolicy Bypass -STA -File `"$percorsoEntry`" -Gui"
+                if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
+                    $argomenti += " -ControlId $($ControlId -join ',')"
+                }
+                Start-Process -FilePath 'powershell.exe' -ArgumentList $argomenti -Verb RunAs
+                $finestra.Close()
+            }
+            else {
+                [System.Windows.MessageBox]::Show(
+                    "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando.",
+                    "Scanner sicurezza Windows",
+                    [System.Windows.MessageBoxButton]::OK,
+                    [System.Windows.MessageBoxImage]::Information
+                ) | Out-Null
+            }
         }
         catch {
             [System.Windows.MessageBox]::Show(
@@ -508,8 +534,17 @@ function Start-ScannerUI {
         })
         $statoUI.SyncRunspace = $sync
 
+        # Prepara InitialSessionState con le funzioni del motore gia' caricate in memoria
+        # (consente l'esecuzione anche da singolo file autonomo senza cartella src/)
+        $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+        $funzioniDaPassare = @(Get-ChildItem Function:\Invoke-Controlli, Function:\Test-* -ErrorAction SilentlyContinue)
+        foreach ($fn in $funzioniDaPassare) {
+            $entryFn = New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fn.Name, $fn.Definition)
+            [void]$iss.Commands.Add($entryFn)
+        }
+
         # Crea e avvia il Runspace separato
-        $runspace = [runspacefactory]::CreateRunspace()
+        $runspace = [runspacefactory]::CreateRunspace($iss)
         $runspace.ApartmentState = 'STA'
         $runspace.ThreadOptions  = 'ReuseThread'
         $runspace.Open()
@@ -523,11 +558,16 @@ function Start-ScannerUI {
             $ErrorActionPreference = 'Stop'
 
             try {
-                . (Join-Path $Sync.PercorsoCore 'Catalog.ps1')
-                . (Join-Path $Sync.PercorsoCore 'Runner.ps1')
-                . (Join-Path $Sync.PercorsoChecks 'Registry.ps1')
-                . (Join-Path $Sync.PercorsoChecks 'Firewall.ps1')
-                . (Join-Path $Sync.PercorsoChecks 'Accounts.ps1')
+                if (-not [string]::IsNullOrWhiteSpace($Sync.PercorsoCore) -and (Test-Path -LiteralPath $Sync.PercorsoCore)) {
+                    . (Join-Path $Sync.PercorsoCore 'Catalog.ps1')
+                    . (Join-Path $Sync.PercorsoCore 'Runner.ps1')
+                    . (Join-Path $Sync.PercorsoChecks 'Registry.ps1')
+                    . (Join-Path $Sync.PercorsoChecks 'Firewall.ps1')
+                    . (Join-Path $Sync.PercorsoChecks 'Accounts.ps1')
+                    . (Join-Path $Sync.PercorsoChecks 'Defender.ps1')
+                    . (Join-Path $Sync.PercorsoChecks 'Network.ps1')
+                    . (Join-Path $Sync.PercorsoChecks 'SystemSecurity.ps1')
+                }
 
                 $onProgressBlock = {
                     param($idx, $tot, $res)

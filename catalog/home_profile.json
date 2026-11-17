@@ -56,9 +56,16 @@
         "Home",
         "Pro"
       ],
-      "description": "Verifica che UAC richieda il consenso dell'utente per le operazioni con privilegi elevati (ConsentPromptBehaviorAdmin).",
+      "description": "Verifica che UAC richieda il consenso dell'utente per le operazioni con privilegi elevati (ConsentPromptBehaviorAdmin diverso da 0).",
       "rationale": "Se UAC e' impostato per non chiedere conferma, i programmi malevoli possono ottenere privilegi elevati senza che l'utente se ne accorga.",
-      "check": {},
+      "check": {
+        "registry": {
+          "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+          "name": "ConsentPromptBehaviorAdmin",
+          "operator": "ne",
+          "value": 0
+        }
+      },
       "references": [
         "CIS Benchmark Windows 11 - 2.3.17.1"
       ]
@@ -72,9 +79,16 @@
         "Home",
         "Pro"
       ],
-      "description": "Verifica che UAC rilevi le installazioni di applicazioni e richieda l'elevazione (EnableInstallerDetection).",
+      "description": "Verifica che UAC rilevi le installazioni di applicazioni e richieda l'elevazione (EnableInstallerDetection = 1).",
       "rationale": "Il rilevamento delle installazioni aiuta a prevenire installazioni non autorizzate di software.",
-      "check": {},
+      "check": {
+        "registry": {
+          "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
+          "name": "EnableInstallerDetection",
+          "operator": "eq",
+          "value": 1
+        }
+      },
       "references": [
         "CIS Benchmark Windows 11 - 2.3.17.3"
       ]
@@ -108,7 +122,9 @@
       ],
       "description": "Verifica che l'account locale Administrator predefinito (SID che termina in -500) sia disabilitato.",
       "rationale": "L'account Administrator predefinito e' un bersaglio comune per attacchi brute-force. Usare un account personale con privilegi di amministratore e' piu' sicuro.",
-      "check": {},
+      "check": {
+        "command_ref": "Accounts.ps1#Test-AdminAccount"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 1.1.2"
       ]
@@ -122,10 +138,14 @@
         "Home",
         "Pro"
       ],
-      "description": "Verifica che tutti gli account locali attivi abbiano una password impostata.",
-      "rationale": "Account senza password permettono a chiunque abbia accesso fisico al sistema di effettuare il login.",
-      "check": {},
-      "references": []
+      "description": "Verifica che tutti gli account locali attivi abbiano una password impostata (PasswordRequired = True).",
+      "rationale": "Account senza password permettono a chiunque abbia accesso fisico o di rete al sistema di effettuare il login senza credenziali.",
+      "check": {
+        "command_ref": "Accounts.ps1#Test-AccountsPasswordRequired"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 1.1"
+      ]
     },
     {
       "id": "HOME-UPD-001",
@@ -136,9 +156,11 @@
         "Home",
         "Pro"
       ],
-      "description": "Verifica che gli aggiornamenti automatici di Windows siano abilitati.",
+      "description": "Verifica che il servizio Windows Update (wuauserv) non sia disabilitato e che la policy NoAutoUpdate non sia attiva.",
       "rationale": "Gli aggiornamenti di sicurezza correggono vulnerabilita' note. Disabilitarli lascia il sistema esposto.",
-      "check": {},
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-WindowsUpdateEnabled"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 18.9.102.2"
       ]
@@ -154,7 +176,9 @@
       ],
       "description": "Verifica che la protezione in tempo reale di Windows Defender sia attiva.",
       "rationale": "La protezione in tempo reale analizza i file durante l'accesso e blocca le minacce note prima che possano eseguirsi.",
-      "check": {},
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderRealtime"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 18.9.47.4.1"
       ]
@@ -170,8 +194,12 @@
       ],
       "description": "Verifica che le definizioni di Windows Defender siano state aggiornate negli ultimi 7 giorni.",
       "rationale": "Definizioni obsolete non rilevano le minacce piu' recenti.",
-      "check": {},
-      "references": []
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderSignatures"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.47"
+      ]
     },
     {
       "id": "HOME-RDP-001",
@@ -181,9 +209,16 @@
       "editions": [
         "Pro"
       ],
-      "description": "Verifica che il desktop remoto (RDP) sia disabilitato se non necessario.",
+      "description": "Verifica che il desktop remoto (RDP) sia disabilitato tramite fDenyTSConnections = 1.",
       "rationale": "RDP e' uno dei vettori di attacco piu' comuni. Se non necessario, va disabilitato.",
-      "check": {},
+      "check": {
+        "registry": {
+          "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server",
+          "name": "fDenyTSConnections",
+          "operator": "eq",
+          "value": 1
+        }
+      },
       "references": [
         "CIS Benchmark Windows 11 - 18.9.65.3.3.2"
       ]
@@ -199,7 +234,9 @@
       ],
       "description": "Verifica che il protocollo SMBv1 sia disabilitato.",
       "rationale": "SMBv1 ha vulnerabilita' note (EternalBlue/WannaCry). Le versioni moderne di SMB sono piu' sicure.",
-      "check": {},
+      "check": {
+        "command_ref": "Network.ps1#Test-Smb1Disabled"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 18.3.3"
       ]
@@ -213,10 +250,14 @@
         "Home",
         "Pro"
       ],
-      "description": "Verifica che NetBIOS su TCP/IP sia disabilitato sulle interfacce di rete attive.",
-      "rationale": "NetBIOS puo' esporre informazioni sul sistema e sulla rete. Se non necessario, va disabilitato.",
-      "check": {},
-      "references": []
+      "description": "Verifica che NetBIOS su TCP/IP sia disabilitato (NetbiosOptions = 2) sulle interfacce di rete.",
+      "rationale": "NetBIOS puo' esporre informazioni sul sistema e facilitare attacchi di spoofing sulla rete locale. Se non necessario, va disabilitato.",
+      "check": {
+        "command_ref": "Network.ps1#Test-NetbiosDisabled"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.5"
+      ]
     },
     {
       "id": "HOME-ENC-001",
@@ -228,7 +269,9 @@
       ],
       "description": "Verifica che BitLocker sia attivo sulla partizione di sistema.",
       "rationale": "La crittografia del disco protegge i dati in caso di furto o smarrimento del dispositivo.",
-      "check": {},
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-BitLockerSystemDrive"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 6.2"
       ]
@@ -242,9 +285,11 @@
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il livello di telemetria di Windows sia impostato al minimo consentito.",
-      "rationale": "Ridurre la telemetria limita la quantita' di dati raccolti e inviati a Microsoft.",
-      "check": {},
+      "description": "Verifica che il livello di telemetria di Windows (AllowTelemetry) sia impostato al minimo consentito (<= 1).",
+      "rationale": "Ridurre la telemetria limita la quantita' di dati diagnostici raccolti e inviati a Microsoft.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-TelemetryMinimum"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 18.9.17.1"
       ]
@@ -260,7 +305,9 @@
       ],
       "description": "Verifica che Secure Boot sia abilitato nel firmware UEFI.",
       "rationale": "Secure Boot impedisce l'esecuzione di bootloader non firmati, proteggendo da rootkit e bootkit.",
-      "check": {},
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-SecureBoot"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 1.2.2"
       ]
@@ -274,8 +321,10 @@
         "Pro"
       ],
       "description": "Verifica che la protezione LSA (RunAsPPL) sia abilitata.",
-      "rationale": "La protezione LSA impedisce l'estrazione di credenziali dalla memoria (attacchi tipo Mimikatz).",
-      "check": {},
+      "rationale": "La protezione LSA impedisce l'estrazione di credenziali dalla memoria da parte di processi non protetti (attacchi tipo Mimikatz).",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-LsaProtection"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 18.3.1"
       ]
@@ -289,9 +338,11 @@
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il logging degli script block di PowerShell sia abilitato.",
-      "rationale": "Il logging degli script block permette di tracciare l'esecuzione di script malevoli e facilita le indagini.",
-      "check": {},
+      "description": "Verifica che il logging degli script block di PowerShell (EnableScriptBlockLogging) sia abilitato.",
+      "rationale": "Il logging degli script block permette di tracciare nei registri eventi l'esecuzione di comandi PowerShell sospetti o offuscati.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-PsScriptBlockLogging"
+      },
       "references": [
         "CIS Benchmark Windows 11 - 18.9.100.1"
       ]

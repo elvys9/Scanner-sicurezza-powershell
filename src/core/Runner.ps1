@@ -41,8 +41,8 @@ function Invoke-Controlli {
         [Parameter(Mandatory = $false)]
         [string[]]$ControlId = @(),
 
-        [Parameter(Mandatory = $true)]
-        [string]$CartellaChecks,
+        [Parameter(Mandatory = $false)]
+        [string]$CartellaChecks = '',
 
         [Parameter(Mandatory = $false)]
         [scriptblock]$OnProgress = $null,
@@ -169,15 +169,13 @@ function Invoke-Controlli {
 
                 $nomeFile = $parti[0]
                 $nomeFunzione = $parti[1]
-                $percorsoFile = Join-Path $CartellaChecks $nomeFile
 
-                # Verifica che il file esista
-                if (-not (Test-Path -LiteralPath $percorsoFile)) {
-                    throw "File di controllo non trovato: $percorsoFile"
-                }
-
-                # Carica il file (dot-source) se la funzione non e' gia' disponibile
+                # Carica il file (dot-source) se la funzione non e' gia' disponibile in memoria
                 if (-not (Get-Command -Name $nomeFunzione -ErrorAction SilentlyContinue)) {
+                    $percorsoFile = if ($CartellaChecks) { Join-Path $CartellaChecks $nomeFile } else { $nomeFile }
+                    if (-not (Test-Path -LiteralPath $percorsoFile)) {
+                        throw "File di controllo non trovato: $percorsoFile"
+                    }
                     . $percorsoFile
                 }
 
