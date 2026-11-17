@@ -1,0 +1,10 @@
+# File temporanei di output dello scanner
+out.json
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+
+# Pester / Test temp
+TestDrive/

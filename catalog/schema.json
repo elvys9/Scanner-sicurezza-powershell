@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Catalogo controlli di sicurezza",
+  "description": "Schema per il catalogo dei controlli di sicurezza Windows 11 (Home/Pro) - versione 0.2",
+  "type": "object",
+  "required": ["schema_version", "profile", "controls"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.2"
+    },
+    "profile": {
+      "type": "object",
+      "required": ["name", "description", "target_os"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "target_os": {
+          "type": "string"
+        }
+      }
+    },
+    "controls": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/control"
+      }
+    }
+  },
+  "definitions": {
+    "control": {
+      "type": "object",
+      "required": ["id", "title", "category", "severity", "editions", "description", "rationale", "check"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^HOME-[A-Z]+-[0-9]{3}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["critico", "alto", "medio", "basso", "informativo"]
+        },
+        "editions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["Home", "Pro"]
+          },
+          "minItems": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "check": {
+          "type": "object",
+          "properties": {
+            "registry": {
+              "type": "object",
+              "required": ["path", "name", "operator", "value"],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "operator": {
+                  "type": "string",
+                  "enum": ["eq", "ne", "ge", "le", "exists", "notexists"]
+                },
+                "value": {
+                  "type": ["string", "integer", "boolean"]
+                }
+              }
+            },
+            "command_ref": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_]+\\.ps1#[A-Za-z]+-[A-Za-z0-9]+"
+            }
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
