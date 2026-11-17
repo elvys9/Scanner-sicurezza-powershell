@@ -1,16 +1,22 @@
 ﻿<#
 .SYNOPSIS
     Controlli di sicurezza di sistema: Windows Update, BitLocker, Telemetria,
-    Secure Boot, Protezione LSA e PowerShell Script Block Logging.
+    Secure Boot, Protezione LSA, PowerShell Script Block Logging e Impostazioni Windows.
 
 .DESCRIPTION
     Contiene i controlli per:
     - HOME-UPD-001: Aggiornamenti automatici abilitati (Test-WindowsUpdateEnabled)
+    - HOME-UPD-002: Server Windows Update autentico (Test-WindowsUpdateAuthenticServer)
     - HOME-ENC-001: BitLocker attivo sul disco di sistema (Test-BitLockerSystemDrive)
     - HOME-PRV-001: Telemetria impostata al livello minimo (Test-TelemetryMinimum)
     - HOME-SEC-001: Avvio protetto Secure Boot attivo (Test-SecureBoot)
     - HOME-SEC-002: Protezione LSA abilitata RunAsPPL (Test-LsaProtection)
     - HOME-SEC-003: PowerShell Script Block Logging abilitato (Test-PsScriptBlockLogging)
+    - HOME-SYS-001: Visibilita' estensioni file conosciuti in Esplora file (Test-FileExtensionsVisible)
+    - HOME-SYS-002: AutoRun / AutoPlay disabilitato per unita' rimovibili (Test-AutorunDisabled)
+    - HOME-SYS-003: Filtro Microsoft Defender SmartScreen attivo (Test-SmartScreenEnabled)
+    - HOME-SYS-004: Isolamento core / Integrita' della memoria HVCI attivo (Test-MemoryIntegrityEnabled)
+    - HOME-SYS-005: Accesso anonimo SAM bloccato (Test-AnonymousSamRestricted)
     Non modifica mai lo stato del sistema.
 #>
 
@@ -21,12 +27,6 @@ function Test-WindowsUpdateEnabled {
     .SYNOPSIS
         Verifica che il servizio Windows Update non sia disabilitato e che le policy
         non disattivino gli aggiornamenti automatici.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -71,7 +71,6 @@ function Test-WindowsUpdateEnabled {
             NoAutoUpdate  = $noAutoUpdate
         }
 
-        # Start = 4 significa Disabled
         if ($startVal -eq 4) {
             $risultato.Status   = 'fallito'
             $risultato.Observed = "Il servizio Windows Update (wuauserv) e' disabilitato (Start = 4)"
@@ -102,12 +101,6 @@ function Test-BitLockerSystemDrive {
     <#
     .SYNOPSIS
         Verifica che BitLocker sia attivo sulla partizione di sistema.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -129,7 +122,6 @@ function Test-BitLockerSystemDrive {
     $discoSistema = if ($env:SystemDrive) { $env:SystemDrive } else { 'C:' }
 
     try {
-        # Tenta prima con Get-BitLockerVolume (richiede privilegi di amministratore)
         if (Get-Command -Name 'Get-BitLockerVolume' -ErrorAction SilentlyContinue) {
             try {
                 $vol = Get-BitLockerVolume -MountPoint $discoSistema -ErrorAction Stop
@@ -153,12 +145,9 @@ function Test-BitLockerSystemDrive {
                 }
                 return $risultato
             }
-            catch {
-                # Se fallisce per permessi non-admin, prosegue col controllo registro BitLockerStatus
-            }
+            catch { }
         }
 
-        # Lettura da registro HKLM:\SYSTEM\CurrentControlSet\Control\BitLockerStatus (accessibile anche senza admin)
         $percorsoBl = 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLockerStatus'
         if (Test-Path -LiteralPath $percorsoBl) {
             $propBl = Get-ItemProperty -LiteralPath $percorsoBl -ErrorAction Stop
@@ -196,12 +185,6 @@ function Test-TelemetryMinimum {
     <#
     .SYNOPSIS
         Verifica che il livello di telemetria di Windows (AllowTelemetry) sia impostato al minimo (<= 1).
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -244,7 +227,6 @@ function Test-TelemetryMinimum {
         }
 
         if ($null -eq $valoreTrovato) {
-            # Se AllowTelemetry non e' configurato, Windows usa il livello predefinito (3 = Full/Optional)
             $risultato.Status   = 'fallito'
             $risultato.Observed = "AllowTelemetry non limitato (livello predefinito completo attivo)"
             $risultato.Evidence = @{ Configured = $false }
@@ -282,12 +264,6 @@ function Test-SecureBoot {
     <#
     .SYNOPSIS
         Verifica che l'avvio protetto UEFI (Secure Boot) sia abilitato.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -354,12 +330,6 @@ function Test-LsaProtection {
     <#
     .SYNOPSIS
         Verifica che la protezione del processo LSA (RunAsPPL) sia abilitata.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -433,12 +403,6 @@ function Test-PsScriptBlockLogging {
     <#
     .SYNOPSIS
         Verifica che il logging degli script block di PowerShell (EnableScriptBlockLogging) sia abilitato.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -492,6 +456,376 @@ function Test-PsScriptBlockLogging {
         $risultato.Status   = 'sconosciuto'
         $risultato.Observed = "Accesso negato alla chiave di registro ScriptBlockLogging"
         $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-FileExtensionsVisible {
+    <#
+    .SYNOPSIS
+        Verifica che le estensioni dei file conosciuti siano visibili in Esplora file (HideFileExt = 0).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "HideFileExt = 0 (Estensioni dei file sempre visibili)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoExp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+        if (-not (Test-Path -LiteralPath $percorsoExp)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Chiave Explorer Advanced non trovata"
+            return $risultato
+        }
+
+        $propExp = Get-ItemProperty -LiteralPath $percorsoExp -ErrorAction Stop
+        $hideExt = if ($null -ne $propExp.PSObject.Properties['HideFileExt'] -and $null -ne $propExp.HideFileExt) {
+            [int]$propExp.HideFileExt
+        }
+        else {
+            1
+        }
+
+        $risultato.Evidence = @{
+            Path        = $percorsoExp
+            HideFileExt = $hideExt
+        }
+
+        if ($hideExt -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Estensioni dei file visibili (HideFileExt = 0)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Estensioni dei file nascoste (HideFileExt = $hideExt, rischio file camuffati)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-AutorunDisabled {
+    <#
+    .SYNOPSIS
+        Verifica che AutoRun/AutoPlay sia disabilitato sulle unita' rimovibili (NoDriveTypeAutoRun >= 145 o DisableAutoplay = 1).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "NoDriveTypeAutoRun = 255 oppure AutoPlay disabilitato (DisableAutoplay = 1)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoPolLM  = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+        $percorsoAutoCU = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers'
+
+        $noDriveType = 0
+        if (Test-Path -LiteralPath $percorsoPolLM) {
+            $propLM = Get-ItemProperty -LiteralPath $percorsoPolLM -ErrorAction SilentlyContinue
+            if ($null -ne $propLM -and $null -ne $propLM.PSObject.Properties['NoDriveTypeAutoRun'] -and $null -ne $propLM.NoDriveTypeAutoRun) {
+                $noDriveType = [int]$propLM.NoDriveTypeAutoRun
+            }
+        }
+
+        $disableAutoplay = 0
+        if (Test-Path -LiteralPath $percorsoAutoCU) {
+            $propCU = Get-ItemProperty -LiteralPath $percorsoAutoCU -ErrorAction SilentlyContinue
+            if ($null -ne $propCU -and $null -ne $propCU.PSObject.Properties['DisableAutoplay'] -and $null -ne $propCU.DisableAutoplay) {
+                $disableAutoplay = [int]$propCU.DisableAutoplay
+            }
+        }
+
+        $risultato.Evidence = @{
+            NoDriveTypeAutoRun = $noDriveType
+            DisableAutoplay    = $disableAutoplay
+        }
+
+        if ($noDriveType -ge 145 -or $disableAutoplay -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "AutoRun/AutoPlay disabilitato (NoDriveTypeAutoRun=$noDriveType, DisableAutoplay=$disableAutoplay)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "AutoPlay attivo per unita' rimovibili (DisableAutoplay=0, NoDriveTypeAutoRun=$noDriveType)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-SmartScreenEnabled {
+    <#
+    .SYNOPSIS
+        Verifica che il filtro Microsoft Defender SmartScreen per app e file scaricati sia abilitato.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "SmartScreen abilitato (SmartScreenEnabled != 'Off' e EnableWebContentEvaluation = 1)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoExp = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer'
+        $percorsoApp = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost'
+
+        $ssExplorer = 'Warn'
+        if (Test-Path -LiteralPath $percorsoExp) {
+            $propExp = Get-ItemProperty -LiteralPath $percorsoExp -ErrorAction SilentlyContinue
+            if ($null -ne $propExp -and $null -ne $propExp.PSObject.Properties['SmartScreenEnabled'] -and $null -ne $propExp.SmartScreenEnabled) {
+                $ssExplorer = [string]$propExp.SmartScreenEnabled
+            }
+        }
+
+        $webEval = 1
+        if (Test-Path -LiteralPath $percorsoApp) {
+            $propApp = Get-ItemProperty -LiteralPath $percorsoApp -ErrorAction SilentlyContinue
+            if ($null -ne $propApp -and $null -ne $propApp.PSObject.Properties['EnableWebContentEvaluation'] -and $null -ne $propApp.EnableWebContentEvaluation) {
+                $webEval = [int]$propApp.EnableWebContentEvaluation
+            }
+        }
+
+        $risultato.Evidence = @{
+            SmartScreenEnabled         = $ssExplorer
+            EnableWebContentEvaluation = $webEval
+        }
+
+        if ($ssExplorer -ne 'Off' -and $webEval -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "SmartScreen attivo (SmartScreenEnabled=$ssExplorer, WebEvaluation=$webEval)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "SmartScreen disattivato (SmartScreenEnabled=$ssExplorer, WebEvaluation=$webEval)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-MemoryIntegrityEnabled {
+    <#
+    .SYNOPSIS
+        Verifica che l'Isolamento core / Integrita' della memoria (HVCI) sia abilitato.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "HypervisorEnforcedCodeIntegrity Enabled = 1"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoHvci = 'HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity'
+        if (-not (Test-Path -LiteralPath $percorsoHvci)) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Integrita' della memoria (HVCI) non configurata"
+            $risultato.Evidence = @{ KeyExists = $false }
+            return $risultato
+        }
+
+        $propHvci = Get-ItemProperty -LiteralPath $percorsoHvci -ErrorAction Stop
+        $valore = if ($null -ne $propHvci.PSObject.Properties['Enabled'] -and $null -ne $propHvci.Enabled) {
+            [int]$propHvci.Enabled
+        }
+        else {
+            0
+        }
+
+        $risultato.Evidence = @{
+            Path    = $percorsoHvci
+            Enabled = $valore
+        }
+
+        if ($valore -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Isolamento core / Integrita' della memoria attiva (Enabled = 1)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Isolamento core / Integrita' della memoria disattivata (Enabled = $valore)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-AnonymousSamRestricted {
+    <#
+    .SYNOPSIS
+        Verifica che l'enumerazione anonima degli account SAM (RestrictAnonymousSAM = 1) sia bloccata.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "RestrictAnonymousSAM = 1 in HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoLsa = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'
+        if (-not (Test-Path -LiteralPath $percorsoLsa)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Chiave LSA non trovata"
+            return $risultato
+        }
+
+        $propLsa = Get-ItemProperty -LiteralPath $percorsoLsa -ErrorAction Stop
+        $valore = if ($null -ne $propLsa.PSObject.Properties['RestrictAnonymousSAM'] -and $null -ne $propLsa.RestrictAnonymousSAM) {
+            [int]$propLsa.RestrictAnonymousSAM
+        }
+        else {
+            0
+        }
+
+        $risultato.Evidence = @{
+            Path                 = $percorsoLsa
+            RestrictAnonymousSAM = $valore
+        }
+
+        if ($valore -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Enumerazione anonima SAM bloccata (RestrictAnonymousSAM = 1)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Enumerazione anonima SAM consentita (RestrictAnonymousSAM = $valore)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-WindowsUpdateAuthenticServer {
+    <#
+    .SYNOPSIS
+        Verifica che Windows Update non sia dirottato verso un server WSUS esterno non sicuro (WUServer).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessun server WSUS non autorizzato configurato in WindowsUpdate"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoWu = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+        if (-not (Test-Path -LiteralPath $percorsoWu)) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Connessione diretta ai server ufficiali Microsoft Windows Update"
+            $risultato.Evidence = @{ CustomWUServer = $null }
+            return $risultato
+        }
+
+        $propWu = Get-ItemProperty -LiteralPath $percorsoWu -ErrorAction SilentlyContinue
+        $wuServer = if ($null -ne $propWu -and $null -ne $propWu.PSObject.Properties['WUServer']) {
+            [string]$propWu.WUServer
+        }
+        else {
+            ''
+        }
+
+        $risultato.Evidence = @{
+            Path     = $percorsoWu
+            WUServer = $wuServer
+        }
+
+        if ([string]::IsNullOrWhiteSpace($wuServer)) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessun server WSUS personalizzato impostato"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Windows Update rediretto verso server esterno: $wuServer"
+        }
     }
     catch {
         $risultato.Status = 'errore'

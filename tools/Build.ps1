@@ -41,6 +41,7 @@ $fileModuli = @(
     'src\core\Checks\Firewall.ps1',
     'src\core\Checks\Accounts.ps1',
     'src\core\Checks\Defender.ps1',
+    'src\core\Checks\FileSecurity.ps1',
     'src\core\Checks\Network.ps1',
     'src\core\Checks\SystemSecurity.ps1',
     'src\ui\ViewModel.ps1',
@@ -176,7 +177,7 @@ function Invoke-Win11Scanner {
 }
 
 # Gestione argomenti sia per esecuzione via 'irm ... | iex' sia via 'powershell -File scanner-win11.ps1 ...'
-$argomentiRigaComando = @(Get-Variable -Name args -ValueOnly -ErrorAction SilentlyContinue)
+$argomentiRigaComando = @($args)
 $parametriInvocazione = @{}
 for ($i = 0; $i -lt $argomentiRigaComando.Count; $i++) {
     $token = [string]$argomentiRigaComando[$i]

@@ -116,15 +116,66 @@ Describe 'Controlli SystemSecurity (HOME-UPD-001, HOME-ENC-001, HOME-PRV-001, HO
             $res.Status | Should -Be 'fallito'
         }
     }
+
+    Context 'Nuovi controlli impostazioni di sistema Windows (HOME-SYS-001..005, HOME-UPD-002)' {
+
+        It 'Test-FileExtensionsVisible: superato quando HideFileExt = 0' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ HideFileExt = 0 } }
+            $res = Test-FileExtensionsVisible -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-FileExtensionsVisible: fallito quando HideFileExt = 1' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ HideFileExt = 1 } }
+            $res = Test-FileExtensionsVisible -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+        }
+
+        It 'Test-AutorunDisabled: superato quando DisableAutoplay = 1' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ DisableAutoplay = 1; NoDriveTypeAutoRun = 0 } }
+            $res = Test-AutorunDisabled -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-SmartScreenEnabled: superato quando SmartScreenEnabled = Warn e EnableWebContentEvaluation = 1' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ SmartScreenEnabled = 'Warn'; EnableWebContentEvaluation = 1 } }
+            $res = Test-SmartScreenEnabled -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-MemoryIntegrityEnabled: superato quando Enabled = 1' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ Enabled = 1 } }
+            $res = Test-MemoryIntegrityEnabled -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-AnonymousSamRestricted: superato quando RestrictAnonymousSAM = 1' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ RestrictAnonymousSAM = 1 } }
+            $res = Test-AnonymousSamRestricted -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-WindowsUpdateAuthenticServer: superato quando nessun WUServer esterno e impostato' {
+            Mock Test-Path { return $false }
+            $res = Test-WindowsUpdateAuthenticServer -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+    }
 }
 
-Describe 'Copertura completa dei 18 controlli e script singolo stile winutil' {
+Describe 'Copertura completa dei 34 controlli e script singolo stile winutil' {
 
-    It 'Tutti i 18 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
+    It 'Tutti i 34 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
         $percorsoJson = Join-Path $PSScriptRoot '..\catalog\home_profile.json'
         $cat = Get-Content -LiteralPath $percorsoJson -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        @($cat.controls).Count | Should -Be 18
+        @($cat.controls).Count | Should -Be 34
         foreach ($c in $cat.controls) {
             $haReg = ($null -ne $c.check.PSObject.Properties['registry'] -and $null -ne $c.check.registry)
             $haCmd = ($null -ne $c.check.PSObject.Properties['command_ref'] -and (-not [string]::IsNullOrWhiteSpace($c.check.command_ref)))

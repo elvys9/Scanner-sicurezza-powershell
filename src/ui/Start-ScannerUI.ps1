@@ -570,6 +570,7 @@ function Start-ScannerUI {
                     . (Join-Path $Sync.PercorsoChecks 'Firewall.ps1')
                     . (Join-Path $Sync.PercorsoChecks 'Accounts.ps1')
                     . (Join-Path $Sync.PercorsoChecks 'Defender.ps1')
+                    . (Join-Path $Sync.PercorsoChecks 'FileSecurity.ps1')
                     . (Join-Path $Sync.PercorsoChecks 'Network.ps1')
                     . (Join-Path $Sync.PercorsoChecks 'SystemSecurity.ps1')
                 }

@@ -197,3 +197,69 @@ function Test-NetbiosDisabled {
 
     return $risultato
 }
+
+function Test-LlmnrDisabled {
+    <#
+    .SYNOPSIS
+        Verifica che il protocollo LLMNR (Link-Local Multicast Name Resolution) sia disabilitato (EnableMulticast = 0).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "EnableMulticast = 0 in HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoDns = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+        if (-not (Test-Path -LiteralPath $percorsoDns)) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Policy DNSClient non configurata (LLMNR attivo per impostazione predefinita)"
+            $risultato.Evidence = @{ Path = $percorsoDns; KeyExists = $false }
+            return $risultato
+        }
+
+        $propDns = Get-ItemProperty -LiteralPath $percorsoDns -ErrorAction Stop
+        $valore = if ($null -ne $propDns.PSObject.Properties['EnableMulticast'] -and $null -ne $propDns.EnableMulticast) {
+            [int]$propDns.EnableMulticast
+        }
+        else {
+            1
+        }
+
+        $risultato.Evidence = @{
+            Path            = $percorsoDns
+            EnableMulticast = $valore
+        }
+
+        if ($valore -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "LLMNR disabilitato (EnableMulticast = 0)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "LLMNR abilitato (EnableMulticast = $valore)"
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alla chiave DNSClient"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}

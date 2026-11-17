@@ -34,28 +34,44 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 
 Scanner di sicurezza deterministico in **sola lettura** per Windows 11 (Home/Pro), pensato per utenti domestici e distribuibile come singolo script PowerShell 5.1 senza installare nulla.
 
-### Tutti i 18 controlli di sicurezza implementati (Profilo v0.2)
+### Tutti i 34 controlli di sicurezza implementati (Profilo v0.2)
 
-| ID            | Categoria          | Descrizione                                                    | Tipo      |
-|---------------|--------------------|----------------------------------------------------------------|-----------|
-| `HOME-FW-001` | Firewall           | Firewall di Windows attivo su tutti i profili (Domain, Private, Public) | Funzione |
-| `HOME-UAC-001`| UAC                | UAC abilitato (`EnableLUA = 1`)                                | Registro  |
-| `HOME-UAC-002`| UAC                | UAC richiede conferma per elevazione (`ConsentPromptBehaviorAdmin != 0`) | Registro |
-| `HOME-UAC-003`| UAC                | UAC rileva installazioni applicazioni (`EnableInstallerDetection = 1`) | Registro |
-| `HOME-ACC-001`| Account            | Account Guest disabilitato (`SID -501`)                        | Funzione  |
-| `HOME-ACC-002`| Account            | Account Administrator predefinito disabilitato (`SID -500`)    | Funzione  |
-| `HOME-ACC-003`| Account            | Nessun account locale attivo senza password (`PasswordRequired`) | Funzione |
-| `HOME-UPD-001`| Aggiornamenti      | Aggiornamenti automatici Windows Update abilitati (`wuauserv`) | Funzione  |
-| `HOME-AV-001` | Antivirus          | Protezione in tempo reale Windows Defender attiva              | Funzione  |
-| `HOME-AV-002` | Antivirus          | Definizioni antivirus aggiornate (`<= 7 giorni`)               | Funzione  |
-| `HOME-RDP-001`| Desktop Remoto     | Desktop remoto disabilitato (`fDenyTSConnections = 1`)         | Registro  |
-| `HOME-NET-001`| Rete               | Protocollo SMBv1 disabilitato                                  | Funzione  |
-| `HOME-NET-002`| Rete               | NetBIOS su TCP/IP disabilitato (`NetbiosOptions = 2`)          | Funzione  |
-| `HOME-ENC-001`| Crittografia       | Crittografia BitLocker attiva sul disco di sistema             | Funzione  |
-| `HOME-PRV-001`| Privacy            | Telemetria impostata al livello minimo (`AllowTelemetry <= 1`) | Funzione  |
-| `HOME-SEC-001`| Sicurezza Avanzata | Avvio protetto UEFI (Secure Boot) attivo                       | Funzione  |
-| `HOME-SEC-002`| Sicurezza Avanzata | Protezione LSA (`RunAsPPL`) abilitata                          | Funzione  |
-| `HOME-SEC-003`| Sicurezza Avanzata | PowerShell Script Block Logging abilitato                      | Funzione  |
+| ID             | Categoria            | Descrizione                                                                 | Tipo      |
+|----------------|----------------------|-----------------------------------------------------------------------------|-----------|
+| `HOME-FW-001`  | Firewall             | Firewall di Windows attivo su tutti i profili (Domain, Private, Public)     | Funzione  |
+| `HOME-UAC-001` | UAC                  | UAC abilitato (`EnableLUA = 1`)                                             | Registro  |
+| `HOME-UAC-002` | UAC                  | UAC richiede conferma per elevazione (`ConsentPromptBehaviorAdmin != 0`)    | Registro  |
+| `HOME-UAC-003` | UAC                  | UAC rileva installazioni applicazioni (`EnableInstallerDetection = 1`)      | Registro  |
+| `HOME-ACC-001` | Account              | Account Guest disabilitato (`SID -501`)                                     | Funzione  |
+| `HOME-ACC-002` | Account              | Account Administrator predefinito disabilitato (`SID -500`)                 | Funzione  |
+| `HOME-ACC-003` | Account              | Nessun account locale attivo senza password (`PasswordRequired`)            | Funzione  |
+| `HOME-UPD-001` | Aggiornamenti        | Aggiornamenti automatici Windows Update abilitati (`wuauserv`)              | Funzione  |
+| `HOME-UPD-002` | Aggiornamenti        | Server Windows Update ufficiale (nessun dirottamento WSUS non autorizzato)  | Funzione  |
+| `HOME-AV-001`  | Antivirus            | Protezione in tempo reale Windows Defender attiva                           | Funzione  |
+| `HOME-AV-002`  | Antivirus            | Definizioni antivirus aggiornate (`<= 7 giorni`)                            | Funzione  |
+| `HOME-AV-003`  | Antivirus            | Nessun virus o minaccia attiva rilevata da Windows Defender                 | Funzione  |
+| `HOME-AV-004`  | Antivirus            | Scansione file scaricati (`IOAV`) e monitoraggio comportamentale attivi     | Funzione  |
+| `HOME-AV-005`  | Antivirus            | Blocco applicazioni potenzialmente indesiderate (`PUAProtection = 1`)       | Funzione  |
+| `HOME-AV-006`  | Antivirus            | Protezione antimanomissione (`Tamper Protection`) e Cloud `MAPS` attive     | Funzione  |
+| `HOME-AV-007`  | Antivirus            | Scansione antivirus periodica eseguita negli ultimi 14 giorni               | Funzione  |
+| `HOME-AV-008`  | Antivirus            | Nessuna esclusione pericolosa di cartelle o estensioni in Defender          | Funzione  |
+| `HOME-FIL-001` | Controllo File       | Nessun file eseguibile camuffato con doppia estensione (`Download`/`Temp`)  | Funzione  |
+| `HOME-FIL-002` | Controllo File       | Nessun programma sospetto o offuscato nelle chiavi di avvio (`Run`)         | Funzione  |
+| `HOME-FIL-003` | Controllo File       | Integrita' del file `hosts` di Windows (nessun dirottamento sicurezza)      | Funzione  |
+| `HOME-SYS-001` | Impostazioni Windows | Estensioni dei file conosciuti visibili in Esplora file (`HideFileExt = 0`) | Funzione  |
+| `HOME-SYS-002` | Impostazioni Windows | AutoRun e AutoPlay disabilitati per le unita' rimovibili USB                | Funzione  |
+| `HOME-SYS-003` | Impostazioni Windows | Filtro Microsoft Defender SmartScreen attivo per app e file                 | Funzione  |
+| `HOME-SYS-004` | Impostazioni Windows | Isolamento core / Integrita' della memoria (`HVCI`) attivo                  | Funzione  |
+| `HOME-SYS-005` | Impostazioni Windows | Enumerazione anonima degli account locali (`SAM`) bloccata                  | Funzione  |
+| `HOME-RDP-001` | Desktop Remoto       | Desktop remoto disabilitato (`fDenyTSConnections = 1`)                      | Registro  |
+| `HOME-NET-001` | Rete                 | Protocollo SMBv1 disabilitato                                               | Funzione  |
+| `HOME-NET-002` | Rete                 | NetBIOS su TCP/IP disabilitato (`NetbiosOptions = 2`)                       | Funzione  |
+| `HOME-NET-003` | Rete                 | Protocollo multicast LLMNR disabilitato (`EnableMulticast = 0`)             | Funzione  |
+| `HOME-ENC-001` | Crittografia         | Crittografia BitLocker attiva sul disco di sistema                          | Funzione  |
+| `HOME-PRV-001` | Privacy              | Telemetria impostata al livello minimo (`AllowTelemetry <= 1`)              | Funzione  |
+| `HOME-SEC-001` | Sicurezza Avanzata   | Avvio protetto UEFI (Secure Boot) attivo                                    | Funzione  |
+| `HOME-SEC-002` | Sicurezza Avanzata   | Protezione LSA (`RunAsPPL`) abilitata                                       | Funzione  |
+| `HOME-SEC-003` | Sicurezza Avanzata   | PowerShell Script Block Logging abilitato                                   | Funzione  |
 
 ---
 

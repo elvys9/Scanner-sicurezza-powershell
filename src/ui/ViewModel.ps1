@@ -111,6 +111,86 @@ $script:RimediStaticiFetta = @{
         command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Name "EnableScriptBlockLogging" -Value 1 -Type DWord'
         risk    = "Molto basso: aumenta leggermente il volume dei log nel Visualizzatore eventi in cambio di una maggiore tracciabilita'."
     }
+    'HOME-UPD-002' = [PSCustomObject]@{
+        text    = "Se questo e' un PC domestico e non aziendale, rimuovi eventuali reindirizzamenti WSUS non autorizzati in modo che Windows scarichi gli aggiornamenti direttamente dai server ufficiali Microsoft."
+        command = 'Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "WUServer" -ErrorAction SilentlyContinue'
+        risk    = "Basso su PC domestici: ripristina l'uso dei server ufficiali di Windows Update."
+    }
+    'HOME-AV-003' = [PSCustomObject]@{
+        text    = "Apri Sicurezza di Windows -> Protezione da virus e minacce -> Cronologia della protezione oppure avvia una scansione completa e rimuovi/metti in quarantena le minacce rilevate."
+        command = 'Start-MpScan -ScanType QuickScan'
+        risk    = "Nessun rischio: rimuove o isola i file infetti rilevati da Windows Defender."
+    }
+    'HOME-AV-004' = [PSCustomObject]@{
+        text    = "Riattiva il monitoraggio comportamentale e la scansione dei file scaricati (IOAV) nelle preferenze di Windows Defender."
+        command = 'Set-MpPreference -DisableBehaviorMonitoring $false -DisableIOAVProtection $false'
+        risk    = "Molto basso: garantisce che i file scaricati da browser ed email vengano analizzati subito."
+    }
+    'HOME-AV-005' = [PSCustomObject]@{
+        text    = "Imposta la protezione contro le applicazioni potenzialmente indesiderate (PUA) in modalita' Blocco (valore 1) in Sicurezza di Windows -> Controllo delle app e del browser -> Impostazioni di protezione basata sulla reputazione."
+        command = 'Set-MpPreference -PUAProtection Enabled'
+        risk    = "Basso: potrebbe bloccare installer che includono adware o software pubblicitari indesiderati."
+    }
+    'HOME-AV-006' = [PSCustomObject]@{
+        text    = "Attiva la Protezione antimanomissione in Sicurezza di Windows -> Protezione da virus e minacce -> Impostazioni -> Gestisci impostazioni e abilita la protezione fornita dal cloud (MAPS)."
+        command = 'Set-MpPreference -MAPSReporting Advanced'
+        risk    = "Molto basso: migliora il rilevamento di minacce zero-day e impedisce a programmi esterni di disattivare Defender."
+    }
+    'HOME-AV-007' = [PSCustomObject]@{
+        text    = "Esegui una scansione rapida o completa con Windows Defender per verificare lo stato dei file sul disco."
+        command = 'Start-MpScan -ScanType QuickScan'
+        risk    = "Nessun rischio: la scansione rapida dura pochi minuti e non interrompe il lavoro."
+    }
+    'HOME-AV-008' = [PSCustomObject]@{
+        text    = "Controlla e rimuovi le esclusioni sospette in Sicurezza di Windows -> Protezione da virus e minacce -> Impostazioni -> Aggiungi o rimuovi esclusioni. Non escludere mai C:\, Downloads, Temp o estensioni .exe/.ps1."
+        command = 'Get-MpPreference | Select-Object -ExpandProperty ExclusionPath'
+        risk    = "Basso: rimuovere esclusioni ampie ripristina il controllo antivirus su tutte le cartelle del disco."
+    }
+    'HOME-FIL-001' = [PSCustomObject]@{
+        text    = "Verifica i file con doppia estensione (es. .pdf.exe, .jpg.scr) segnalati nelle cartelle Download, Desktop o Temp: non aprirli ed eliminali se non riconosciuti."
+        command = 'Get-ChildItem "$env:USERPROFILE\Downloads","$env:USERPROFILE\Desktop","$env:TEMP" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "\.(pdf|doc|docx|jpg|png|txt|zip)\.(exe|scr|bat|cmd|vbs|js|ps1|hta)$" } | Select-Object FullName, Length, LastWriteTime'
+        risk    = "Nessun rischio: il comando elenca in sola lettura i file sospetti per consentirti di verificarli."
+    }
+    'HOME-FIL-002' = [PSCustomObject]@{
+        text    = "Apri Gestione attivita' (Task Manager) -> App di avvio oppure controlla le chiavi di registro Run/RunOnce per disabilitare o rimuovere i programmi sospetti che puntano a cartelle Temp o usano comandi offuscati."
+        command = 'Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run","HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -ErrorAction SilentlyContinue'
+        risk    = "Basso: rimuovere voci di avvio automatico sconosciute o malevole impedisce la persistenza al riavvio."
+    }
+    'HOME-FIL-003' = [PSCustomObject]@{
+        text    = "Controlla il file C:\Windows\System32\drivers\etc\hosts con il Blocco note (avviato come amministratore) e rimuovi eventuali righe che bloccano o dirottano siti di sicurezza o Microsoft."
+        command = 'Get-Content "$env:SystemRoot\System32\drivers\etc\hosts" | Where-Object { $_.Trim() -ne "" -and (-not $_.Trim().StartsWith("#")) }'
+        risk    = "Basso: il file hosts predefinito di Windows non contiene alcuna riga attiva."
+    }
+    'HOME-SYS-001' = [PSCustomObject]@{
+        text    = "In Esplora file di Windows 11 clicca su Visualizza -> Mostra -> Estensioni nomi file (oppure imposta HideFileExt = 0)."
+        command = 'Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 0'
+        risk    = "Nessun rischio: rende visibile la vera estensione di tutti i file (es. .exe, .pdf, .docx)."
+    }
+    'HOME-SYS-002' = [PSCustomObject]@{
+        text    = "Disattiva AutoPlay da Impostazioni -> Bluetooth e dispositivi -> AutoPlay per impedire l'avvio automatico di contenuti da chiavette USB e unita' rimovibili."
+        command = 'Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers" -Name "DisableAutoplay" -Value 1 -Type DWord'
+        risk    = "Molto basso: quando inserisci una chiavetta USB dovrai aprirla manualmente da Esplora file."
+    }
+    'HOME-SYS-003' = [PSCustomObject]@{
+        text    = "Attiva SmartScreen in Sicurezza di Windows -> Controllo delle app e del browser -> Impostazioni di protezione basata sulla reputazione."
+        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" -Name "EnableWebContentEvaluation" -Value 1 -Type DWord'
+        risk    = "Molto basso: protegge da applicazioni e siti di phishing noti."
+    }
+    'HOME-SYS-004' = [PSCustomObject]@{
+        text    = "Attiva l'Integrita' della memoria in Sicurezza di Windows -> Sicurezza dispositivi -> Dettagli isolamento core -> Integrita' della memoria e riavvia il PC."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -Value 1 -Type DWord'
+        risk    = "Medio: richiede il riavvio; alcuni vecchi driver di periferiche non certificati potrebbero non essere compatibili."
+    }
+    'HOME-SYS-005' = [PSCustomObject]@{
+        text    = "Blocca l'enumerazione anonima degli account SAM impostando RestrictAnonymousSAM a 1 nella chiave LSA."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "RestrictAnonymousSAM" -Value 1 -Type DWord'
+        risk    = "Molto basso: e' l'impostazione di sicurezza raccomandata su tutte le versioni moderne di Windows."
+    }
+    'HOME-NET-003' = [PSCustomObject]@{
+        text    = "Disabilita il protocollo multicast LLMNR impostando EnableMulticast = 0 nella policy DNSClient."
+        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Name "EnableMulticast" -Value 0 -Type DWord'
+        risk    = "Basso: le reti moderne utilizzano DNS standard anziche' LLMNR."
+    }
 }
 
 function Get-ValoreProprietaSicuro {

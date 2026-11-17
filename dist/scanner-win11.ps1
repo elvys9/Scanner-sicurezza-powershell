@@ -21,7 +21,7 @@ $script:CatalogoJsonIncorporato = @'
   "schema_version": "0.2",
   "profile": {
     "name": "home",
-    "description": "Profilo di sicurezza per utenti domestici Windows 11",
+    "description": "Profilo di sicurezza completo per utenti domestici Windows 11 (Antivirus, File, Persistenza e Impostazioni di Sistema)",
     "target_os": "Windows 11"
   },
   "controls": [
@@ -185,6 +185,24 @@ $script:CatalogoJsonIncorporato = @'
       ]
     },
     {
+      "id": "HOME-UPD-002",
+      "title": "Server Windows Update ufficiale (nessun dirottamento WSUS)",
+      "category": "Aggiornamenti",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che gli aggiornamenti di Windows non siano rediretti verso un server WSUS esterno non autorizzato (WUServer).",
+      "rationale": "Un malware puo' impostare un falso server di aggiornamento per bloccare le patch di sicurezza di Microsoft.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-WindowsUpdateAuthenticServer"
+      },
+      "references": [
+        "Microsoft Security Baseline Windows 11"
+      ]
+    },
+    {
       "id": "HOME-AV-001",
       "title": "Protezione in tempo reale attiva",
       "category": "Antivirus",
@@ -218,6 +236,258 @@ $script:CatalogoJsonIncorporato = @'
       },
       "references": [
         "CIS Benchmark Windows 11 - 18.9.47"
+      ]
+    },
+    {
+      "id": "HOME-AV-003",
+      "title": "Nessun virus o minaccia attiva rilevata da Defender",
+      "category": "Antivirus",
+      "severity": "critico",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Interroga il catalogo delle minacce di Windows Defender (Get-MpThreat / Get-MpThreatDetection) per verificare che non vi siano virus o malware attivi.",
+      "rationale": "La presenza di minacce attive indica un'infezione in corso o un file malevolo non ancora messo in quarantena.",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderNoActiveThreats"
+      },
+      "references": [
+        "Microsoft Defender Antivirus Threat Detection"
+      ]
+    },
+    {
+      "id": "HOME-AV-004",
+      "title": "Scansione file scaricati (IOAV) e monitoraggio comportamentale attivi",
+      "category": "Antivirus",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che BehaviorMonitorEnabled e IoavProtectionEnabled siano attivi in Windows Defender.",
+      "rationale": "La protezione IOAV analizza automaticamente tutti i file scaricati dal browser o allegati email, mentre il monitoraggio comportamentale blocca ransomware e attacchi sospetti.",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderBehaviorAndIoav"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.47.4"
+      ]
+    },
+    {
+      "id": "HOME-AV-005",
+      "title": "Blocco applicazioni potenzialmente indesiderate (PUA) attivo",
+      "category": "Antivirus",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che PUAProtection sia impostato su 1 (Blocco) nelle preferenze di Windows Defender.",
+      "rationale": "La protezione PUA blocca adware, cryptominer, barre degli strumenti invasive e software indesiderati inclusi nei programmi scaricati da Internet.",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderPuaProtection"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.47.11"
+      ]
+    },
+    {
+      "id": "HOME-AV-006",
+      "title": "Protezione antimanomissione (Tamper Protection) e Cloud MAPS attive",
+      "category": "Antivirus",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che IsTamperProtected sia True e che MAPSReporting (Cloud Protection) sia abilitato.",
+      "rationale": "La protezione antimanomissione impedisce ai virus di disattivare Windows Defender tramite registro o comandi, mentre il Cloud MAPS blocca i nuovi malware zero-day.",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderTamperAndCloud"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.47.5"
+      ]
+    },
+    {
+      "id": "HOME-AV-007",
+      "title": "Scansione antivirus periodica eseguita negli ultimi 14 giorni",
+      "category": "Antivirus",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che una scansione rapida o completa dei file sia stata completata negli ultimi 14 giorni.",
+      "rationale": "Le scansioni periodiche individuano minacce dormienti sui file salvati sul disco prima dell'ultimo aggiornamento delle firme.",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderRecentScan"
+      },
+      "references": [
+        "Microsoft Defender Antivirus Scheduled Scan"
+      ]
+    },
+    {
+      "id": "HOME-AV-008",
+      "title": "Nessuna esclusione pericolosa di cartelle o estensioni in Defender",
+      "category": "Antivirus",
+      "severity": "critico",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che non siano state escluse dalla scansione antivirus intere unita' (C:\\), cartelle utente (Downloads, Temp, Windows) o estensioni eseguibili (.exe, .ps1, .bat).",
+      "rationale": "Molti trojan e stealer aggiungono l'intera cartella Utenti, Download o l'estensione .exe alle esclusioni di Defender per agire indisturbati.",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderSafeExclusions"
+      },
+      "references": [
+        "MITRE ATT&CK T1562.001 - Disable or Modify Tools"
+      ]
+    },
+    {
+      "id": "HOME-FIL-001",
+      "title": "Nessun file eseguibile camuffato con doppia estensione (Download, Desktop, Temp)",
+      "category": "Controllo File",
+      "severity": "critico",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Scansiona in sola lettura le cartelle Download, Desktop e Temp alla ricerca di file eseguibili camuffati con doppia estensione (es. fattura.pdf.exe, foto.jpg.scr, doc.txt.vbs).",
+      "rationale": "La doppia estensione e' una delle tecniche piu' usate per indurre l'utente ad aprire un virus convinto che si tratti di un documento PDF o di un'immagine.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-SuspiciousDoubleExtensionFiles"
+      },
+      "references": [
+        "MITRE ATT&CK T1036.007 - Double File Extension"
+      ]
+    },
+    {
+      "id": "HOME-FIL-002",
+      "title": "Nessun programma sospetto o offuscato nelle chiavi di avvio automatico (Run)",
+      "category": "Controllo File",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Analizza le voci di avvio automatico nel registro (HKCU/HKLM Run e RunOnce) verificando l'assenza di eseguibili in cartelle Temp o comandi PowerShell/script offuscati.",
+      "rationale": "I malware si registrano nelle chiavi Run puntando a cartelle temporanee o usando comandi nascosti (-w hidden, -enc, mshta, wscript) per riavviarsi a ogni accensione del PC.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-StartupPersistenceEntries"
+      },
+      "references": [
+        "MITRE ATT&CK T1547.001 - Registry Run Keys / Startup Folder"
+      ]
+    },
+    {
+      "id": "HOME-FIL-003",
+      "title": "Integrita' del file hosts di Windows (nessun dirottamento siti di sicurezza)",
+      "category": "Controllo File",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Analizza il file C:\\Windows\\System32\\drivers\\etc\\hosts verificando che non siano bloccati o dirottati domini di Windows Update, Microsoft o siti antivirus.",
+      "rationale": "Alcuni malware modificano il file hosts per impedire al PC di scaricare aggiornamenti di sicurezza o contattare i siti dei produttori di antivirus.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-HostsFileIntegrity"
+      },
+      "references": [
+        "MITRE ATT&CK T1565.001 - Stored Data Manipulation"
+      ]
+    },
+    {
+      "id": "HOME-SYS-001",
+      "title": "Estensioni dei file conosciuti visibili in Esplora file",
+      "category": "Impostazioni Windows",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che HideFileExt sia impostato a 0 in HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced.",
+      "rationale": "Mostrare sempre le estensioni dei file in Esplora file permette all'utente di accorgersi subito se un file e' in realta' un programma eseguibile (.exe, .scr, .bat).",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-FileExtensionsVisible"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - User Explorer Settings"
+      ]
+    },
+    {
+      "id": "HOME-SYS-002",
+      "title": "AutoRun e AutoPlay disabilitati per le unita' rimovibili USB",
+      "category": "Impostazioni Windows",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che l'esecuzione automatica all'inserimento di chiavette USB o dischi esterni sia disattivata (NoDriveTypeAutoRun >= 145 o DisableAutoplay = 1).",
+      "rationale": "Disattivare AutoRun e AutoPlay impedisce l'avvio automatico di malware presenti su chiavette USB infette.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-AutorunDisabled"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.8.3"
+      ]
+    },
+    {
+      "id": "HOME-SYS-003",
+      "title": "Filtro Microsoft Defender SmartScreen attivo per app e file",
+      "category": "Impostazioni Windows",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che SmartScreen per Esplora file e per le applicazioni web (EnableWebContentEvaluation) sia attivo.",
+      "rationale": "SmartScreen avvisa l'utente prima di eseguire programmi sconosciuti o potenzialmente malevoli scaricati da Internet.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-SmartScreenEnabled"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.85.1"
+      ]
+    },
+    {
+      "id": "HOME-SYS-004",
+      "title": "Isolamento core / Integrita' della memoria (HVCI) attivo",
+      "category": "Impostazioni Windows",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che Hypervisor-Enforced Code Integrity (HVCI) sia abilitato nel registro DeviceGuard.",
+      "rationale": "L'integrita' della memoria usa la virtualizzazione hardware per impedire l'iniezione di codice malevolo nei processi ad alta sicurezza del kernel di Windows.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-MemoryIntegrityEnabled"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.5.2"
+      ]
+    },
+    {
+      "id": "HOME-SYS-005",
+      "title": "Enumerazione anonima degli account locali (SAM) bloccata",
+      "category": "Impostazioni Windows",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che il valore RestrictAnonymousSAM in HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa sia impostato a 1.",
+      "rationale": "Impedisce a utenti non autenticati sulla rete locale di elencare i nomi degli account presenti sul computer.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-AnonymousSamRestricted"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 2.3.10.2"
       ]
     },
     {
@@ -276,6 +546,24 @@ $script:CatalogoJsonIncorporato = @'
       },
       "references": [
         "CIS Benchmark Windows 11 - 18.5"
+      ]
+    },
+    {
+      "id": "HOME-NET-003",
+      "title": "Protocollo multicast LLMNR disabilitato",
+      "category": "Rete",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che il protocollo Link-Local Multicast Name Resolution (EnableMulticast = 0) sia disabilitato.",
+      "rationale": "LLMNR e' vulnerabile ad attacchi di avvelenamento (es. Responder) su reti locali e Wi-Fi condivise che permettono il furto degli hash delle password.",
+      "check": {
+        "command_ref": "Network.ps1#Test-LlmnrDisabled"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.5.4.2"
       ]
     },
     {
@@ -2159,12 +2447,18 @@ function Test-AccountsPasswordRequired {
 # =============================================================================
 <#
 .SYNOPSIS
-    Controlli di sicurezza relativi a Windows Defender Antivirus.
+    Controlli di sicurezza relativi a Windows Defender Antivirus e protezione minacce.
 
 .DESCRIPTION
     Contiene i controlli per:
     - HOME-AV-001: Protezione in tempo reale attiva (Test-DefenderRealtime)
     - HOME-AV-002: Definizioni antivirus aggiornate negli ultimi 7 giorni (Test-DefenderSignatures)
+    - HOME-AV-003: Nessuna minaccia attiva o rilevata sui file (Test-DefenderNoActiveThreats)
+    - HOME-AV-004: Scansione file scaricati (IOAV) e monitoraggio comportamentale attivi (Test-DefenderBehaviorAndIoav)
+    - HOME-AV-005: Protezione da applicazioni potenzialmente indesiderate PUA attiva (Test-DefenderPuaProtection)
+    - HOME-AV-006: Protezione antimanomissione (Tamper Protection) e Cloud MAPS attive (Test-DefenderTamperAndCloud)
+    - HOME-AV-007: Scansione antivirus eseguita negli ultimi 14 giorni (Test-DefenderRecentScan)
+    - HOME-AV-008: Nessuna esclusione pericolosa in Windows Defender (Test-DefenderSafeExclusions)
     Non modifica mai lo stato del sistema.
 #>
 
@@ -2174,12 +2468,6 @@ function Test-DefenderRealtime {
     <#
     .SYNOPSIS
         Verifica che la protezione in tempo reale di Windows Defender sia attiva.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -2224,7 +2512,6 @@ function Test-DefenderRealtime {
         $risultato.Error    = $_.Exception.Message
     }
     catch {
-        # Fallback su lettura del registro di Windows Defender se CIM non e' raggiungibile
         try {
             $regDef = 'HKLM:\SOFTWARE\Microsoft\Windows Defender'
             $regRt  = 'HKLM:\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection'
@@ -2258,9 +2545,7 @@ function Test-DefenderRealtime {
                 return $risultato
             }
         }
-        catch {
-            # Ignora errore fallback e gestisci sotto
-        }
+        catch { }
 
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
@@ -2280,12 +2565,6 @@ function Test-DefenderSignatures {
     <#
     .SYNOPSIS
         Verifica che le definizioni di Windows Defender siano aggiornate (<= 7 giorni).
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -2328,7 +2607,6 @@ function Test-DefenderSignatures {
         $risultato.Error    = $_.Exception.Message
     }
     catch {
-        # Fallback su registro Signature Updates
         try {
             $regSig = 'HKLM:\SOFTWARE\Microsoft\Windows Defender\Signature Updates'
             if (Test-Path -LiteralPath $regSig) {
@@ -2361,9 +2639,7 @@ function Test-DefenderSignatures {
                 }
             }
         }
-        catch {
-            # Ignora errore fallback
-        }
+        catch { }
 
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
@@ -2374,6 +2650,687 @@ function Test-DefenderSignatures {
             $risultato.Status = 'errore'
             $risultato.Error  = $_.Exception.Message
         }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderNoActiveThreats {
+    <#
+    .SYNOPSIS
+        Verifica che Windows Defender non abbia rilevato minacce o malware attivi sui file.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 minacce attive rilevate da Windows Defender"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $rilevamenti = @(Get-MpThreatDetection -ErrorAction Stop)
+        $minacceCat  = @(Get-MpThreat -ErrorAction SilentlyContinue)
+
+        $minacceAttive = @()
+        foreach ($m in $minacceCat) {
+            if ($null -ne $m.PSObject.Properties['IsActive'] -and $m.IsActive) {
+                $nomeMinaccia = if ($null -ne $m.PSObject.Properties['ThreatName']) { [string]$m.ThreatName } else { 'Minaccia' }
+                $minacceAttive += $nomeMinaccia
+            }
+        }
+
+        $risultato.Evidence = @{
+            TotaleRilevamentiStorici = $rilevamenti.Count
+            MinacceAttiveCount       = $minacceAttive.Count
+            MinacceAttive            = $minacceAttive
+        }
+
+        if ($minacceAttive.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna minaccia attiva presente sul sistema (0 minacce attive)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevate $($minacceAttive.Count) minacce attive: $($minacceAttive -join ', ')"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpThreatDetection non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per interrogare il catalogo minacce di Defender"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderBehaviorAndIoav {
+    <#
+    .SYNOPSIS
+        Verifica che il monitoraggio comportamentale e la scansione dei file scaricati (IOAV) siano attivi.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "BehaviorMonitorEnabled = True e IoavProtectionEnabled = True"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $statoMp = Get-MpComputerStatus -ErrorAction Stop
+        $behav = [bool]$statoMp.BehaviorMonitorEnabled
+        $ioav  = [bool]$statoMp.IoavProtectionEnabled
+
+        $risultato.Evidence = @{
+            BehaviorMonitorEnabled = $behav
+            IoavProtectionEnabled  = $ioav
+        }
+
+        if ($behav -and $ioav) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Monitoraggio comportamentale e scansione file scaricati attivi"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "BehaviorMonitorEnabled=$behav, IoavProtectionEnabled=$ioav"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpComputerStatus non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per interrogare Windows Defender"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderPuaProtection {
+    <#
+    .SYNOPSIS
+        Verifica che il blocco delle applicazioni potenzialmente indesiderate (PUAProtection = 1) sia attivo.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "PUAProtection = 1 (Blocco attivo)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $pua = [int]$pref.PUAProtection
+
+        $risultato.Evidence = @{
+            PUAProtection = $pua
+        }
+
+        if ($pua -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Protezione PUA attiva in modalita' blocco (PUAProtection = 1)"
+        }
+        elseif ($pua -eq 2) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Protezione PUA solo in modalita' audit, non blocca i file (PUAProtection = 2)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Protezione PUA disattivata (PUAProtection = $pua)"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per leggere le preferenze PUA di Defender"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderTamperAndCloud {
+    <#
+    .SYNOPSIS
+        Verifica che la protezione antimanomissione (IsTamperProtected) e la protezione Cloud (MAPSReporting) siano attive.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "IsTamperProtected = True e MAPSReporting >= 1"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $statoMp = Get-MpComputerStatus -ErrorAction Stop
+        $pref    = Get-MpPreference -ErrorAction Stop
+
+        $tamper = [bool]$statoMp.IsTamperProtected
+        $maps   = [int]$pref.MAPSReporting
+
+        $risultato.Evidence = @{
+            IsTamperProtected = $tamper
+            MAPSReporting     = $maps
+        }
+
+        if ($tamper -and ($maps -ge 1)) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Tamper Protection attiva e Cloud MAPS abilitato (livello $maps)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "IsTamperProtected=$tamper, MAPSReporting=$maps"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Cmdlet di Windows Defender non disponibili"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare Tamper Protection e Cloud MAPS"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderRecentScan {
+    <#
+    .SYNOPSIS
+        Verifica che una scansione antivirus (rapida o completa) sia stata eseguita negli ultimi 14 giorni.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Scansione rapida o completa eseguita negli ultimi 14 giorni"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $statoMp = Get-MpComputerStatus -ErrorAction Stop
+        $quickAge = [uint32]$statoMp.QuickScanAge
+        $fullAge  = [uint32]$statoMp.FullScanAge
+
+        $risultato.Evidence = @{
+            QuickScanAge = $quickAge
+            FullScanAge  = $fullAge
+        }
+
+        $minAge = if ($quickAge -lt $fullAge) { $quickAge } else { $fullAge }
+
+        if ($minAge -le 14) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Ultima scansione eseguita $minAge giorni fa"
+        }
+        elseif ($minAge -eq [uint32]::MaxValue) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Nessuna scansione periodica registrata di recente"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Ultima scansione risale a $minAge giorni fa (soglia consigliata: <= 14 giorni)"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpComputerStatus non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare la data dell'ultima scansione"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderSafeExclusions {
+    <#
+    .SYNOPSIS
+        Verifica che non vi siano esclusioni pericolose (es. C:\, Downloads, .exe, .ps1) in Windows Defender.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessuna cartella critica o estensione eseguibile esclusa da Windows Defender"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $paths = @()
+        if ($null -ne $pref.ExclusionPath) {
+            $paths = @($pref.ExclusionPath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+        $exts = @()
+        if ($null -ne $pref.ExclusionExtension) {
+            $exts = @($pref.ExclusionExtension | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+
+        # Se non si e' amministratori, Defender restituisce il messaggio "N/A: Must be an administrator..."
+        if (($paths.Count -gt 0 -and $paths[0] -match 'Must be an administrator|amministratore') -or
+            ($exts.Count -gt 0 -and $exts[0] -match 'Must be an administrator|amministratore')) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Richiede privilegi di amministratore per leggere l'elenco delle esclusioni di Defender"
+            $risultato.Evidence = @{ RichiedeAdmin = $true }
+            return $risultato
+        }
+
+        $esclusioniPericolose = @()
+        foreach ($p in $paths) {
+            $pNorm = $p.TrimEnd('\')
+            if ($pNorm -match '^[A-Za-z]:$' -or
+                $pNorm -match '(?i)\\Windows$' -or
+                $pNorm -match '(?i)\\Users$' -or
+                $pNorm -match '(?i)\\Downloads$' -or
+                $pNorm -match '(?i)\\Temp$' -or
+                $pNorm -match '(?i)\\AppData$') {
+                $esclusioniPericolose += "Percorso: $p"
+            }
+        }
+
+        foreach ($e in $exts) {
+            $eNorm = $e.Trim().TrimStart('.').ToLowerInvariant()
+            if ($eNorm -in @('exe', 'dll', 'ps1', 'bat', 'cmd', 'vbs', 'js', 'scr', 'hta', 'msi', '*')) {
+                $esclusioniPericolose += "Estensione: .$eNorm"
+            }
+        }
+
+        $risultato.Evidence = @{
+            ExclusionPathCount      = $paths.Count
+            ExclusionExtensionCount = $exts.Count
+            EsclusioniPericolose    = $esclusioniPericolose
+        }
+
+        if ($esclusioniPericolose.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna esclusione critica trovata ($($paths.Count) percorsi, $($exts.Count) estensioni)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Esclusioni ad alto rischio rilevate: $($esclusioniPericolose -join '; ')"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare le esclusioni di Windows Defender"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+# =============================================================================
+# MODULO: src\core\Checks\FileSecurity.ps1
+# =============================================================================
+<#
+.SYNOPSIS
+    Controlli di sicurezza sui file locali, avvio automatico (persistenza) e file hosts.
+
+.DESCRIPTION
+    Contiene i controlli in sola lettura per:
+    - HOME-FIL-001: Scansione file sospetti con doppia estensione in Download, Desktop e Temp (Test-SuspiciousDoubleExtensionFiles)
+    - HOME-FIL-002: Verifica voci di avvio automatico (Run/RunOnce) contro persistenza malware (Test-StartupPersistenceEntries)
+    - HOME-FIL-003: Integrita' del file hosts di Windows contro dirottamenti DNS (Test-HostsFileIntegrity)
+    Non modifica mai lo stato del sistema.
+#>
+
+Set-StrictMode -Version 2
+
+function Test-SuspiciousDoubleExtensionFiles {
+    <#
+    .SYNOPSIS
+        Scansiona in sola lettura le cartelle Download, Desktop e Temp alla ricerca di file
+        eseguibili camuffati con doppia estensione (es. documento.pdf.exe, foto.jpg.scr).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string[]]$CartelleDaControllare = @()
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 file eseguibili camuffati con doppia estensione in Download, Desktop e Temp"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        if ($null -eq $CartelleDaControllare -or $CartelleDaControllare.Count -eq 0) {
+            $profiloUtente = [Environment]::GetFolderPath('UserProfile')
+            $CartelleDaControllare = @(
+                (Join-Path $profiloUtente 'Downloads'),
+                (Join-Path $profiloUtente 'Desktop'),
+                [System.IO.Path]::GetTempPath()
+            )
+        }
+
+        # Pattern doppia estensione: (estensione documento/media/archivio) seguita da (estensione eseguibile/script)
+        $patternDoppiaEstensione = '(?i)\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|rtf|jpg|jpeg|png|gif|bmp|mp3|mp4|avi|zip|rar|7z)\.(exe|scr|bat|cmd|vbs|vbe|js|jse|wsf|wsh|ps1|hta|com|pif)$'
+
+        $fileSospetti   = @()
+        $totaleAnalizzati = 0
+
+        foreach ($cartella in $CartelleDaControllare) {
+            if ([string]::IsNullOrWhiteSpace($cartella)) { continue }
+            if (-not (Test-Path -LiteralPath $cartella)) { continue }
+
+            $elementi = @(Get-ChildItem -LiteralPath $cartella -File -ErrorAction SilentlyContinue | Select-Object -First 1000)
+            foreach ($file in $elementi) {
+                $totaleAnalizzati++
+                if ($file.Name -match $patternDoppiaEstensione) {
+                    $fileSospetti += $file.FullName
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            CartelleAnalizzate = $CartelleDaControllare
+            FileAnalizzati     = $totaleAnalizzati
+            FileSospetti       = $fileSospetti
+        }
+
+        if ($fileSospetti.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessun file con doppia estensione sospetta rilevato ($totaleAnalizzati file controllati)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $nomiBrevi = @($fileSospetti | ForEach-Object { Split-Path -Leaf $_ })
+            $risultato.Observed = "Trovati $($fileSospetti.Count) file sospetti con doppia estensione: $($nomiBrevi -join ', ')"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-StartupPersistenceEntries {
+    <#
+    .SYNOPSIS
+        Analizza le chiavi di avvio automatico (Run / RunOnce) alla ricerca di comandi
+        sospetti (esecuzione da Temp, PowerShell offuscato -enc, mshta, wscript).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessuna voce di avvio automatico sospetta o offuscata nelle chiavi Run/RunOnce"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaviRun = @(
+            'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run',
+            'HKCU:\Software\Microsoft\Windows\CurrentVersion\RunOnce',
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run',
+            'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce'
+        )
+
+        $patternSospetto = '(?i)(-enc|-EncodedCommand|-w\s+hidden|-WindowStyle\s+Hidden|mshta\.exe|wscript\.exe|cscript\.exe|regsvr32\.exe\s+/s|\\AppData\\Local\\Temp\\|\\Windows\\Temp\\)'
+
+        $vociTotali   = @()
+        $vociSospette = @()
+
+        foreach ($percorso in $chiaviRun) {
+            if (-not (Test-Path -LiteralPath $percorso)) { continue }
+
+            $prop = Get-ItemProperty -LiteralPath $percorso -ErrorAction SilentlyContinue
+            if ($null -eq $prop) { continue }
+
+            foreach ($p in $prop.PSObject.Properties) {
+                if ($p.Name -in @('PSPath', 'PSParentPath', 'PSChildName', 'PSDrive', 'PSProvider')) {
+                    continue
+                }
+                $valoreCmd = [string]$p.Value
+                $voceDesc  = "$($p.Name) = $valoreCmd"
+                $vociTotali += $voceDesc
+
+                if ($valoreCmd -match $patternSospetto) {
+                    $vociSospette += "$($p.Name) ($percorso)"
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            TotaleVociRun = $vociTotali.Count
+            VociSospette  = $vociSospette
+        }
+
+        if ($vociSospette.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna voce sospetta rilevata tra i $($vociTotali.Count) programmi in avvio automatico"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevate $($vociSospette.Count) voci di avvio automatico sospette: $($vociSospette -join '; ')"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-HostsFileIntegrity {
+    <#
+    .SYNOPSIS
+        Verifica che il file hosts di Windows non contenga dirottamenti di domini di sicurezza
+        o Windows Update.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$PercorsoHosts = ''
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessun dirottamento di domini Microsoft o antivirus nel file hosts"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($PercorsoHosts)) {
+            $sysRoot = if ($env:SystemRoot) { $env:SystemRoot } else { 'C:\Windows' }
+            $PercorsoHosts = Join-Path $sysRoot 'System32\drivers\etc\hosts'
+        }
+
+        if (-not (Test-Path -LiteralPath $PercorsoHosts)) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "File hosts non presente (nessun dirottamento attivo)"
+            return $risultato
+        }
+
+        $righe = @(Get-Content -LiteralPath $PercorsoHosts -Encoding UTF8 -ErrorAction Stop)
+        $righeAttive = @()
+        $righeSospette = @()
+
+        $patternDominiSensibili = '(?i)(windowsupdate\.com|update\.microsoft\.com|microsoft\.com|defender|virustotal\.com|malwarebytes\.com|kaspersky|bitdefender|avast|Norton|mcafee)'
+
+        foreach ($riga in $righe) {
+            $trimmed = $riga.Trim()
+            if ($trimmed -eq '' -or $trimmed.StartsWith('#')) {
+                continue
+            }
+            # Ignora le voci standard di localhost
+            if ($trimmed -match '^(127\.0\.0\.1|::1)\s+localhost(\s|$)') {
+                continue
+            }
+            $righeAttive += $trimmed
+            if ($trimmed -match $patternDominiSensibili) {
+                $righeSospette += $trimmed
+            }
+        }
+
+        $risultato.Evidence = @{
+            Percorso            = $PercorsoHosts
+            VociPersonalizzate  = $righeAttive.Count
+            DirottamentiSospetti= $righeSospette
+        }
+
+        if ($righeSospette.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "File hosts integro ($($righeAttive.Count) voci personalizzate, 0 dirottamenti di sicurezza)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevati $($righeSospette.Count) dirottamenti sospetti nel file hosts: $($righeSospette -join '; ')"
+        }
+    }
+    catch [System.UnauthorizedAccessException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato in lettura al file hosts"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
     }
 
     return $risultato
@@ -2582,22 +3539,94 @@ function Test-NetbiosDisabled {
     return $risultato
 }
 
+function Test-LlmnrDisabled {
+    <#
+    .SYNOPSIS
+        Verifica che il protocollo LLMNR (Link-Local Multicast Name Resolution) sia disabilitato (EnableMulticast = 0).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "EnableMulticast = 0 in HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoDns = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
+        if (-not (Test-Path -LiteralPath $percorsoDns)) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Policy DNSClient non configurata (LLMNR attivo per impostazione predefinita)"
+            $risultato.Evidence = @{ Path = $percorsoDns; KeyExists = $false }
+            return $risultato
+        }
+
+        $propDns = Get-ItemProperty -LiteralPath $percorsoDns -ErrorAction Stop
+        $valore = if ($null -ne $propDns.PSObject.Properties['EnableMulticast'] -and $null -ne $propDns.EnableMulticast) {
+            [int]$propDns.EnableMulticast
+        }
+        else {
+            1
+        }
+
+        $risultato.Evidence = @{
+            Path            = $percorsoDns
+            EnableMulticast = $valore
+        }
+
+        if ($valore -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "LLMNR disabilitato (EnableMulticast = 0)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "LLMNR abilitato (EnableMulticast = $valore)"
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alla chiave DNSClient"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
 # =============================================================================
 # MODULO: src\core\Checks\SystemSecurity.ps1
 # =============================================================================
 <#
 .SYNOPSIS
     Controlli di sicurezza di sistema: Windows Update, BitLocker, Telemetria,
-    Secure Boot, Protezione LSA e PowerShell Script Block Logging.
+    Secure Boot, Protezione LSA, PowerShell Script Block Logging e Impostazioni Windows.
 
 .DESCRIPTION
     Contiene i controlli per:
     - HOME-UPD-001: Aggiornamenti automatici abilitati (Test-WindowsUpdateEnabled)
+    - HOME-UPD-002: Server Windows Update autentico (Test-WindowsUpdateAuthenticServer)
     - HOME-ENC-001: BitLocker attivo sul disco di sistema (Test-BitLockerSystemDrive)
     - HOME-PRV-001: Telemetria impostata al livello minimo (Test-TelemetryMinimum)
     - HOME-SEC-001: Avvio protetto Secure Boot attivo (Test-SecureBoot)
     - HOME-SEC-002: Protezione LSA abilitata RunAsPPL (Test-LsaProtection)
     - HOME-SEC-003: PowerShell Script Block Logging abilitato (Test-PsScriptBlockLogging)
+    - HOME-SYS-001: Visibilita' estensioni file conosciuti in Esplora file (Test-FileExtensionsVisible)
+    - HOME-SYS-002: AutoRun / AutoPlay disabilitato per unita' rimovibili (Test-AutorunDisabled)
+    - HOME-SYS-003: Filtro Microsoft Defender SmartScreen attivo (Test-SmartScreenEnabled)
+    - HOME-SYS-004: Isolamento core / Integrita' della memoria HVCI attivo (Test-MemoryIntegrityEnabled)
+    - HOME-SYS-005: Accesso anonimo SAM bloccato (Test-AnonymousSamRestricted)
     Non modifica mai lo stato del sistema.
 #>
 
@@ -2608,12 +3637,6 @@ function Test-WindowsUpdateEnabled {
     .SYNOPSIS
         Verifica che il servizio Windows Update non sia disabilitato e che le policy
         non disattivino gli aggiornamenti automatici.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -2658,7 +3681,6 @@ function Test-WindowsUpdateEnabled {
             NoAutoUpdate  = $noAutoUpdate
         }
 
-        # Start = 4 significa Disabled
         if ($startVal -eq 4) {
             $risultato.Status   = 'fallito'
             $risultato.Observed = "Il servizio Windows Update (wuauserv) e' disabilitato (Start = 4)"
@@ -2689,12 +3711,6 @@ function Test-BitLockerSystemDrive {
     <#
     .SYNOPSIS
         Verifica che BitLocker sia attivo sulla partizione di sistema.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -2716,7 +3732,6 @@ function Test-BitLockerSystemDrive {
     $discoSistema = if ($env:SystemDrive) { $env:SystemDrive } else { 'C:' }
 
     try {
-        # Tenta prima con Get-BitLockerVolume (richiede privilegi di amministratore)
         if (Get-Command -Name 'Get-BitLockerVolume' -ErrorAction SilentlyContinue) {
             try {
                 $vol = Get-BitLockerVolume -MountPoint $discoSistema -ErrorAction Stop
@@ -2740,12 +3755,9 @@ function Test-BitLockerSystemDrive {
                 }
                 return $risultato
             }
-            catch {
-                # Se fallisce per permessi non-admin, prosegue col controllo registro BitLockerStatus
-            }
+            catch { }
         }
 
-        # Lettura da registro HKLM:\SYSTEM\CurrentControlSet\Control\BitLockerStatus (accessibile anche senza admin)
         $percorsoBl = 'HKLM:\SYSTEM\CurrentControlSet\Control\BitLockerStatus'
         if (Test-Path -LiteralPath $percorsoBl) {
             $propBl = Get-ItemProperty -LiteralPath $percorsoBl -ErrorAction Stop
@@ -2783,12 +3795,6 @@ function Test-TelemetryMinimum {
     <#
     .SYNOPSIS
         Verifica che il livello di telemetria di Windows (AllowTelemetry) sia impostato al minimo (<= 1).
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -2831,7 +3837,6 @@ function Test-TelemetryMinimum {
         }
 
         if ($null -eq $valoreTrovato) {
-            # Se AllowTelemetry non e' configurato, Windows usa il livello predefinito (3 = Full/Optional)
             $risultato.Status   = 'fallito'
             $risultato.Observed = "AllowTelemetry non limitato (livello predefinito completo attivo)"
             $risultato.Evidence = @{ Configured = $false }
@@ -2869,12 +3874,6 @@ function Test-SecureBoot {
     <#
     .SYNOPSIS
         Verifica che l'avvio protetto UEFI (Secure Boot) sia abilitato.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -2941,12 +3940,6 @@ function Test-LsaProtection {
     <#
     .SYNOPSIS
         Verifica che la protezione del processo LSA (RunAsPPL) sia abilitata.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -3020,12 +4013,6 @@ function Test-PsScriptBlockLogging {
     <#
     .SYNOPSIS
         Verifica che il logging degli script block di PowerShell (EnableScriptBlockLogging) sia abilitato.
-    .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
-    .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
-    .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -3079,6 +4066,376 @@ function Test-PsScriptBlockLogging {
         $risultato.Status   = 'sconosciuto'
         $risultato.Observed = "Accesso negato alla chiave di registro ScriptBlockLogging"
         $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-FileExtensionsVisible {
+    <#
+    .SYNOPSIS
+        Verifica che le estensioni dei file conosciuti siano visibili in Esplora file (HideFileExt = 0).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "HideFileExt = 0 (Estensioni dei file sempre visibili)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoExp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
+        if (-not (Test-Path -LiteralPath $percorsoExp)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Chiave Explorer Advanced non trovata"
+            return $risultato
+        }
+
+        $propExp = Get-ItemProperty -LiteralPath $percorsoExp -ErrorAction Stop
+        $hideExt = if ($null -ne $propExp.PSObject.Properties['HideFileExt'] -and $null -ne $propExp.HideFileExt) {
+            [int]$propExp.HideFileExt
+        }
+        else {
+            1
+        }
+
+        $risultato.Evidence = @{
+            Path        = $percorsoExp
+            HideFileExt = $hideExt
+        }
+
+        if ($hideExt -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Estensioni dei file visibili (HideFileExt = 0)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Estensioni dei file nascoste (HideFileExt = $hideExt, rischio file camuffati)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-AutorunDisabled {
+    <#
+    .SYNOPSIS
+        Verifica che AutoRun/AutoPlay sia disabilitato sulle unita' rimovibili (NoDriveTypeAutoRun >= 145 o DisableAutoplay = 1).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "NoDriveTypeAutoRun = 255 oppure AutoPlay disabilitato (DisableAutoplay = 1)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoPolLM  = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
+        $percorsoAutoCU = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers'
+
+        $noDriveType = 0
+        if (Test-Path -LiteralPath $percorsoPolLM) {
+            $propLM = Get-ItemProperty -LiteralPath $percorsoPolLM -ErrorAction SilentlyContinue
+            if ($null -ne $propLM -and $null -ne $propLM.PSObject.Properties['NoDriveTypeAutoRun'] -and $null -ne $propLM.NoDriveTypeAutoRun) {
+                $noDriveType = [int]$propLM.NoDriveTypeAutoRun
+            }
+        }
+
+        $disableAutoplay = 0
+        if (Test-Path -LiteralPath $percorsoAutoCU) {
+            $propCU = Get-ItemProperty -LiteralPath $percorsoAutoCU -ErrorAction SilentlyContinue
+            if ($null -ne $propCU -and $null -ne $propCU.PSObject.Properties['DisableAutoplay'] -and $null -ne $propCU.DisableAutoplay) {
+                $disableAutoplay = [int]$propCU.DisableAutoplay
+            }
+        }
+
+        $risultato.Evidence = @{
+            NoDriveTypeAutoRun = $noDriveType
+            DisableAutoplay    = $disableAutoplay
+        }
+
+        if ($noDriveType -ge 145 -or $disableAutoplay -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "AutoRun/AutoPlay disabilitato (NoDriveTypeAutoRun=$noDriveType, DisableAutoplay=$disableAutoplay)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "AutoPlay attivo per unita' rimovibili (DisableAutoplay=0, NoDriveTypeAutoRun=$noDriveType)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-SmartScreenEnabled {
+    <#
+    .SYNOPSIS
+        Verifica che il filtro Microsoft Defender SmartScreen per app e file scaricati sia abilitato.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "SmartScreen abilitato (SmartScreenEnabled != 'Off' e EnableWebContentEvaluation = 1)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoExp = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer'
+        $percorsoApp = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost'
+
+        $ssExplorer = 'Warn'
+        if (Test-Path -LiteralPath $percorsoExp) {
+            $propExp = Get-ItemProperty -LiteralPath $percorsoExp -ErrorAction SilentlyContinue
+            if ($null -ne $propExp -and $null -ne $propExp.PSObject.Properties['SmartScreenEnabled'] -and $null -ne $propExp.SmartScreenEnabled) {
+                $ssExplorer = [string]$propExp.SmartScreenEnabled
+            }
+        }
+
+        $webEval = 1
+        if (Test-Path -LiteralPath $percorsoApp) {
+            $propApp = Get-ItemProperty -LiteralPath $percorsoApp -ErrorAction SilentlyContinue
+            if ($null -ne $propApp -and $null -ne $propApp.PSObject.Properties['EnableWebContentEvaluation'] -and $null -ne $propApp.EnableWebContentEvaluation) {
+                $webEval = [int]$propApp.EnableWebContentEvaluation
+            }
+        }
+
+        $risultato.Evidence = @{
+            SmartScreenEnabled         = $ssExplorer
+            EnableWebContentEvaluation = $webEval
+        }
+
+        if ($ssExplorer -ne 'Off' -and $webEval -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "SmartScreen attivo (SmartScreenEnabled=$ssExplorer, WebEvaluation=$webEval)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "SmartScreen disattivato (SmartScreenEnabled=$ssExplorer, WebEvaluation=$webEval)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-MemoryIntegrityEnabled {
+    <#
+    .SYNOPSIS
+        Verifica che l'Isolamento core / Integrita' della memoria (HVCI) sia abilitato.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "HypervisorEnforcedCodeIntegrity Enabled = 1"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoHvci = 'HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity'
+        if (-not (Test-Path -LiteralPath $percorsoHvci)) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Integrita' della memoria (HVCI) non configurata"
+            $risultato.Evidence = @{ KeyExists = $false }
+            return $risultato
+        }
+
+        $propHvci = Get-ItemProperty -LiteralPath $percorsoHvci -ErrorAction Stop
+        $valore = if ($null -ne $propHvci.PSObject.Properties['Enabled'] -and $null -ne $propHvci.Enabled) {
+            [int]$propHvci.Enabled
+        }
+        else {
+            0
+        }
+
+        $risultato.Evidence = @{
+            Path    = $percorsoHvci
+            Enabled = $valore
+        }
+
+        if ($valore -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Isolamento core / Integrita' della memoria attiva (Enabled = 1)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Isolamento core / Integrita' della memoria disattivata (Enabled = $valore)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-AnonymousSamRestricted {
+    <#
+    .SYNOPSIS
+        Verifica che l'enumerazione anonima degli account SAM (RestrictAnonymousSAM = 1) sia bloccata.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "RestrictAnonymousSAM = 1 in HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoLsa = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'
+        if (-not (Test-Path -LiteralPath $percorsoLsa)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Chiave LSA non trovata"
+            return $risultato
+        }
+
+        $propLsa = Get-ItemProperty -LiteralPath $percorsoLsa -ErrorAction Stop
+        $valore = if ($null -ne $propLsa.PSObject.Properties['RestrictAnonymousSAM'] -and $null -ne $propLsa.RestrictAnonymousSAM) {
+            [int]$propLsa.RestrictAnonymousSAM
+        }
+        else {
+            0
+        }
+
+        $risultato.Evidence = @{
+            Path                 = $percorsoLsa
+            RestrictAnonymousSAM = $valore
+        }
+
+        if ($valore -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Enumerazione anonima SAM bloccata (RestrictAnonymousSAM = 1)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Enumerazione anonima SAM consentita (RestrictAnonymousSAM = $valore)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-WindowsUpdateAuthenticServer {
+    <#
+    .SYNOPSIS
+        Verifica che Windows Update non sia dirottato verso un server WSUS esterno non sicuro (WUServer).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessun server WSUS non autorizzato configurato in WindowsUpdate"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoWu = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
+        if (-not (Test-Path -LiteralPath $percorsoWu)) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Connessione diretta ai server ufficiali Microsoft Windows Update"
+            $risultato.Evidence = @{ CustomWUServer = $null }
+            return $risultato
+        }
+
+        $propWu = Get-ItemProperty -LiteralPath $percorsoWu -ErrorAction SilentlyContinue
+        $wuServer = if ($null -ne $propWu -and $null -ne $propWu.PSObject.Properties['WUServer']) {
+            [string]$propWu.WUServer
+        }
+        else {
+            ''
+        }
+
+        $risultato.Evidence = @{
+            Path     = $percorsoWu
+            WUServer = $wuServer
+        }
+
+        if ([string]::IsNullOrWhiteSpace($wuServer)) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessun server WSUS personalizzato impostato"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Windows Update rediretto verso server esterno: $wuServer"
+        }
     }
     catch {
         $risultato.Status = 'errore'
@@ -3203,6 +4560,86 @@ $script:RimediStaticiFetta = @{
         text    = "Abilita il logging degli script block di PowerShell per registrare nel Registro Eventi (Microsoft-Windows-PowerShell/Operational) i blocchi di codice eseguiti."
         command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Name "EnableScriptBlockLogging" -Value 1 -Type DWord'
         risk    = "Molto basso: aumenta leggermente il volume dei log nel Visualizzatore eventi in cambio di una maggiore tracciabilita'."
+    }
+    'HOME-UPD-002' = [PSCustomObject]@{
+        text    = "Se questo e' un PC domestico e non aziendale, rimuovi eventuali reindirizzamenti WSUS non autorizzati in modo che Windows scarichi gli aggiornamenti direttamente dai server ufficiali Microsoft."
+        command = 'Remove-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate" -Name "WUServer" -ErrorAction SilentlyContinue'
+        risk    = "Basso su PC domestici: ripristina l'uso dei server ufficiali di Windows Update."
+    }
+    'HOME-AV-003' = [PSCustomObject]@{
+        text    = "Apri Sicurezza di Windows -> Protezione da virus e minacce -> Cronologia della protezione oppure avvia una scansione completa e rimuovi/metti in quarantena le minacce rilevate."
+        command = 'Start-MpScan -ScanType QuickScan'
+        risk    = "Nessun rischio: rimuove o isola i file infetti rilevati da Windows Defender."
+    }
+    'HOME-AV-004' = [PSCustomObject]@{
+        text    = "Riattiva il monitoraggio comportamentale e la scansione dei file scaricati (IOAV) nelle preferenze di Windows Defender."
+        command = 'Set-MpPreference -DisableBehaviorMonitoring $false -DisableIOAVProtection $false'
+        risk    = "Molto basso: garantisce che i file scaricati da browser ed email vengano analizzati subito."
+    }
+    'HOME-AV-005' = [PSCustomObject]@{
+        text    = "Imposta la protezione contro le applicazioni potenzialmente indesiderate (PUA) in modalita' Blocco (valore 1) in Sicurezza di Windows -> Controllo delle app e del browser -> Impostazioni di protezione basata sulla reputazione."
+        command = 'Set-MpPreference -PUAProtection Enabled'
+        risk    = "Basso: potrebbe bloccare installer che includono adware o software pubblicitari indesiderati."
+    }
+    'HOME-AV-006' = [PSCustomObject]@{
+        text    = "Attiva la Protezione antimanomissione in Sicurezza di Windows -> Protezione da virus e minacce -> Impostazioni -> Gestisci impostazioni e abilita la protezione fornita dal cloud (MAPS)."
+        command = 'Set-MpPreference -MAPSReporting Advanced'
+        risk    = "Molto basso: migliora il rilevamento di minacce zero-day e impedisce a programmi esterni di disattivare Defender."
+    }
+    'HOME-AV-007' = [PSCustomObject]@{
+        text    = "Esegui una scansione rapida o completa con Windows Defender per verificare lo stato dei file sul disco."
+        command = 'Start-MpScan -ScanType QuickScan'
+        risk    = "Nessun rischio: la scansione rapida dura pochi minuti e non interrompe il lavoro."
+    }
+    'HOME-AV-008' = [PSCustomObject]@{
+        text    = "Controlla e rimuovi le esclusioni sospette in Sicurezza di Windows -> Protezione da virus e minacce -> Impostazioni -> Aggiungi o rimuovi esclusioni. Non escludere mai C:\, Downloads, Temp o estensioni .exe/.ps1."
+        command = 'Get-MpPreference | Select-Object -ExpandProperty ExclusionPath'
+        risk    = "Basso: rimuovere esclusioni ampie ripristina il controllo antivirus su tutte le cartelle del disco."
+    }
+    'HOME-FIL-001' = [PSCustomObject]@{
+        text    = "Verifica i file con doppia estensione (es. .pdf.exe, .jpg.scr) segnalati nelle cartelle Download, Desktop o Temp: non aprirli ed eliminali se non riconosciuti."
+        command = 'Get-ChildItem "$env:USERPROFILE\Downloads","$env:USERPROFILE\Desktop","$env:TEMP" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "\.(pdf|doc|docx|jpg|png|txt|zip)\.(exe|scr|bat|cmd|vbs|js|ps1|hta)$" } | Select-Object FullName, Length, LastWriteTime'
+        risk    = "Nessun rischio: il comando elenca in sola lettura i file sospetti per consentirti di verificarli."
+    }
+    'HOME-FIL-002' = [PSCustomObject]@{
+        text    = "Apri Gestione attivita' (Task Manager) -> App di avvio oppure controlla le chiavi di registro Run/RunOnce per disabilitare o rimuovere i programmi sospetti che puntano a cartelle Temp o usano comandi offuscati."
+        command = 'Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run","HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -ErrorAction SilentlyContinue'
+        risk    = "Basso: rimuovere voci di avvio automatico sconosciute o malevole impedisce la persistenza al riavvio."
+    }
+    'HOME-FIL-003' = [PSCustomObject]@{
+        text    = "Controlla il file C:\Windows\System32\drivers\etc\hosts con il Blocco note (avviato come amministratore) e rimuovi eventuali righe che bloccano o dirottano siti di sicurezza o Microsoft."
+        command = 'Get-Content "$env:SystemRoot\System32\drivers\etc\hosts" | Where-Object { $_.Trim() -ne "" -and (-not $_.Trim().StartsWith("#")) }'
+        risk    = "Basso: il file hosts predefinito di Windows non contiene alcuna riga attiva."
+    }
+    'HOME-SYS-001' = [PSCustomObject]@{
+        text    = "In Esplora file di Windows 11 clicca su Visualizza -> Mostra -> Estensioni nomi file (oppure imposta HideFileExt = 0)."
+        command = 'Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value 0'
+        risk    = "Nessun rischio: rende visibile la vera estensione di tutti i file (es. .exe, .pdf, .docx)."
+    }
+    'HOME-SYS-002' = [PSCustomObject]@{
+        text    = "Disattiva AutoPlay da Impostazioni -> Bluetooth e dispositivi -> AutoPlay per impedire l'avvio automatico di contenuti da chiavette USB e unita' rimovibili."
+        command = 'Set-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers" -Name "DisableAutoplay" -Value 1 -Type DWord'
+        risk    = "Molto basso: quando inserisci una chiavetta USB dovrai aprirla manualmente da Esplora file."
+    }
+    'HOME-SYS-003' = [PSCustomObject]@{
+        text    = "Attiva SmartScreen in Sicurezza di Windows -> Controllo delle app e del browser -> Impostazioni di protezione basata sulla reputazione."
+        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" -Name "EnableWebContentEvaluation" -Value 1 -Type DWord'
+        risk    = "Molto basso: protegge da applicazioni e siti di phishing noti."
+    }
+    'HOME-SYS-004' = [PSCustomObject]@{
+        text    = "Attiva l'Integrita' della memoria in Sicurezza di Windows -> Sicurezza dispositivi -> Dettagli isolamento core -> Integrita' della memoria e riavvia il PC."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" -Name "Enabled" -Value 1 -Type DWord'
+        risk    = "Medio: richiede il riavvio; alcuni vecchi driver di periferiche non certificati potrebbero non essere compatibili."
+    }
+    'HOME-SYS-005' = [PSCustomObject]@{
+        text    = "Blocca l'enumerazione anonima degli account SAM impostando RestrictAnonymousSAM a 1 nella chiave LSA."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" -Name "RestrictAnonymousSAM" -Value 1 -Type DWord'
+        risk    = "Molto basso: e' l'impostazione di sicurezza raccomandata su tutte le versioni moderne di Windows."
+    }
+    'HOME-NET-003' = [PSCustomObject]@{
+        text    = "Disabilita il protocollo multicast LLMNR impostando EnableMulticast = 0 nella policy DNSClient."
+        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Name "EnableMulticast" -Value 0 -Type DWord'
+        risk    = "Basso: le reti moderne utilizzano DNS standard anziche' LLMNR."
     }
 }
 
@@ -4451,6 +5888,7 @@ function Start-ScannerUI {
                     . (Join-Path $Sync.PercorsoChecks 'Firewall.ps1')
                     . (Join-Path $Sync.PercorsoChecks 'Accounts.ps1')
                     . (Join-Path $Sync.PercorsoChecks 'Defender.ps1')
+                    . (Join-Path $Sync.PercorsoChecks 'FileSecurity.ps1')
                     . (Join-Path $Sync.PercorsoChecks 'Network.ps1')
                     . (Join-Path $Sync.PercorsoChecks 'SystemSecurity.ps1')
                 }
@@ -4663,7 +6101,7 @@ function Invoke-Win11Scanner {
 }
 
 # Gestione argomenti sia per esecuzione via 'irm ... | iex' sia via 'powershell -File scanner-win11.ps1 ...'
-$argomentiRigaComando = @(Get-Variable -Name args -ValueOnly -ErrorAction SilentlyContinue)
+$argomentiRigaComando = @($args)
 $parametriInvocazione = @{}
 for ($i = 0; $i -lt $argomentiRigaComando.Count; $i++) {
     $token = [string]$argomentiRigaComando[$i]

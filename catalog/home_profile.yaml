@@ -1,4 +1,4 @@
-# Catalogo dei controlli di sicurezza — profilo Home
+# Catalogo dei controlli di sicurezza — profilo Home/Pro esteso (34 controlli)
 # Schema versione 0.2
 # Questo file e' la sorgente; il runtime legge home_profile.json (generato).
 
@@ -6,7 +6,7 @@ schema_version: "0.2"
 
 profile:
   name: "home"
-  description: "Profilo di sicurezza per utenti domestici Windows 11"
+  description: "Profilo di sicurezza completo per utenti domestici Windows 11 (Antivirus, File, Persistenza e Impostazioni di Sistema)"
   target_os: "Windows 11"
 
 controls:
@@ -122,7 +122,19 @@ controls:
     references:
       - "CIS Benchmark Windows 11 - 18.9.102.2"
 
-  # === ANTIVIRUS ===
+  - id: "HOME-UPD-002"
+    title: "Server Windows Update ufficiale (nessun dirottamento WSUS)"
+    category: "Aggiornamenti"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che gli aggiornamenti di Windows non siano rediretti verso un server WSUS esterno non autorizzato (WUServer)."
+    rationale: "Un malware puo' impostare un falso server di aggiornamento per bloccare le patch di sicurezza di Microsoft."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-WindowsUpdateAuthenticServer"
+    references:
+      - "Microsoft Security Baseline Windows 11"
+
+  # === ANTIVIRUS E SCANSIONE MINACCE ===
   - id: "HOME-AV-001"
     title: "Protezione in tempo reale attiva"
     category: "Antivirus"
@@ -146,6 +158,176 @@ controls:
       command_ref: "Defender.ps1#Test-DefenderSignatures"
     references:
       - "CIS Benchmark Windows 11 - 18.9.47"
+
+  - id: "HOME-AV-003"
+    title: "Nessun virus o minaccia attiva rilevata da Defender"
+    category: "Antivirus"
+    severity: "critico"
+    editions: ["Home", "Pro"]
+    description: "Interroga il catalogo delle minacce di Windows Defender (Get-MpThreat / Get-MpThreatDetection) per verificare che non vi siano virus o malware attivi."
+    rationale: "La presenza di minacce attive indica un'infezione in corso o un file malevolo non ancora messo in quarantena."
+    check:
+      command_ref: "Defender.ps1#Test-DefenderNoActiveThreats"
+    references:
+      - "Microsoft Defender Antivirus Threat Detection"
+
+  - id: "HOME-AV-004"
+    title: "Scansione file scaricati (IOAV) e monitoraggio comportamentale attivi"
+    category: "Antivirus"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che BehaviorMonitorEnabled e IoavProtectionEnabled siano attivi in Windows Defender."
+    rationale: "La protezione IOAV analizza automaticamente tutti i file scaricati dal browser o allegati email, mentre il monitoraggio comportamentale blocca ransomware e attacchi sospetti."
+    check:
+      command_ref: "Defender.ps1#Test-DefenderBehaviorAndIoav"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.47.4"
+
+  - id: "HOME-AV-005"
+    title: "Blocco applicazioni potenzialmente indesiderate (PUA) attivo"
+    category: "Antivirus"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che PUAProtection sia impostato su 1 (Blocco) nelle preferenze di Windows Defender."
+    rationale: "La protezione PUA blocca adware, cryptominer, barre degli strumenti invasive e software indesiderati inclusi nei programmi scaricati da Internet."
+    check:
+      command_ref: "Defender.ps1#Test-DefenderPuaProtection"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.47.11"
+
+  - id: "HOME-AV-006"
+    title: "Protezione antimanomissione (Tamper Protection) e Cloud MAPS attive"
+    category: "Antivirus"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che IsTamperProtected sia True e che MAPSReporting (Cloud Protection) sia abilitato."
+    rationale: "La protezione antimanomissione impedisce ai virus di disattivare Windows Defender tramite registro o comandi, mentre il Cloud MAPS blocca i nuovi malware zero-day."
+    check:
+      command_ref: "Defender.ps1#Test-DefenderTamperAndCloud"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.47.5"
+
+  - id: "HOME-AV-007"
+    title: "Scansione antivirus periodica eseguita negli ultimi 14 giorni"
+    category: "Antivirus"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che una scansione rapida o completa dei file sia stata completata negli ultimi 14 giorni."
+    rationale: "Le scansioni periodiche individuano minacce dormienti sui file salvati sul disco prima dell'ultimo aggiornamento delle firme."
+    check:
+      command_ref: "Defender.ps1#Test-DefenderRecentScan"
+    references:
+      - "Microsoft Defender Antivirus Scheduled Scan"
+
+  - id: "HOME-AV-008"
+    title: "Nessuna esclusione pericolosa di cartelle o estensioni in Defender"
+    category: "Antivirus"
+    severity: "critico"
+    editions: ["Home", "Pro"]
+    description: "Verifica che non siano state escluse dalla scansione antivirus intere unita' (C:\\), cartelle utente (Downloads, Temp, Windows) o estensioni eseguibili (.exe, .ps1, .bat)."
+    rationale: "Molti trojan e stealer aggiungono l'intera cartella Utenti, Download o l'estensione .exe alle esclusioni di Defender per agire indisturbati."
+    check:
+      command_ref: "Defender.ps1#Test-DefenderSafeExclusions"
+    references:
+      - "MITRE ATT&CK T1562.001 - Disable or Modify Tools"
+
+  # === CONTROLLO FILE SOSPETTI E PERSISTENZA ===
+  - id: "HOME-FIL-001"
+    title: "Nessun file eseguibile camuffato con doppia estensione (Download, Desktop, Temp)"
+    category: "Controllo File"
+    severity: "critico"
+    editions: ["Home", "Pro"]
+    description: "Scansiona in sola lettura le cartelle Download, Desktop e Temp alla ricerca di file eseguibili camuffati con doppia estensione (es. fattura.pdf.exe, foto.jpg.scr, doc.txt.vbs)."
+    rationale: "La doppia estensione e' una delle tecniche piu' usate per indurre l'utente ad aprire un virus convinto che si tratti di un documento PDF o di un'immagine."
+    check:
+      command_ref: "FileSecurity.ps1#Test-SuspiciousDoubleExtensionFiles"
+    references:
+      - "MITRE ATT&CK T1036.007 - Double File Extension"
+
+  - id: "HOME-FIL-002"
+    title: "Nessun programma sospetto o offuscato nelle chiavi di avvio automatico (Run)"
+    category: "Controllo File"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Analizza le voci di avvio automatico nel registro (HKCU/HKLM Run e RunOnce) verificando l'assenza di eseguibili in cartelle Temp o comandi PowerShell/script offuscati."
+    rationale: "I malware si registrano nelle chiavi Run puntando a cartelle temporanee o usando comandi nascosti (-w hidden, -enc, mshta, wscript) per riavviarsi a ogni accensione del PC."
+    check:
+      command_ref: "FileSecurity.ps1#Test-StartupPersistenceEntries"
+    references:
+      - "MITRE ATT&CK T1547.001 - Registry Run Keys / Startup Folder"
+
+  - id: "HOME-FIL-003"
+    title: "Integrita' del file hosts di Windows (nessun dirottamento siti di sicurezza)"
+    category: "Controllo File"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Analizza il file C:\\Windows\\System32\\drivers\\etc\\hosts verificando che non siano bloccati o dirottati domini di Windows Update, Microsoft o siti antivirus."
+    rationale: "Alcuni malware modificano il file hosts per impedire al PC di scaricare aggiornamenti di sicurezza o contattare i siti dei produttori di antivirus."
+    check:
+      command_ref: "FileSecurity.ps1#Test-HostsFileIntegrity"
+    references:
+      - "MITRE ATT&CK T1565.001 - Stored Data Manipulation"
+
+  # === IMPOSTAZIONI DI SISTEMA WINDOWS ===
+  - id: "HOME-SYS-001"
+    title: "Estensioni dei file conosciuti visibili in Esplora file"
+    category: "Impostazioni Windows"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che HideFileExt sia impostato a 0 in HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced."
+    rationale: "Mostrare sempre le estensioni dei file in Esplora file permette all'utente di accorgersi subito se un file e' in realta' un programma eseguibile (.exe, .scr, .bat)."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-FileExtensionsVisible"
+    references:
+      - "CIS Benchmark Windows 11 - User Explorer Settings"
+
+  - id: "HOME-SYS-002"
+    title: "AutoRun e AutoPlay disabilitati per le unita' rimovibili USB"
+    category: "Impostazioni Windows"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che l'esecuzione automatica all'inserimento di chiavette USB o dischi esterni sia disattivata (NoDriveTypeAutoRun >= 145 o DisableAutoplay = 1)."
+    rationale: "Disattivare AutoRun e AutoPlay impedisce l'avvio automatico di malware presenti su chiavette USB infette."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-AutorunDisabled"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.8.3"
+
+  - id: "HOME-SYS-003"
+    title: "Filtro Microsoft Defender SmartScreen attivo per app e file"
+    category: "Impostazioni Windows"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che SmartScreen per Esplora file e per le applicazioni web (EnableWebContentEvaluation) sia attivo."
+    rationale: "SmartScreen avvisa l'utente prima di eseguire programmi sconosciuti o potenzialmente malevoli scaricati da Internet."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-SmartScreenEnabled"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.85.1"
+
+  - id: "HOME-SYS-004"
+    title: "Isolamento core / Integrita' della memoria (HVCI) attivo"
+    category: "Impostazioni Windows"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che Hypervisor-Enforced Code Integrity (HVCI) sia abilitato nel registro DeviceGuard."
+    rationale: "L'integrita' della memoria usa la virtualizzazione hardware per impedire l'iniezione di codice malevolo nei processi ad alta sicurezza del kernel di Windows."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-MemoryIntegrityEnabled"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.5.2"
+
+  - id: "HOME-SYS-005"
+    title: "Enumerazione anonima degli account locali (SAM) bloccata"
+    category: "Impostazioni Windows"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che il valore RestrictAnonymousSAM in HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa sia impostato a 1."
+    rationale: "Impedisce a utenti non autenticati sulla rete locale di elencare i nomi degli account presenti sul computer."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-AnonymousSamRestricted"
+    references:
+      - "CIS Benchmark Windows 11 - 2.3.10.2"
 
   # === RDP ===
   - id: "HOME-RDP-001"
@@ -188,6 +370,18 @@ controls:
       command_ref: "Network.ps1#Test-NetbiosDisabled"
     references:
       - "CIS Benchmark Windows 11 - 18.5"
+
+  - id: "HOME-NET-003"
+    title: "Protocollo multicast LLMNR disabilitato"
+    category: "Rete"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che il protocollo Link-Local Multicast Name Resolution (EnableMulticast = 0) sia disabilitato."
+    rationale: "LLMNR e' vulnerabile ad attacchi di avvelenamento (es. Responder) su reti locali e Wi-Fi condivise che permettono il furto degli hash delle password."
+    check:
+      command_ref: "Network.ps1#Test-LlmnrDisabled"
+    references:
+      - "CIS Benchmark Windows 11 - 18.5.4.2"
 
   # === CRITTOGRAFIA ===
   - id: "HOME-ENC-001"

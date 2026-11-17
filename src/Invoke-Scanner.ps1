@@ -106,6 +106,7 @@ $percorsoJson     = Join-Path $percorsoCatalogo 'home_profile.json'
 . (Join-Path $percorsoChecks 'Firewall.ps1')
 . (Join-Path $percorsoChecks 'Accounts.ps1')
 . (Join-Path $percorsoChecks 'Defender.ps1')
+. (Join-Path $percorsoChecks 'FileSecurity.ps1')
 . (Join-Path $percorsoChecks 'Network.ps1')
 . (Join-Path $percorsoChecks 'SystemSecurity.ps1')
 

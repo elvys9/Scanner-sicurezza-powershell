@@ -73,3 +73,26 @@ Describe 'Test-NetbiosDisabled (HOME-NET-002)' {
         $res.Status | Should -Be 'fallito'
     }
 }
+
+Describe 'Test-LlmnrDisabled (HOME-NET-003)' {
+
+    BeforeAll {
+        $percorsoModulo = Join-Path $PSScriptRoot '..\src\core\Checks\Network.ps1'
+        . $percorsoModulo
+
+        $controllo = [PSCustomObject]@{ id = 'HOME-NET-003' }
+    }
+
+    It 'Restituisce superato quando EnableMulticast = 0' {
+        Mock Test-Path { return $true }
+        Mock Get-ItemProperty { return [PSCustomObject]@{ EnableMulticast = 0 } }
+        $res = Test-LlmnrDisabled -Controllo $controllo
+        $res.Status | Should -Be 'superato'
+    }
+
+    It 'Restituisce fallito quando la policy non e configurata o EnableMulticast = 1' {
+        Mock Test-Path { return $false }
+        $res = Test-LlmnrDisabled -Controllo $controllo
+        $res.Status | Should -Be 'fallito'
+    }
+}
