@@ -5,22 +5,43 @@ Scritto in PowerShell 5.1, distribuibile come singolo script senza installare nu
 
 ## Stato attuale
 
-**Fetta verticale v0.1** — tre controlli funzionanti:
+**Profilo completo v0.2** — tutti i **18 controlli** del profilo Windows 11 (Home/Pro) implementati e testati (91 test Pester):
 
-| ID            | Descrizione                              | Tipo      |
-|---------------|------------------------------------------|-----------|
-| HOME-FW-001   | Firewall attivo su tutti i profili       | Funzione  |
-| HOME-UAC-001  | UAC abilitato (EnableLUA = 1)            | Registro  |
-| HOME-ACC-001  | Account Guest disabilitato (SID -501)    | Funzione  |
+| ID            | Categoria          | Descrizione                                        | Tipo      |
+|---------------|--------------------|----------------------------------------------------|-----------|
+| HOME-FW-001   | Firewall           | Firewall attivo su tutti i profili                 | Funzione  |
+| HOME-UAC-001  | UAC                | UAC abilitato (`EnableLUA = 1`)                    | Registro  |
+| HOME-UAC-002  | UAC                | UAC richiede conferma (`ConsentPromptBehaviorAdmin != 0`) | Registro |
+| HOME-UAC-003  | UAC                | UAC rileva installazioni (`EnableInstallerDetection = 1`) | Registro |
+| HOME-ACC-001  | Account            | Account Guest disabilitato (SID `-501`)            | Funzione  |
+| HOME-ACC-002  | Account            | Account Administrator locale disabilitato (SID `-500`) | Funzione |
+| HOME-ACC-003  | Account            | Nessun account locale attivo senza password        | Funzione  |
+| HOME-UPD-001  | Aggiornamenti      | Aggiornamenti automatici Windows Update abilitati  | Funzione  |
+| HOME-AV-001   | Antivirus          | Protezione in tempo reale Windows Defender attiva  | Funzione  |
+| HOME-AV-002   | Antivirus          | Definizioni antivirus aggiornate (<= 7 giorni)     | Funzione  |
+| HOME-RDP-001  | Desktop Remoto     | Desktop remoto disabilitato (`fDenyTSConnections = 1`) | Registro |
+| HOME-NET-001  | Rete               | Protocollo SMBv1 disabilitato                      | Funzione  |
+| HOME-NET-002  | Rete               | NetBIOS su TCP/IP disabilitato                     | Funzione  |
+| HOME-ENC-001  | Crittografia       | BitLocker attivo sul disco di sistema              | Funzione  |
+| HOME-PRV-001  | Privacy            | Telemetria impostata al livello minimo (`<= 1`)    | Funzione  |
+| HOME-SEC-001  | Sicurezza Avanzata | Avvio protetto UEFI (Secure Boot) attivo           | Funzione  |
+| HOME-SEC-002  | Sicurezza Avanzata | Protezione LSA (`RunAsPPL`) abilitata              | Funzione  |
+| HOME-SEC-003  | Sicurezza Avanzata | PowerShell Script Block Logging abilitato          | Funzione  |
 
-## Uso rapido
+## Uso rapido (anche fuori dalla cartella o da GitHub, in stile winutil)
 
 ```powershell
-# Avvia l'interfaccia grafica WPF (modalita' predefinita)
+# 1. Esecuzione diretta da GitHub (da qualsiasi cartella, in stile winutil):
+irm https://raw.githubusercontent.com/<TUO-UTENTE>/<TUO-REPO>/main/dist/scanner-win11.ps1 | iex
+
+# 2. Esecuzione dello script singolo autonomo locale da qualsiasi cartella:
+powershell -STA -ExecutionPolicy Bypass -File "C:\percorso\dist\scanner-win11.ps1"
+
+# 3. Avvio dai sorgenti del progetto (GUI):
 powershell -STA -ExecutionPolicy Bypass -File src\Invoke-Scanner.ps1
 
-# Modalita' Headless (da amministratore, scrive il report JSON su file)
-powershell -ExecutionPolicy Bypass -File src\Invoke-Scanner.ps1 -Headless -OutFile out.json
+# 4. Modalita' Headless (scrive il report JSON su file):
+powershell -ExecutionPolicy Bypass -File dist\scanner-win11.ps1 -Headless -OutFile out.json
 ```
 
 ### Parametri

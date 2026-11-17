@@ -52,3 +52,8 @@ Motivazione:
 - **Zero dipendenze esterne**: `PresentationFramework`, `PresentationCore` e `WindowsBase` sono preinstallati su tutte le edizioni di Windows 11 (Home e Pro), rispettando il vincolo di eseguibilita' immediata senza installare runtime aggiuntivi.
 - **Scalabilita' DPI e accessibilita'**: a differenza di Windows Forms, WPF utilizza unita' indipendenti dai dispositivi (DIP) e layout fluidi (`Grid`, `UniformGrid`, `WrapPanel`, `ScrollViewer`) che scalano nitidamente a 100%, 125% e 150% di DPI, oltre a supportare dizionari di risorse dinamici (`DynamicResource`) per il cambio istantaneo tra Tema Chiaro e Tema Scuro.
 - **Reattivita' e testabilita'**: l'esecuzione della scansione in un `[runspace]` separato con aggiornamento tramite `Dispatcher` evita il blocco della finestra, mentre l'isolamento delle funzioni pure nel `ViewModel.ps1` consente il test automatizzato con Pester 5 senza dover istanziare la finestra grafica.
+
+## D7 — Script singolo autonomo (`dist/scanner-win11.ps1`) e distribuzione stile winutil (2026-11-17)
+
+Per consentire l'esecuzione da qualsiasi cartella o direttamente da GitHub tramite `irm <url> | iex` (senza dover clonare l'intero repository), viene introdotto lo script di build `tools/Build.ps1` che compila catalogo JSON, XAML, motore, i 18 controlli e la GUI in un unico file autonomo `dist/scanner-win11.ps1`.
+Il Runspace di scansione riceve le funzioni caricate in memoria tramite `InitialSessionState`, eliminando la dipendenza da file esterni sul disco a runtime.

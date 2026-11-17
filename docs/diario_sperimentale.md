@@ -45,3 +45,15 @@ Realizzare l'interfaccia grafica WPF in PowerShell 5.1 (`src/ui/`) in sola lettu
 - Aggiornato `src/Invoke-Scanner.ps1` aggiungendo il parametro `-Gui` (predefinito quando non si specifica `-Headless`) e il controllo automatico dell'ApartmentState `STA`
 - Scritti i test unitari in `tests/ViewModel.Tests.ps1` e aggiornato `tests/ReadOnly.Tests.ps1` con la lista esplicita e commentata dei comandi consentiti per `src/ui`
 - Redatta la documentazione e checklist di collaudo manuale in `docs/ui.md` e la decisione `D6` in `docs/decisioni.md`
+
+## 2026-11-17 — Implementazione completa dei 18 controlli e pacchetto autonomo stile winutil
+
+### Obiettivo
+Implementare i restanti 15 controlli del catalogo per eliminare gli stati `sconosciuto` ("non ancora implementato"), estendere la suite di test Pester a tutti i 18 controlli e creare il bundler `tools/Build.ps1` per generare `dist/scanner-win11.ps1` eseguibile da qualsiasi cartella o da GitHub (`irm ... | iex`).
+
+### Attivita' svolte
+- Implementati tutti i 15 controlli rimanenti tra registro (`HOME-UAC-002`, `HOME-UAC-003`, `HOME-RDP-001`) e moduli funzione (`Accounts.ps1`, `Defender.ps1`, `Network.ps1`, `SystemSecurity.ps1`)
+- Rigenerato e validato `catalog/home_profile.json` con `tools/yaml_to_json.py`
+- Aggiunti i rimedi statici e i comandi di riferimento per tutti i 18 controlli in `src/ui/ViewModel.ps1`
+- Creato `tools/Build.ps1` e compilato lo script singolo autonomo `dist/scanner-win11.ps1`
+- Estesa la suite di test Pester a 13 file e **91 test** tutti superati (`Accounts.Tests.ps1`, `Defender.Tests.ps1`, `Network.Tests.ps1`, `SystemSecurity.Tests.ps1`)
