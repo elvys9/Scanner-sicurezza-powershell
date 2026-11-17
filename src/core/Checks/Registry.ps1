@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Valutatore generico per i controlli basati su registro di Windows.
 

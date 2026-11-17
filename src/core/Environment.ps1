@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Rileva le informazioni sull'ambiente di esecuzione.
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Controllo dello stato del firewall di Windows.
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Test Pester 5 per il controllo Firewall (Firewall.ps1).
 #>

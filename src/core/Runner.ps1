@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Runner: esegue i controlli di sicurezza dal catalogo.
 

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Test Pester 5 per il valutatore generico di registro (Registry.ps1).
 #>

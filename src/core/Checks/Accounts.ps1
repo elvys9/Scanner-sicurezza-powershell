@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Controllo dello stato dell'account Guest.
 

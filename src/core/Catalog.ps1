@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Carica e valida il catalogo dei controlli di sicurezza.
 

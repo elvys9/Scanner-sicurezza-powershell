@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Costruisce l'oggetto risultato e lo scrive in JSON.
 
