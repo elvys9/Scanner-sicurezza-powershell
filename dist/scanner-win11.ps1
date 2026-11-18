@@ -663,436 +663,876 @@ $script:CatalogoJsonIncorporato = @'
 $script:XamlIncorporato = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Scanner sicurezza Windows"
-        Width="1260" Height="820"
-        MinWidth="960" MinHeight="640"
+        Title="Windows 11 Security Scanner (Read-Only)"
+        Width="1280"
+        Height="860"
+        MinWidth="1040"
+        MinHeight="700"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="CanResize"
-        UseLayoutRounding="True"
-        SnapsToDevicePixels="True"
-        TextOptions.TextFormattingMode="Ideal"
         FontFamily="Segoe UI"
         FontSize="13"
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
         Background="{DynamicResource BgPrimary}"
         Foreground="{DynamicResource TextPrimary}">
 
     <Window.Resources>
-        <ResourceDictionary>
-            <!-- Palette Moderna (Tema Chiaro predefinito, aggiornabile a Tema Scuro) -->
-            <SolidColorBrush x:Key="BgPrimary" Color="#EEF2F6"/>
-            <SolidColorBrush x:Key="BgSurface" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="BgHeader" Color="#0B1120"/>
-            <SolidColorBrush x:Key="TextHeader" Color="#F8FAFC"/>
-            <SolidColorBrush x:Key="BgSubtle" Color="#F8FAFC"/>
-            <SolidColorBrush x:Key="TextPrimary" Color="#0F172A"/>
-            <SolidColorBrush x:Key="TextSecondary" Color="#475569"/>
-            <SolidColorBrush x:Key="BorderSubtle" Color="#CBD5E1"/>
-            <SolidColorBrush x:Key="AccentBrush" Color="#2563EB"/>
-            <SolidColorBrush x:Key="AccentText" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="AiAccentBrush" Color="#7C3AED"/>
+        <!-- Palette predefinita (Tema Scuro Moderno Fluent - aggiornabile a caldo in Chiaro/Scuro) -->
+        <SolidColorBrush x:Key="BgPrimary" Color="#0B0F19"/>
+        <SolidColorBrush x:Key="BgSurface" Color="#111827"/>
+        <SolidColorBrush x:Key="BgElevated" Color="#1E293B"/>
+        <SolidColorBrush x:Key="BgHeader" Color="#060911"/>
+        <SolidColorBrush x:Key="TextHeader" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BgSubtle" Color="#0F172A"/>
+        <SolidColorBrush x:Key="BgInput" Color="#0F172A"/>
+        <SolidColorBrush x:Key="BgAlternating" Color="#131C2E"/>
+        <SolidColorBrush x:Key="SelectedRowBg" Color="#1E3A8A"/>
+        <SolidColorBrush x:Key="SelectedRowFg" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="HoverRowBg" Color="#1E293B"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#F1F5F9"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="BorderSubtle" Color="#1E293B"/>
+        <SolidColorBrush x:Key="BorderStrong" Color="#334155"/>
+        <SolidColorBrush x:Key="AccentBrush" Color="#3B82F6"/>
+        <SolidColorBrush x:Key="AccentText" Color="#FFFFFF"/>
 
-            <!-- Colori semantici -->
-            <SolidColorBrush x:Key="PassBg" Color="#ECFDF5"/>
-            <SolidColorBrush x:Key="PassFg" Color="#065F46"/>
-            <SolidColorBrush x:Key="PassBorder" Color="#10B981"/>
+        <!-- Colori semantici per i 5 stati -->
+        <SolidColorBrush x:Key="PassBg" Color="#064E3B"/>
+        <SolidColorBrush x:Key="PassFg" Color="#6EE7B7"/>
+        <SolidColorBrush x:Key="PassBorder" Color="#10B981"/>
 
-            <SolidColorBrush x:Key="FailBg" Color="#FEF2F2"/>
-            <SolidColorBrush x:Key="FailFg" Color="#991B1B"/>
-            <SolidColorBrush x:Key="FailBorder" Color="#EF4444"/>
+        <SolidColorBrush x:Key="FailBg" Color="#7F1D1D"/>
+        <SolidColorBrush x:Key="FailFg" Color="#FCA5A5"/>
+        <SolidColorBrush x:Key="FailBorder" Color="#EF4444"/>
 
-            <SolidColorBrush x:Key="UnknownBg" Color="#F1F5F9"/>
-            <SolidColorBrush x:Key="UnknownFg" Color="#334155"/>
-            <SolidColorBrush x:Key="UnknownBorder" Color="#64748B"/>
+        <SolidColorBrush x:Key="UnknownBg" Color="#1E293B"/>
+        <SolidColorBrush x:Key="UnknownFg" Color="#CBD5E1"/>
+        <SolidColorBrush x:Key="UnknownBorder" Color="#64748B"/>
 
-            <SolidColorBrush x:Key="NaBg" Color="#F8FAFC"/>
-            <SolidColorBrush x:Key="NaFg" Color="#64748B"/>
-            <SolidColorBrush x:Key="NaBorder" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="NaBg" Color="#0F172A"/>
+        <SolidColorBrush x:Key="NaFg" Color="#94A3B8"/>
+        <SolidColorBrush x:Key="NaBorder" Color="#475569"/>
 
-            <SolidColorBrush x:Key="ErrorBg" Color="#FFF7ED"/>
-            <SolidColorBrush x:Key="ErrorFg" Color="#9A3412"/>
-            <SolidColorBrush x:Key="ErrorBorder" Color="#F97316"/>
+        <SolidColorBrush x:Key="ErrorBg" Color="#7C2D12"/>
+        <SolidColorBrush x:Key="ErrorFg" Color="#FDBA74"/>
+        <SolidColorBrush x:Key="ErrorBorder" Color="#F97316"/>
 
-            <SolidColorBrush x:Key="WarnBannerBg" Color="#FFFBEB"/>
-            <SolidColorBrush x:Key="WarnBannerFg" Color="#92400E"/>
-            <SolidColorBrush x:Key="WarnBannerBorder" Color="#F59E0B"/>
+        <SolidColorBrush x:Key="WarnBannerBg" Color="#451A03"/>
+        <SolidColorBrush x:Key="WarnBannerFg" Color="#FDE68A"/>
+        <SolidColorBrush x:Key="WarnBannerBorder" Color="#D97706"/>
 
-            <!-- Stile Pulsante Moderno Fluent -->
-            <Style x:Key="ModernButton" TargetType="Button">
-                <Setter Property="Background" Value="{DynamicResource BgSurface}"/>
-                <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Padding" Value="14,7"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Border x:Name="border"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="7"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  RecognizesAccessKey="True"/>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.42"/>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </Style>
+        <!-- Stile Moderno per tutti i Pulsanti con bordi arrotondati -->
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource BgElevated}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.88"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.74"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Opacity" Value="0.38"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-            <!-- Stile Pulsante Primario Blu -->
-            <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-                <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
-                <Setter Property="Foreground" Value="#FFFFFF"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
-            </Style>
+        <!-- Stile TextBox compatibile con Dark e Light Theme -->
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="CaretBrush" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="SelectionBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost" Focusable="False" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-            <!-- Stile Pulsante Assistente IA Viola -->
-            <Style x:Key="AiButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-                <Setter Property="Background" Value="{DynamicResource AiAccentBrush}"/>
-                <Setter Property="Foreground" Value="#FFFFFF"/>
-                <Setter Property="BorderBrush" Value="{DynamicResource AiAccentBrush}"/>
-            </Style>
+        <!-- Stile ComboBoxItem compatibile con Dark e Light Theme -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="{DynamicResource BgElevated}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SelectedRowBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource SelectedRowFg}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource SelectedRowBg}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource SelectedRowFg}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-            <!-- Stile Pulsante Barra Intestazione Scuro -->
-            <Style x:Key="HeaderButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
-                <Setter Property="Background" Value="#1E293B"/>
-                <Setter Property="Foreground" Value="#F8FAFC"/>
-                <Setter Property="BorderBrush" Value="#334155"/>
-                <Setter Property="Padding" Value="12,6"/>
-            </Style>
-        </ResourceDictionary>
+        <!-- Stile ComboBox completamente personalizzato per Dark e Light Theme -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="{DynamicResource BgInput}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                          ClickMode="Press"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Border"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="26"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Path Grid.Column="1"
+                                                      HorizontalAlignment="Center"
+                                                      VerticalAlignment="Center"
+                                                      Data="M 0 0 L 4 4 L 8 0 Z"
+                                                      Fill="{DynamicResource TextSecondary}"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+
+                            <ContentPresenter x:Name="ContentSite"
+                                              IsHitTestVisible="False"
+                                              Content="{TemplateBinding SelectionBoxItem}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                              Margin="10,3,26,3"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Left"/>
+
+                            <TextBox x:Name="PART_EditableTextBox"
+                                     Visibility="Hidden"
+                                     IsReadOnly="{TemplateBinding IsReadOnly}"
+                                     Background="Transparent"
+                                     Foreground="{DynamicResource TextPrimary}"
+                                     CaretBrush="{DynamicResource TextPrimary}"
+                                     BorderThickness="0"
+                                     Margin="8,3,26,3"
+                                     VerticalAlignment="Center"
+                                     HorizontalAlignment="Stretch"
+                                     Focusable="True"/>
+
+                            <Popup x:Name="Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Grid x:Name="DropDown"
+                                      SnapsToDevicePixels="True"
+                                      MinWidth="{TemplateBinding ActualWidth}"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border x:Name="DropDownBorder"
+                                            Background="{DynamicResource BgElevated}"
+                                            BorderBrush="{DynamicResource BorderStrong}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Margin="0,2,0,0">
+                                        <ScrollViewer Margin="2" SnapsToDevicePixels="True">
+                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                        </ScrollViewer>
+                                    </Border>
+                                </Grid>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEditable" Value="True">
+                                <Setter Property="IsTabStop" Value="False"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Stile DataGridColumnHeader per Dark e Light Theme -->
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="{DynamicResource BgSubtle}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}"/>
+            <Setter Property="BorderThickness" Value="0,0,1,1"/>
+            <Setter Property="Padding" Value="12,9"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        </Style>
+
+        <!-- Stile DataGridRow e DataGridCell per selezione nitida in Dark e Light Theme -->
+        <Style TargetType="DataGridRow">
+            <Setter Property="Background" Value="{DynamicResource BgSurface}"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Style.Triggers>
+                <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                    <Setter Property="Background" Value="{DynamicResource BgAlternating}"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource HoverRowBg}"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SelectedRowBg}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource SelectedRowFg}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="DataGridCell">
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderThickness="0"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource SelectedRowBg}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource SelectedRowFg}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
+            <!-- 0: Intestazione principale (Brand + Selettore Lingua 3 pulsanti + Tema + OS Info) -->
             <RowDefinition Height="Auto"/>
+            <!-- 1: Banner avviso non-amministratore / errore -->
             <RowDefinition Height="Auto"/>
+            <!-- 2: Barra Navigazione Schede (Tab 1 / Tab 2) + Azioni Scansione e Progresso -->
             <RowDefinition Height="Auto"/>
+            <!-- 3: 5 Card KPI contatori stato -->
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <!-- 4: Corpo principale (Pagina 1: Tabella + Dettaglio / Pagina 2: Assistente IA Ollama) -->
             <RowDefinition Height="*"/>
+            <!-- 5: Footer con Export e Disclaimer permanente -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 0. INTESTAZIONE PREMIUM -->
-        <Border Grid.Row="0" Background="{DynamicResource BgHeader}" Padding="20,12">
+        <!-- ================= RIGA 0: INTESTAZIONE ================= -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource BgHeader}"
+                BorderBrush="{DynamicResource BorderSubtle}"
+                BorderThickness="0,0,0,1"
+                Padding="20,12">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Logo e Titolo -->
+                <!-- Colonna 0: Logo e Titolo -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="#1D4ED8" CornerRadius="8" Padding="9,7" Margin="0,0,12,0">
-                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="17"
-                                   Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                    <Border Background="#1D4ED8" CornerRadius="8" Width="38" Height="38" Margin="0,0,12,0" VerticalAlignment="Center">
+                        <Canvas Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M6,9 V6 A4,4 0 0,1 14,6 V9 M4,9 H16 A1,1 0 0,1 17,10 V17 A1,1 0 0,1 16,18 H4 A1,1 0 0,1 3,17 V10 A1,1 0 0,1 4,9 Z"
+                                  Stroke="#FFFFFF" StrokeThickness="1.8" StrokeLineJoin="Round"/>
+                        </Canvas>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="TxtTitoloApp" Text="Scanner Sicurezza Windows 11"
-                                       FontSize="16.5" FontWeight="Bold"
-                                       Foreground="{DynamicResource TextHeader}" VerticalAlignment="Center"/>
-                            <Border Background="#065F46" BorderBrush="#10B981" BorderThickness="1"
-                                    CornerRadius="5" Padding="7,1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock x:Name="TxtBadgeSolaLettura" Text="SOLA LETTURA"
-                                           FontSize="10" FontWeight="Bold" Foreground="#A7F3D0"/>
+                            <TextBlock x:Name="TxtTitoloApp"
+                                       Text="Scanner Sicurezza Windows 11"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource TextHeader}"
+                                       VerticalAlignment="Center"/>
+                            <Border Background="#065F46" BorderBrush="#10B981" BorderThickness="1" CornerRadius="5" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="TxtBadgeSolaLettura"
+                                           Text="SOLA LETTURA"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           Foreground="#A7F3D0"/>
                             </Border>
                         </StackPanel>
                         <TextBlock x:Name="TxtSottotitoloApp"
                                    Text="34 Controlli Deterministici + Assistente IA Locale (Ollama)"
-                                   FontSize="11.5" Foreground="#94A3B8" Margin="0,1,0,0"/>
+                                   FontSize="11.5"
+                                   Foreground="#94A3B8"
+                                   Margin="0,2,0,0"/>
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Navigazione Pagine al Centro -->
-                <Border Grid.Column="1" Background="#1E293B" BorderBrush="#334155" BorderThickness="1"
-                        CornerRadius="9" Padding="4" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal">
-                        <Button x:Name="BtnNavScansione"
-                                Content="1. Tabella Controlli &amp; Dettagli"
-                                Style="{StaticResource PrimaryButton}"
-                                Padding="16,6" Margin="0,0,4,0"/>
-                        <Button x:Name="BtnNavIA"
-                                Content="2. Pagina Resoconto IA (Ollama)"
-                                Style="{StaticResource AiButton}"
-                                Padding="16,6"/>
-                    </StackPanel>
-                </Border>
+                <!-- Colonna 1: Info OS + Selettore Lingua esplicito [IT | EN | DE] + Pulsante Tema -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Badge Sistema Operativo -->
+                    <Border Background="#111827"
+                            BorderBrush="#334155"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Padding="11,6"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center">
+                        <TextBlock x:Name="TxtAmbienteInfo"
+                                   Text="Windows 11 | Admin: No"
+                                   FontSize="11.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="#E2E8F0"/>
+                    </Border>
 
-                <!-- Badge Ambiente -->
-                <Border Grid.Column="2" Background="#1E293B" CornerRadius="7" Padding="12,6" Margin="0,0,10,0"
-                        VerticalAlignment="Center" BorderBrush="#334155" BorderThickness="1">
-                    <TextBlock x:Name="TxtAmbienteInfo"
-                               Text="Windows 11 | Admin: --"
-                               Foreground="#E2E8F0" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                </Border>
+                    <!-- Selettore Lingua Esplicito a 3 pulsanti (mostra chiaramente la lingua attiva) -->
+                    <Border Background="#111827"
+                            BorderBrush="#334155"
+                            BorderThickness="1"
+                            CornerRadius="7"
+                            Padding="3"
+                            Margin="0,0,10,0"
+                            VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="LblLinguaAttiva"
+                                       Text="Lingua:"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#94A3B8"
+                                       VerticalAlignment="Center"
+                                       Margin="7,0,6,0"/>
+                            <Button x:Name="BtnLinguaIT"
+                                    Style="{StaticResource ModernButton}"
+                                    Content="IT Italiano"
+                                    Padding="9,4"
+                                    Margin="0,0,3,0"
+                                    FontSize="11.5"
+                                    FontWeight="Bold"
+                                    Background="#2563EB"
+                                    Foreground="#FFFFFF"
+                                    BorderThickness="0"/>
+                            <Button x:Name="BtnLinguaEN"
+                                    Style="{StaticResource ModernButton}"
+                                    Content="EN English"
+                                    Padding="9,4"
+                                    Margin="0,0,3,0"
+                                    FontSize="11.5"
+                                    FontWeight="SemiBold"
+                                    Background="Transparent"
+                                    Foreground="#94A3B8"
+                                    BorderThickness="0"/>
+                            <Button x:Name="BtnLinguaDE"
+                                    Style="{StaticResource ModernButton}"
+                                    Content="DE Deutsch"
+                                    Padding="9,4"
+                                    FontSize="11.5"
+                                    FontWeight="SemiBold"
+                                    Background="Transparent"
+                                    Foreground="#94A3B8"
+                                    BorderThickness="0"/>
+                            <!-- Alias nascosto per retrocompatibilita' -->
+                            <Button x:Name="BtnLingua" Visibility="Collapsed"/>
+                        </StackPanel>
+                    </Border>
 
-                <!-- Selettori Lingua e Tema -->
-                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="BtnLingua" Content="Lang: EN"
-                            Style="{StaticResource HeaderButton}"
-                            MinWidth="84" Margin="0,0,8,0"/>
-                    <Button x:Name="BtnTema" Content="Tema: Scuro"
-                            Style="{StaticResource HeaderButton}"
-                            MinWidth="106" TabIndex="1"/>
+                    <!-- Pulsante Tema con indicazione chiara del tema attivo -->
+                    <Button x:Name="BtnTema"
+                            Style="{StaticResource ModernButton}"
+                            Content="Tema: Scuro"
+                            Padding="12,6"
+                            FontSize="11.5"
+                            FontWeight="SemiBold"
+                            Background="#1E293B"
+                            Foreground="#F8FAFC"
+                            BorderBrush="#475569"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- 1. BANNER AVVISO UTENTE NON AMMINISTRATORE -->
-        <Border x:Name="BannerNonAdmin" Grid.Row="1"
-                Background="{DynamicResource WarnBannerBg}"
-                BorderBrush="{DynamicResource WarnBannerBorder}"
-                BorderThickness="0,0,0,1" Padding="20,9" Visibility="Collapsed">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="[!]" FontWeight="Bold" Foreground="{DynamicResource WarnBannerFg}" Margin="0,0,8,0"/>
+        <!-- ================= RIGA 1: BANNER AVVISI ================= -->
+        <StackPanel Grid.Row="1">
+            <!-- Banner Non-Amministratore -->
+            <Border x:Name="BannerNonAdmin"
+                    Visibility="Collapsed"
+                    Background="{DynamicResource WarnBannerBg}"
+                    BorderBrush="{DynamicResource WarnBannerBorder}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,8">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
                     <TextBlock x:Name="TxtBannerNonAdmin"
-                               Foreground="{DynamicResource WarnBannerFg}" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="SemiBold"
-                               Text="Sessione non amministrativa: alcuni controlli risulteranno 'Sconosciuto'. Riavvia come Amministratore per l'analisi completa."/>
-                </StackPanel>
-                <Button x:Name="BtnRiavviaAdmin" Grid.Column="1" Content="Riavvia come amministratore"
-                        Style="{StaticResource ModernButton}" Margin="12,0,0,0" TabIndex="2"/>
-            </Grid>
-        </Border>
-
-        <!-- 2. BANNER ERRORE SCANSIONE -->
-        <Border x:Name="BannerErrore" Grid.Row="2"
-                Background="{DynamicResource ErrorBg}"
-                BorderBrush="{DynamicResource ErrorBorder}"
-                BorderThickness="0,0,0,1" Padding="20,8" Visibility="Collapsed">
-            <TextBlock x:Name="TxtBannerErrore"
-                       Foreground="{DynamicResource ErrorFg}"
-                       TextWrapping="Wrap" FontWeight="SemiBold"
-                       Text="Si e' verificato un problema durante l'esecuzione di alcuni controlli."/>
-        </Border>
-
-        <!-- 3. BARRA AZIONI PRINCIPALE E AVANZAMENTO -->
-        <Border Grid.Row="3" Background="{DynamicResource BgSurface}"
-                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20,11">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-
-                <Button x:Name="BtnAvvia" Grid.Column="0" Content="Avvia scansione (34 controlli)"
-                        Style="{StaticResource PrimaryButton}" Padding="18,8" TabIndex="3"/>
-
-                <Button x:Name="BtnAnnulla" Grid.Column="1" Content="Annulla"
-                        Style="{StaticResource ModernButton}" Padding="16,8" Margin="8,0,0,0"
-                        IsEnabled="False" TabIndex="4"/>
-
-                <Button x:Name="BtnResocontoLLM" Grid.Column="2" Content="Apri Resoconto IA &amp; Consigli"
-                        Style="{StaticResource AiButton}" Padding="16,8" Margin="12,0,0,0"
-                        IsEnabled="False" TabIndex="5"/>
-
-                <Border Grid.Column="3" Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
-                        BorderThickness="1" CornerRadius="6" Height="16" Margin="22,0,16,0" VerticalAlignment="Center" ClipToBounds="True">
-                    <ProgressBar x:Name="ProgressScansione"
-                                 Minimum="0" Maximum="34" Value="0"
-                                 BorderThickness="0" Background="Transparent" Foreground="#10B981"/>
-                </Border>
-
-                <TextBlock x:Name="TxtProgresso" Grid.Column="4"
-                           Text="Pronto (0/34)" FontWeight="Bold"
-                           Foreground="{DynamicResource TextSecondary}"
-                           VerticalAlignment="Center" MinWidth="145" TextAlignment="Right"/>
-            </Grid>
-        </Border>
-
-        <!-- 4. SCHEDE KPI RIEPILOGO MODERNE (CON BORDO ACCENTO LATERALE) -->
-        <Border Grid.Row="4" Background="{DynamicResource BgPrimary}" Padding="20,12,20,6">
-            <UniformGrid Rows="1" Columns="5">
-                <Border Background="{DynamicResource PassBg}" BorderBrush="{DynamicResource PassBorder}"
-                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
-                    <TextBlock x:Name="TxtCountSuperati" Text="[OK] 0 Superati" FontSize="14"
-                               Foreground="{DynamicResource PassFg}" FontWeight="Bold" VerticalAlignment="Center"/>
-                </Border>
-                <Border Background="{DynamicResource FailBg}" BorderBrush="{DynamicResource FailBorder}"
-                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
-                    <TextBlock x:Name="TxtCountFalliti" Text="[X] 0 Falliti" FontSize="14"
-                               Foreground="{DynamicResource FailFg}" FontWeight="Bold" VerticalAlignment="Center"/>
-                </Border>
-                <Border Background="{DynamicResource UnknownBg}" BorderBrush="{DynamicResource UnknownBorder}"
-                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
-                    <TextBlock x:Name="TxtCountSconosciuti" Text="[?] 0 Sconosciuti" FontSize="14"
-                               Foreground="{DynamicResource UnknownFg}" FontWeight="Bold" VerticalAlignment="Center"/>
-                </Border>
-                <Border Background="{DynamicResource NaBg}" BorderBrush="{DynamicResource NaBorder}"
-                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
-                    <TextBlock x:Name="TxtCountNonApplicabili" Text="[-] 0 Non applicabili" FontSize="14"
-                               Foreground="{DynamicResource NaFg}" FontWeight="Bold" VerticalAlignment="Center"/>
-                </Border>
-                <Border Background="{DynamicResource ErrorBg}" BorderBrush="{DynamicResource ErrorBorder}"
-                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10">
-                    <TextBlock x:Name="TxtCountErrori" Text="[!] 0 Errori" FontSize="14"
-                               Foreground="{DynamicResource ErrorFg}" FontWeight="Bold" VerticalAlignment="Center"/>
-                </Border>
-            </UniformGrid>
-        </Border>
-
-        <!-- ====================================================================== -->
-        <!-- 5A. PAGINA 1: TABELLA CONTROLLI E DETTAGLIO PULITO                     -->
-        <!-- ====================================================================== -->
-        <Grid x:Name="GridPaginaScansione" Grid.Row="5" Visibility="Visible">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-            </Grid.RowDefinitions>
-
-            <!-- Barra Filtri -->
-            <Border Grid.Row="0" Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="8"
-                    Padding="16,9" Margin="20,4,20,2">
-                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock x:Name="LblFiltroStato" Text="Stato:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="CmbFiltroStato" Width="135" Padding="6,4" Margin="0,0,16,0" SelectedIndex="0" TabIndex="6">
-                        <ComboBoxItem Content="Tutti"/>
-                        <ComboBoxItem Content="fallito"/>
-                        <ComboBoxItem Content="superato"/>
-                        <ComboBoxItem Content="sconosciuto"/>
-                        <ComboBoxItem Content="non_applicabile"/>
-                        <ComboBoxItem Content="errore"/>
-                    </ComboBox>
-
-                    <TextBlock x:Name="LblFiltroGravita" Text="Gravita':" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="CmbFiltroGravita" Width="125" Padding="6,4" Margin="0,0,16,0" SelectedIndex="0" TabIndex="7">
-                        <ComboBoxItem Content="Tutte"/>
-                        <ComboBoxItem Content="critico"/>
-                        <ComboBoxItem Content="alto"/>
-                        <ComboBoxItem Content="medio"/>
-                        <ComboBoxItem Content="basso"/>
-                        <ComboBoxItem Content="informativo"/>
-                    </ComboBox>
-
-                    <TextBlock x:Name="LblFiltroCategoria" Text="Categoria:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="CmbFiltroCategoria" Width="165" Padding="6,4" Margin="0,0,16,0" SelectedIndex="0" TabIndex="8">
-                        <ComboBoxItem Content="Tutte"/>
-                    </ComboBox>
-
-                    <TextBlock x:Name="LblFiltroCerca" Text="Cerca:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                    <TextBox x:Name="TxtRicerca" Width="210" Padding="7,4" Margin="0,0,12,0" TabIndex="9"
-                             VerticalContentAlignment="Center"/>
-
-                    <Button x:Name="BtnResetFiltri" Content="Reimposta filtri"
-                            Style="{StaticResource ModernButton}" Padding="12,5" TabIndex="10"/>
-                </WrapPanel>
+                               Grid.Column="0"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource WarnBannerFg}"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap"
+                               Text="[!] Sessione non amministrativa: alcuni controlli risulteranno 'Sconosciuto'. Riavvia come Amministratore per l'analisi completa."/>
+                    <Button x:Name="BtnRiavviaAdmin"
+                            Style="{StaticResource ModernButton}"
+                            Grid.Column="1"
+                            Content="Riavvia come amministratore"
+                            Padding="12,5"
+                            Margin="12,0,0,0"
+                            FontWeight="SemiBold"/>
+                </Grid>
             </Border>
 
-            <!-- Tabella a sinistra + Dettaglio controllo a destra -->
-            <Grid Grid.Row="1" Margin="20,8,20,12">
+            <!-- Banner Errore Generale -->
+            <Border x:Name="BannerErrore"
+                    Visibility="Collapsed"
+                    Background="{DynamicResource ErrorBg}"
+                    BorderBrush="{DynamicResource ErrorBorder}"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,8">
+                <TextBlock x:Name="TxtBannerErrore"
+                           Foreground="{DynamicResource ErrorFg}"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap"
+                           Text=""/>
+            </Border>
+        </StackPanel>
+
+        <!-- ================= RIGA 2: BARRA SCHEDE E AZIONI SCANSIONE ================= -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource BgSurface}"
+                BorderBrush="{DynamicResource BorderSubtle}"
+                BorderThickness="0,0,0,1"
+                Padding="20,10">
+            <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="6*" MinWidth="460"/>
-                    <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="5*" MinWidth="390"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Colonna sinistra: Tabella -->
-                <Border Grid.Column="0" Background="{DynamicResource BgSurface}"
-                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
-                    <Grid>
-                        <DataGrid x:Name="GridRisultati"
-                                  AutoGenerateColumns="False"
-                                  IsReadOnly="True"
-                                  SelectionMode="Single"
-                                  SelectionUnit="FullRow"
-                                  HeadersVisibility="Column"
-                                  GridLinesVisibility="Horizontal"
-                                  HorizontalGridLinesBrush="{DynamicResource BorderSubtle}"
-                                  Background="{DynamicResource BgSurface}"
-                                  RowBackground="{DynamicResource BgSurface}"
-                                  AlternatingRowBackground="{DynamicResource BgSubtle}"
-                                  Foreground="{DynamicResource TextPrimary}"
-                                  BorderThickness="0"
-                                  RowHeight="34"
-                                  RowHeaderWidth="0"
-                                  CanUserAddRows="False"
-                                  CanUserDeleteRows="False"
-                                  CanUserReorderColumns="False"
-                                  TabIndex="11">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn x:Name="ColStato" Header="Stato" Binding="{Binding StatusLabel}" Width="125"/>
-                                <DataGridTextColumn x:Name="ColGravita" Header="Gravita'" Binding="{Binding SeverityLabel}" Width="85"/>
-                                <DataGridTextColumn x:Name="ColCategoria" Header="Categoria" Binding="{Binding Category}" Width="135"/>
-                                <DataGridTextColumn x:Name="ColId" Header="ID" Binding="{Binding ControlId}" Width="115"/>
-                                <DataGridTextColumn x:Name="ColControllo" Header="Controllo" Binding="{Binding Title}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                <!-- Schede di navigazione Pagina 1 / Pagina 2 (mai troncate, evidenziano la scheda attiva) -->
+                <Border Grid.Column="0"
+                        Background="{DynamicResource BgSubtle}"
+                        BorderBrush="{DynamicResource BorderStrong}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="3"
+                        Margin="0,0,16,0"
+                        VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="BtnNavScansione"
+                                Style="{StaticResource ModernButton}"
+                                Content="1. Tabella Controlli &amp; Dettagli"
+                                Padding="14,6"
+                                Margin="0,0,4,0"
+                                FontWeight="Bold"
+                                Background="#2563EB"
+                                Foreground="#FFFFFF"
+                                BorderThickness="0"/>
+                        <Button x:Name="BtnNavIA"
+                                Style="{StaticResource ModernButton}"
+                                Content="2. Assistente IA (Ollama)"
+                                Padding="14,6"
+                                FontWeight="SemiBold"
+                                Background="Transparent"
+                                Foreground="{DynamicResource TextSecondary}"
+                                BorderThickness="0"/>
+                    </StackPanel>
+                </Border>
 
-                        <Border x:Name="PanelGuidaVuota"
-                                Background="{DynamicResource BgSurface}"
-                                Padding="30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="44"
-                                           Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,14"/>
-                                <TextBlock x:Name="TxtMessaggioGuida"
-                                           Text="Premi 'Avvia scansione' per analizzare i 34 controlli di sicurezza del PC."
-                                           FontSize="16" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimary}"
-                                           TextAlignment="Center" TextWrapping="Wrap"/>
-                                <TextBlock x:Name="TxtSottotitoloGuida"
-                                           Text="Al termine potrai aprire la Pagina 2 (Resoconto IA Ollama) per avere l'analisi completa e i consigli."
-                                           FontSize="12.5" Foreground="{DynamicResource TextSecondary}"
-                                           TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
-                            </StackPanel>
-                        </Border>
+                <!-- Pulsanti Azione Scansione -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnAvvia"
+                            Style="{StaticResource ModernButton}"
+                            Content="Avvia scansione (34 controlli)"
+                            FontWeight="Bold"
+                            Padding="16,7"
+                            Margin="0,0,8,0"
+                            Background="#10B981"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"/>
+
+                    <Button x:Name="BtnAnnulla"
+                            Style="{StaticResource ModernButton}"
+                            Content="Annulla"
+                            Padding="12,7"
+                            Margin="0,0,8,0"
+                            IsEnabled="False"/>
+
+                    <Button x:Name="BtnResocontoLLM"
+                            Style="{StaticResource ModernButton}"
+                            Content="Apri Resoconto IA &amp; Consigli"
+                            FontWeight="Bold"
+                            Padding="14,7"
+                            Margin="0,0,14,0"
+                            Background="#7C3AED"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"
+                            IsEnabled="False"/>
+                </StackPanel>
+
+                <!-- Barra di Progresso arrotondata -->
+                <Border Grid.Column="2"
+                        CornerRadius="6"
+                        Background="{DynamicResource BgSubtle}"
+                        BorderBrush="{DynamicResource BorderStrong}"
+                        BorderThickness="1"
+                        Height="14"
+                        VerticalAlignment="Center"
+                        Margin="0,0,14,0"
+                        ClipToBounds="True">
+                    <ProgressBar x:Name="ProgressScansione"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="0"
+                                 Background="Transparent"
+                                 Foreground="#10B981"
+                                 BorderThickness="0"/>
+                </Border>
+
+                <TextBlock x:Name="TxtProgresso"
+                           Grid.Column="3"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextPrimary}"
+                           FontWeight="Bold"
+                           FontSize="12.5"
+                           Text="Pronto (0/34)"/>
+            </Grid>
+        </Border>
+
+        <!-- ================= RIGA 3: 5 CARD KPI STATO ================= -->
+        <UniformGrid Grid.Row="3" Columns="5" Margin="16,10,16,6">
+            <!-- Superati -->
+            <Border Background="{DynamicResource PassBg}"
+                    BorderBrush="{DynamicResource PassBorder}"
+                    BorderThickness="4,1,1,1"
+                    CornerRadius="7"
+                    Padding="12,8"
+                    Margin="4,0">
+                <TextBlock x:Name="TxtCountSuperati"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="{DynamicResource PassFg}"
+                           Text="[OK] 0 Superati"/>
+            </Border>
+
+            <!-- Falliti -->
+            <Border Background="{DynamicResource FailBg}"
+                    BorderBrush="{DynamicResource FailBorder}"
+                    BorderThickness="4,1,1,1"
+                    CornerRadius="7"
+                    Padding="12,8"
+                    Margin="4,0">
+                <TextBlock x:Name="TxtCountFalliti"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="{DynamicResource FailFg}"
+                           Text="[X] 0 Falliti"/>
+            </Border>
+
+            <!-- Sconosciuti -->
+            <Border Background="{DynamicResource UnknownBg}"
+                    BorderBrush="{DynamicResource UnknownBorder}"
+                    BorderThickness="4,1,1,1"
+                    CornerRadius="7"
+                    Padding="12,8"
+                    Margin="4,0">
+                <TextBlock x:Name="TxtCountSconosciuti"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="{DynamicResource UnknownFg}"
+                           Text="[?] 0 Sconosciuti"/>
+            </Border>
+
+            <!-- Non applicabili -->
+            <Border Background="{DynamicResource NaBg}"
+                    BorderBrush="{DynamicResource NaBorder}"
+                    BorderThickness="4,1,1,1"
+                    CornerRadius="7"
+                    Padding="12,8"
+                    Margin="4,0">
+                <TextBlock x:Name="TxtCountNonApplicabili"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="{DynamicResource NaFg}"
+                           Text="[-] 0 Non applicabili"/>
+            </Border>
+
+            <!-- Errori -->
+            <Border Background="{DynamicResource ErrorBg}"
+                    BorderBrush="{DynamicResource ErrorBorder}"
+                    BorderThickness="4,1,1,1"
+                    CornerRadius="7"
+                    Padding="12,8"
+                    Margin="4,0">
+                <TextBlock x:Name="TxtCountErrori"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="{DynamicResource ErrorFg}"
+                           Text="[!] 0 Errori"/>
+            </Border>
+        </UniformGrid>
+
+        <!-- ================= RIGA 4: CORPO PRINCIPALE A 2 PAGINE ================= -->
+        <Grid Grid.Row="4" Margin="20,4,20,10">
+
+            <!-- ==================== PAGINA 1: TABELLA CONTROLLI & DETTAGLI ==================== -->
+            <Grid x:Name="GridPaginaScansione" Visibility="Visible">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Barra Filtri -->
+                <Border Grid.Row="0"
+                        Background="{DynamicResource BgSurface}"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="14,9"
+                        Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="155"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="145"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="185"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock x:Name="LblFiltroStato" Grid.Column="0" Text="Stato:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondary}"/>
+                        <ComboBox x:Name="CmbFiltroStato" Grid.Column="1" VerticalContentAlignment="Center" Margin="0,0,14,0" SelectedIndex="0">
+                            <ComboBoxItem Content="Tutti"/>
+                        </ComboBox>
+
+                        <TextBlock x:Name="LblFiltroGravita" Grid.Column="2" Text="Gravita':" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondary}"/>
+                        <ComboBox x:Name="CmbFiltroGravita" Grid.Column="3" VerticalContentAlignment="Center" Margin="0,0,14,0" SelectedIndex="0">
+                            <ComboBoxItem Content="Tutte"/>
+                        </ComboBox>
+
+                        <TextBlock x:Name="LblFiltroCategoria" Grid.Column="4" Text="Categoria:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondary}"/>
+                        <ComboBox x:Name="CmbFiltroCategoria" Grid.Column="5" VerticalContentAlignment="Center" Margin="0,0,14,0" SelectedIndex="0">
+                            <ComboBoxItem Content="Tutte"/>
+                        </ComboBox>
+
+                        <TextBlock x:Name="LblFiltroCerca" Grid.Column="6" Text="Cerca:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,8,0" Foreground="{DynamicResource TextSecondary}"/>
+                        <TextBox x:Name="TxtRicerca"
+                                 Grid.Column="7"
+                                 VerticalContentAlignment="Center"
+                                 Padding="10,5"
+                                 Margin="0,0,12,0"/>
+
+                        <Button x:Name="BtnResetFiltri"
+                                Style="{StaticResource ModernButton}"
+                                Grid.Column="8"
+                                Content="Reimposta filtri"
+                                Padding="12,5"/>
                     </Grid>
                 </Border>
 
-                <GridSplitter Grid.Column="1" Width="12" HorizontalAlignment="Stretch" Background="Transparent"/>
+                <!-- Tabella + Pannello Dettaglio -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3.1*" MinWidth="460"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="2.3*" MinWidth="360"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- Colonna destra Pagina 1: Dettaglio del Controllo -->
-                <Border Grid.Column="2" Background="{DynamicResource BgSurface}"
-                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="18">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
+                    <!-- SINISTRA: Tabella Risultati -->
+                    <Border Grid.Column="0"
+                            Background="{DynamicResource BgSurface}"
+                            BorderBrush="{DynamicResource BorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            ClipToBounds="True">
+                        <Grid>
+                            <DataGrid x:Name="GridRisultati"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      SelectionMode="Single"
+                                      SelectionUnit="FullRow"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      AlternationCount="2"
+                                      HorizontalGridLinesBrush="{DynamicResource BorderSubtle}"
+                                      Background="{DynamicResource BgSurface}"
+                                      RowBackground="{DynamicResource BgSurface}"
+                                      AlternatingRowBackground="{DynamicResource BgAlternating}"
+                                      Foreground="{DynamicResource TextPrimary}"
+                                      BorderThickness="0"
+                                      RowHeight="36"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      CanUserReorderColumns="False">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn x:Name="ColStato" Header="Stato" Binding="{Binding StatusLabel}" Width="140"/>
+                                    <DataGridTextColumn x:Name="ColGravita" Header="Gravita'" Binding="{Binding SeverityLabel}" Width="95"/>
+                                    <DataGridTextColumn x:Name="ColCategoria" Header="Categoria" Binding="{Binding Category}" Width="140"/>
+                                    <DataGridTextColumn x:Name="ColId" Header="ID" Binding="{Binding ControlId}" Width="115"/>
+                                    <DataGridTextColumn x:Name="ColControllo" Header="Controllo" Binding="{Binding Title}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
 
-                        <!-- Intestazione fissa del controllo -->
-                        <Border Grid.Row="0" Background="{DynamicResource BgSubtle}"
-                                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                                CornerRadius="8" Padding="14,10" Margin="0,0,0,14">
+                            <!-- Overlay iniziale / lista vuota -->
+                            <Border x:Name="PanelGuidaVuota"
+                                    Background="{DynamicResource BgSurface}"
+                                    CornerRadius="8"
+                                    Padding="32"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="440">
+                                    <Border Background="{DynamicResource BgElevated}"
+                                            BorderBrush="{DynamicResource BorderStrong}"
+                                            BorderThickness="1"
+                                            Width="64" Height="64"
+                                            CornerRadius="32"
+                                            HorizontalAlignment="Center"
+                                            Margin="0,0,0,16">
+                                        <Canvas Width="32" Height="32" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Ellipse Canvas.Left="3" Canvas.Top="3" Width="18" Height="18" Stroke="#3B82F6" StrokeThickness="2.5"/>
+                                            <Line X1="18" Y1="18" X2="28" Y2="28" Stroke="#3B82F6" StrokeThickness="2.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                                        </Canvas>
+                                    </Border>
+                                    <TextBlock x:Name="TxtMessaggioGuida"
+                                               Text="Premi 'Avvia scansione' per analizzare i 34 controlli di sicurezza del PC."
+                                               FontSize="15"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimary}"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               Margin="0,0,0,8"/>
+                                    <TextBlock x:Name="TxtSottotitoloGuida"
+                                               Text="Lo strumento opera esclusivamente in sola lettura e non modifica alcuna impostazione di Windows."
+                                               FontSize="12.5"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Column="1"
+                                  Width="12"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  Background="Transparent"/>
+
+                    <!-- DESTRA: Pannello di Dettaglio del Controllo -->
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource BgSurface}"
+                            BorderBrush="{DynamicResource BorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="16">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel>
-                                <TextBlock x:Name="TxtDettaglioTitolo"
-                                           Text="Seleziona un controllo dalla tabella"
-                                           FontSize="16" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
-                                <TextBlock x:Name="TxtDettaglioSottotitolo"
-                                           Text="ID: -  |  Stato: -  |  Gravita': -  |  Categoria: -"
-                                           FontSize="12" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextSecondary}"
-                                           Margin="0,4,0,0" TextWrapping="Wrap"/>
-                            </StackPanel>
-                        </Border>
+                                <!-- Card Titolo e Metadati Controllo -->
+                                <Border Background="{DynamicResource BgSubtle}"
+                                        BorderBrush="{DynamicResource BorderStrong}"
+                                        BorderThickness="1"
+                                        CornerRadius="7"
+                                        Padding="13,11"
+                                        Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock x:Name="TxtDettaglioTitolo"
+                                                   Text="Nessun controllo selezionato"
+                                                   FontSize="15.5"
+                                                   FontWeight="Bold"
+                                                   TextWrapping="Wrap"
+                                                   Margin="0,0,0,5"/>
+                                        <TextBlock x:Name="TxtDettaglioSottotitolo"
+                                                   Text="Seleziona una riga dalla tabella a sinistra"
+                                                   FontSize="12"
+                                                   Foreground="{DynamicResource TextSecondary}"
+                                                   TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
 
-                        <!-- Corpo del dettaglio -->
-                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                            <StackPanel>
+                                <!-- Barra Pulsanti Modalita' Semplice / Tecnica + Accesso rapido IA -->
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -1100,292 +1540,460 @@ $script:XamlIncorporato = @'
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-
-                                    <Button x:Name="BtnModoSemplice" Grid.Column="0" Content="Spiegazione Semplice"
-                                            Style="{StaticResource ModernButton}" Padding="10,5" TabIndex="12"/>
-                                    <Button x:Name="BtnModoTecnico" Grid.Column="1" Content="Dettagli Tecnici"
-                                            Style="{StaticResource ModernButton}" Padding="10,5" Margin="6,0,0,0" TabIndex="13"/>
-
-                                    <Button x:Name="BtnSpiegaLLM" Grid.Column="3"
+                                    <Button x:Name="BtnModoSemplice"
+                                            Style="{StaticResource ModernButton}"
+                                            Grid.Column="0"
+                                            Content="Spiegazione Semplice"
+                                            Padding="11,5"
+                                            Margin="0,0,6,0"
+                                            FontWeight="Bold"/>
+                                    <Button x:Name="BtnModoTecnico"
+                                            Style="{StaticResource ModernButton}"
+                                            Grid.Column="1"
+                                            Content="Dettagli Tecnici"
+                                            Padding="11,5"/>
+                                    <Button x:Name="BtnSpiegaLLM"
+                                            Style="{StaticResource ModernButton}"
+                                            Grid.Column="3"
                                             Content="Spiega con IA (Pagina 2)"
-                                            Style="{StaticResource AiButton}" Padding="12,5"/>
+                                            Padding="12,5"
+                                            Background="#7C3AED"
+                                            Foreground="#FFFFFF"
+                                            BorderThickness="0"
+                                            FontWeight="SemiBold"/>
                                 </Grid>
 
-                                <TextBlock x:Name="TxtTitoloSpiegazione" Text="Perche' conta (spiegazione semplice)"
-                                           FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
-                                <Border Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
-                                        BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
-                                    <TextBlock x:Name="TxtDettaglioSpiegazione"
-                                               Text="Seleziona una riga nella tabella a sinistra per leggere la spiegazione del controllo."
-                                               TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"/>
-                                </Border>
-
+                                <!-- Banner errore specifico del controllo -->
                                 <Border x:Name="BannerDettaglioErrore"
-                                        Background="{DynamicResource ErrorBg}" BorderBrush="{DynamicResource ErrorBorder}"
-                                        BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12"
-                                        Visibility="Collapsed">
+                                        Visibility="Collapsed"
+                                        Background="{DynamicResource ErrorBg}"
+                                        BorderBrush="{DynamicResource ErrorBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="10,8"
+                                        Margin="0,0,0,12">
                                     <TextBlock x:Name="TxtDettaglioErrore"
-                                               Foreground="{DynamicResource ErrorFg}" TextWrapping="Wrap"/>
+                                               Foreground="{DynamicResource ErrorFg}"
+                                               TextWrapping="Wrap"
+                                               Text=""/>
                                 </Border>
 
-                                <!-- Valore Atteso / Rilevato -->
+                                <!-- Sezione Spiegazione -->
+                                <TextBlock x:Name="TxtTitoloSpiegazione"
+                                           Text="Perche' conta (spiegazione semplice)"
+                                           FontWeight="Bold"
+                                           FontSize="13"
+                                           Margin="0,0,0,5"/>
+                                <Border Background="{DynamicResource BgSubtle}"
+                                        BorderBrush="{DynamicResource BorderSubtle}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12,9"
+                                        Margin="0,0,0,12">
+                                    <TextBlock x:Name="TxtDettaglioSpiegazione"
+                                               Text="-"
+                                               TextWrapping="Wrap"
+                                               LineHeight="19"/>
+                                </Border>
+
+                                <!-- Valore Atteso vs Valore Osservato -->
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="10"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Background="{DynamicResource BgSubtle}"
-                                            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                                            CornerRadius="8" Padding="12,8">
+
+                                    <Border Grid.Column="0"
+                                            Background="{DynamicResource BgSubtle}"
+                                            BorderBrush="{DynamicResource BorderSubtle}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="11,9">
                                         <StackPanel>
-                                            <TextBlock x:Name="LblValoreAtteso" Text="VALORE ATTESO (SICURO)" FontSize="10" FontWeight="Bold"
-                                                       Foreground="{DynamicResource TextSecondary}"/>
-                                            <TextBlock x:Name="TxtDettaglioAtteso" Text="-" TextWrapping="Wrap"
-                                                       Margin="0,4,0,0" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="LblValoreAtteso"
+                                                       Text="VALORE ATTESO"
+                                                       FontWeight="Bold"
+                                                       FontSize="10.5"
+                                                       Foreground="{DynamicResource TextSecondary}"
+                                                       Margin="0,0,0,4"/>
+                                            <TextBlock x:Name="TxtDettaglioAtteso"
+                                                       Text="-"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Border>
-                                    <Border Grid.Column="2" Background="{DynamicResource BgSubtle}"
-                                            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                                            CornerRadius="8" Padding="12,8">
+
+                                    <Border Grid.Column="2"
+                                            Background="{DynamicResource BgSubtle}"
+                                            BorderBrush="{DynamicResource BorderSubtle}"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="11,9">
                                         <StackPanel>
-                                            <TextBlock x:Name="LblValoreOsservato" Text="VALORE RILEVATO SUL PC" FontSize="10" FontWeight="Bold"
-                                                       Foreground="{DynamicResource TextSecondary}"/>
-                                            <TextBlock x:Name="TxtDettaglioOsservato" Text="-" TextWrapping="Wrap"
-                                                       Margin="0,4,0,0" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="LblValoreOsservato"
+                                                       Text="VALORE OSSERVATO"
+                                                       FontWeight="Bold"
+                                                       FontSize="10.5"
+                                                       Foreground="{DynamicResource TextSecondary}"
+                                                       Margin="0,0,0,4"/>
+                                            <TextBlock x:Name="TxtDettaglioOsservato"
+                                                       Text="-"
+                                                       FontWeight="SemiBold"
+                                                       TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Border>
                                 </Grid>
 
-                                <TextBlock x:Name="LblComeCorreggere" Text="Come correggere (indicazione manuale)" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
-                                <Border Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
-                                        BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+                                <!-- Come correggere (Rimedio) -->
+                                <TextBlock x:Name="LblComeCorreggere"
+                                           Text="Come correggere (istruzioni manuali)"
+                                           FontWeight="Bold"
+                                           FontSize="13"
+                                           Margin="0,0,0,5"/>
+                                <Border Background="{DynamicResource BgSubtle}"
+                                        BorderBrush="{DynamicResource BorderSubtle}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12,9"
+                                        Margin="0,0,0,10">
                                     <TextBlock x:Name="TxtDettaglioRimedio"
-                                               Text="-" TextWrapping="Wrap"
-                                               Foreground="{DynamicResource TextPrimary}"/>
+                                               Text="-"
+                                               TextWrapping="Wrap"
+                                               LineHeight="19"/>
                                 </Border>
 
+                                <!-- Blocco Comando PowerShell (visibile solo se HaComando = true) -->
                                 <StackPanel x:Name="PanelComandoRimedio" Visibility="Collapsed" Margin="0,0,0,12">
-                                    <TextBlock x:Name="LblComandoRif" Text="Comando PowerShell di riferimento (sola copia, non eseguito):"
-                                               FontSize="11" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
+                                    <TextBlock x:Name="LblComandoRif"
+                                               Text="COMANDO DI RIFERIMENTO (NON ESEGUITO AUTOMATICAMENTE):"
+                                               FontSize="10.5"
+                                               FontWeight="Bold"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               Margin="0,0,0,4"/>
                                     <TextBox x:Name="TxtComandoRimedio"
                                              IsReadOnly="True"
-                                             FontFamily="Consolas" FontSize="12"
-                                             Background="{DynamicResource BgSubtle}"
-                                             Foreground="{DynamicResource TextPrimary}"
-                                             BorderBrush="{DynamicResource BorderSubtle}"
-                                             Padding="10,8" TextWrapping="Wrap"/>
-                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                        <Button x:Name="BtnCopiaComando" Content="Copia comando negli appunti"
-                                                Style="{StaticResource ModernButton}" Padding="12,5" TabIndex="14"/>
-                                        <TextBlock x:Name="TxtFeedbackCopia" Text="Copiato negli appunti!"
-                                                   Foreground="{DynamicResource PassFg}" FontWeight="Bold"
-                                                   VerticalAlignment="Center" Margin="10,0,0,0" Visibility="Collapsed"/>
+                                             FontFamily="Consolas"
+                                             FontSize="12"
+                                             TextWrapping="Wrap"
+                                             Padding="10,8"
+                                             Margin="0,0,0,6"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button x:Name="BtnCopiaComando"
+                                                Style="{StaticResource ModernButton}"
+                                                Content="Copia comando negli appunti"
+                                                Padding="12,5"/>
+                                        <TextBlock x:Name="TxtFeedbackCopia"
+                                                   Text="Copiato!"
+                                                   VerticalAlignment="Center"
+                                                   Margin="10,0,0,0"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource PassFg}"
+                                                   Visibility="Collapsed"/>
                                     </StackPanel>
                                 </StackPanel>
 
-                                <TextBlock x:Name="LblNoteRischi" Text="Impatto e note sui rischi" FontWeight="Bold"
-                                           Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,4"/>
+                                <!-- Note sui rischi -->
+                                <TextBlock x:Name="LblNoteRischi"
+                                           Text="Note sui rischi"
+                                           FontWeight="Bold"
+                                           FontSize="13"
+                                           Margin="0,0,0,4"/>
                                 <TextBlock x:Name="TxtDettaglioRischi"
-                                           Text="-" TextWrapping="Wrap" FontSize="12"
-                                           Foreground="{DynamicResource TextSecondary}"/>
+                                           Text="-"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           TextWrapping="Wrap"/>
                             </StackPanel>
                         </ScrollViewer>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ==================== PAGINA 2: ASSISTENTE IA & RESOCONTO (A TUTTO SCHERMO) ==================== -->
+            <Grid x:Name="GridPaginaIA" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="375"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- COLONNA SINISTRA PAGINA IA: Configurazione Auto-Ollama & Azioni Rapide -->
+                <Border Grid.Column="0"
+                        Background="{DynamicResource BgSurface}"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Box Configurazione Server Ollama (Auto-Setup VM) -->
+                        <Border Grid.Row="0"
+                                Background="{DynamicResource BgSubtle}"
+                                BorderBrush="{DynamicResource BorderStrong}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="13"
+                                Margin="0,0,0,14">
+                            <StackPanel>
+                                <TextBlock x:Name="LblMotoreIaTitle"
+                                           Text="MOTORE IA LOCALE (OLLAMA)"
+                                           FontWeight="Bold"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           Margin="0,0,0,8"/>
+
+                                <TextBlock x:Name="LblIndirizzoOllama"
+                                           Text="Indirizzo Server Ollama:"
+                                           FontSize="11.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtEndpointOllama"
+                                         Text="http://127.0.0.1:11434"
+                                         FontFamily="Consolas"
+                                         FontSize="12"
+                                         Padding="8,5"
+                                         Margin="0,0,0,9"/>
+
+                                <TextBlock x:Name="LblModelloOllama"
+                                           Text="Modello LLM leggero:"
+                                           FontSize="11.5"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           Margin="0,0,0,3"/>
+                                <ComboBox x:Name="CmbModelloOllama"
+                                          IsEditable="True"
+                                          SelectedIndex="0"
+                                          Padding="6,4"
+                                          Margin="0,0,0,9">
+                                    <ComboBoxItem Content="qwen2.5:0.5b"/>
+                                    <ComboBoxItem Content="qwen2.5:1.5b"/>
+                                    <ComboBoxItem Content="llama3.2:1b"/>
+                                    <ComboBoxItem Content="gemma2:2b"/>
+                                </ComboBox>
+
+                                <CheckBox x:Name="ChkAutoInstallaOllama"
+                                          IsChecked="True"
+                                          Margin="0,0,0,10"
+                                          Foreground="{DynamicResource TextPrimary}">
+                                    <TextBlock x:Name="TxtChkAutoInstalla"
+                                               Text="Se Ollama manca sulla VM, installalo e avvialo automaticamente in background"
+                                               FontSize="11.5"
+                                               TextWrapping="Wrap"/>
+                                </CheckBox>
+
+                                <Button x:Name="BtnVerificaOllama"
+                                        Style="{StaticResource ModernButton}"
+                                        Content="Verifica / Auto-Configura Ollama"
+                                        Padding="10,7"
+                                        FontWeight="SemiBold"
+                                        HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Pulsanti Generazione Analisi -->
+                        <StackPanel Grid.Row="1" Margin="0,0,0,14">
+                            <TextBlock x:Name="LblGeneraAnalisiTitle"
+                                       Text="GENERA ANALISI E CONSIGLI"
+                                       FontWeight="Bold"
+                                       FontSize="11.5"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       Margin="0,0,0,7"/>
+
+                            <Button x:Name="BtnResocontoTab"
+                                    Style="{StaticResource ModernButton}"
+                                    Content="Genera Resoconto Completo PC"
+                                    Padding="12,10"
+                                    Margin="0,0,0,8"
+                                    Background="#7C3AED"
+                                    Foreground="#FFFFFF"
+                                    BorderThickness="0"
+                                    FontWeight="Bold"
+                                    FontSize="13"/>
+
+                            <Button x:Name="BtnSpiegaControlloTab"
+                                    Style="{StaticResource ModernButton}"
+                                    Content="Spiega il Controllo Selezionato"
+                                    Padding="12,9"
+                                    Background="#2563EB"
+                                    Foreground="#FFFFFF"
+                                    BorderThickness="0"
+                                    FontWeight="SemiBold"/>
+                        </StackPanel>
+
+                        <!-- Lista rapida dei controlli falliti (senza scrollbar orizzontale, con card avvolte) -->
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <TextBlock x:Name="LblCriticitaRilevate"
+                                       Grid.Row="0"
+                                       Text="CRITICITA' RILEVATE (CLICCA PER ANALIZZARE):"
+                                       FontSize="11"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource TextSecondary}"
+                                       Margin="0,0,0,6"/>
+                            <ListBox x:Name="ListFallitiIA"
+                                     Grid.Row="1"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     HorizontalContentAlignment="Stretch"
+                                     Background="{DynamicResource BgSubtle}"
+                                     Foreground="{DynamicResource TextPrimary}"
+                                     BorderBrush="{DynamicResource BorderSubtle}"
+                                     BorderThickness="1"
+                                     Padding="4">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource BgSurface}"
+                                                BorderBrush="{DynamicResource FailBorder}"
+                                                BorderThickness="3,1,1,1"
+                                                CornerRadius="5"
+                                                Padding="9,7"
+                                                Margin="0,2">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Title}"
+                                                           FontWeight="SemiBold"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource TextPrimary}"
+                                                           TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding ControlId}"
+                                                           FontSize="10.5"
+                                                           Foreground="{DynamicResource TextSecondary}"
+                                                           Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- COLONNA DESTRA PAGINA IA: Resoconto a Tutto Schermo -->
+                <Border Grid.Column="2"
+                        Background="{DynamicResource BgSurface}"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="22">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Intestazione Resoconto IA -->
+                        <Grid Grid.Row="0" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock x:Name="LblTitoloResocontoIA"
+                                           Text="RESOCONTO DI SICUREZZA &amp; PIANO DI MIGLIORAMENTO IA"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource TextPrimary}"/>
+                                <TextBlock x:Name="TxtStatoLLM"
+                                           Text="Stato: Pronto (connessione o auto-installazione automatica al primo avvio)"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentBrush}"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <Button x:Name="BtnCopiaRispostaLLM"
+                                    Style="{StaticResource ModernButton}"
+                                    Grid.Column="1"
+                                    Content="Copia Resoconto"
+                                    Padding="14,7"
+                                    Margin="0,0,8,0"
+                                    VerticalAlignment="Center"/>
+                            <Button x:Name="BtnTornaScansione"
+                                    Style="{StaticResource ModernButton}"
+                                    Grid.Column="2"
+                                    Content="Torna alla Tabella Controlli"
+                                    Padding="14,7"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- Area di lettura ampia e spaziata del Resoconto -->
+                        <TextBox x:Name="TxtRispostaLLM"
+                                 Grid.Row="1"
+                                 IsReadOnly="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 FontFamily="Segoe UI"
+                                 FontSize="14"
+                                 Padding="18"
+                                 Text="1. Esegui prima la scansione del PC col pulsante 'Avvia scansione (34 controlli)' in alto.&#x0a;2. Premi 'Genera Resoconto Completo PC' qui a sinistra per ricevere l'analisi di tutte le vulnerabilita' trovate e i consigli pratici di messa in sicurezza.&#x0a;3. Se sei su una Macchina Virtuale senza Ollama, lascia attiva la spunta a sinistra: il tool pensera' a tutto in automatico."/>
                     </Grid>
                 </Border>
             </Grid>
         </Grid>
 
-        <!-- ====================================================================== -->
-        <!-- 5B. PAGINA 2: PAGINA DEDICATA A TUTTO SCHERMO PER RESOCONTO IA OLLAMA  -->
-        <!-- ====================================================================== -->
-        <Grid x:Name="GridPaginaIA" Grid.Row="5" Margin="20,8,20,12" Visibility="Collapsed">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="380" MinWidth="340"/>
-                <ColumnDefinition Width="14"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-
-            <!-- Barra Laterale Sinistra della Pagina IA -->
-            <Border Grid.Column="0" Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="18">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <!-- Card 1: Configurazione Automatica Ollama -->
-                    <Border Grid.Row="0" Background="{DynamicResource BgSubtle}"
-                            BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                            CornerRadius="8" Padding="14,12" Margin="0,0,0,14">
-                        <StackPanel>
-                            <TextBlock x:Name="LblMotoreIaTitle" Text="MOTORE IA LOCALE (OLLAMA)" FontSize="11" FontWeight="Bold"
-                                       Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/>
-
-                            <TextBlock x:Name="LblIndirizzoOllama" Text="Indirizzo Server Ollama:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                            <TextBox x:Name="TxtEndpointOllama" Text="http://127.0.0.1:11434" Padding="7,5" Margin="0,0,0,8"/>
-
-                            <TextBlock x:Name="LblModelloOllama" Text="Modello LLM leggero:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                            <ComboBox x:Name="CmbModelloOllama" IsEditable="True" SelectedIndex="0" Padding="6,4" Margin="0,0,0,10">
-                                <ComboBoxItem Content="qwen2.5:0.5b"/>
-                                <ComboBoxItem Content="qwen2.5:1.5b"/>
-                                <ComboBoxItem Content="llama3.2:1b"/>
-                                <ComboBoxItem Content="gemma2:2b"/>
-                                <ComboBoxItem Content="phi3:mini"/>
-                            </ComboBox>
-
-                            <CheckBox x:Name="ChkAutoInstallaOllama" IsChecked="True" Margin="0,0,0,10" VerticalContentAlignment="Top">
-                                <TextBlock x:Name="TxtChkAutoInstalla"
-                                           Text="Se Ollama manca sulla VM, installalo e avvialo automaticamente in background"
-                                           TextWrapping="Wrap" FontSize="11.5"/>
-                            </CheckBox>
-
-                            <Button x:Name="BtnVerificaOllama" Content="Verifica / Auto-Configura Ollama"
-                                    Style="{StaticResource ModernButton}" Padding="10,7" HorizontalAlignment="Stretch"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Card 2: Pulsanti di Generazione Analisi -->
-                    <StackPanel Grid.Row="1" Margin="0,0,0,14">
-                        <TextBlock x:Name="LblGeneraAnalisiTitle" Text="GENERA ANALISI E CONSIGLI" FontSize="11" FontWeight="Bold"
-                                   Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-
-                        <Button x:Name="BtnResocontoTab"
-                                Content="Genera Resoconto Completo PC"
-                                Style="{StaticResource AiButton}" Padding="12,9" Margin="0,0,0,8"
-                                HorizontalAlignment="Stretch"/>
-
-                        <Button x:Name="BtnSpiegaControlloTab"
-                                Content="Spiega il Controllo Selezionato"
-                                Style="{StaticResource PrimaryButton}" Padding="12,8"
-                                HorizontalAlignment="Stretch"/>
-                    </StackPanel>
-
-                    <!-- Card 3: Elenco rapido dei Controlli Falliti (con TextWrapping senza scrollbar orizzontale) -->
-                    <Grid Grid.Row="2">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-                        <TextBlock x:Name="LblCriticitaRilevate" Grid.Row="0"
-                                   Text="CRITICITA' RILEVATE (CLICCA PER ANALIZZARE):"
-                                   FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
-                        <ListBox x:Name="ListFallitiIA" Grid.Row="1"
-                                 Background="{DynamicResource BgSubtle}"
-                                 Foreground="{DynamicResource TextPrimary}"
-                                 BorderBrush="{DynamicResource BorderSubtle}"
-                                 BorderThickness="1"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Padding="6,5" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                            <TextBlock Text="{Binding ControlId}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                    </Grid>
-                </Grid>
-            </Border>
-
-            <!-- Area Principale Destra della Pagina IA: Grande Visualizzatore del Resoconto -->
-            <Border Grid.Column="2" Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="20">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
-                    <Grid Grid.Row="0" Margin="0,0,0,10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock x:Name="LblTitoloResocontoIA"
-                                       Text="RESOCONTO DI SICUREZZA &amp; PIANO DI MIGLIORAMENTO IA"
-                                       FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
-                            <TextBlock x:Name="TxtStatoLLM"
-                                       Text="Pronto — Premi 'Genera Resoconto Completo PC' a sinistra per iniziare."
-                                       FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0"/>
-                        </StackPanel>
-
-                        <Button x:Name="BtnCopiaRispostaLLM" Grid.Column="1"
-                                Content="Copia Resoconto"
-                                Style="{StaticResource ModernButton}" Padding="14,7" Margin="0,0,8,0"/>
-
-                        <Button x:Name="BtnTornaScansione" Grid.Column="2"
-                                Content="Torna alla Tabella Controlli"
-                                Style="{StaticResource ModernButton}" Padding="14,7"/>
-                    </Grid>
-
-                    <Border Grid.Row="1" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Margin="0,0,0,12"/>
-
-                    <TextBox x:Name="TxtRispostaLLM" Grid.Row="2"
-                             IsReadOnly="True"
-                             TextWrapping="Wrap"
-                             VerticalScrollBarVisibility="Auto"
-                             Padding="18,14"
-                             FontSize="13.5"
-                             FontFamily="Segoe UI"
-                             Background="{DynamicResource BgSubtle}"
-                             Foreground="{DynamicResource TextPrimary}"
-                             BorderBrush="{DynamicResource BorderSubtle}"
-                             BorderThickness="1"
-                             Text=""/>
-                </Grid>
-            </Border>
-        </Grid>
-
-        <!-- 6. BARRA INFERIORE: EXPORT + RIEPILOGO + AVVISO PERMANENTE -->
-        <Border Grid.Row="6" Background="{DynamicResource BgSurface}"
-                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="20,9">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <Grid Grid.Row="0">
+        <!-- ================= RIGA 5: FOOTER EXPORT & DISCLAIMER ================= -->
+        <Border Grid.Row="5"
+                Background="{DynamicResource BgSurface}"
+                BorderBrush="{DynamicResource BorderSubtle}"
+                BorderThickness="0,1,0,0"
+                Padding="20,10">
+            <StackPanel>
+                <Grid Margin="0,0,0,5">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <Button x:Name="BtnEsportaJson" Grid.Column="0" Content="Esporta JSON"
-                            Style="{StaticResource ModernButton}" Padding="14,6" IsEnabled="False" TabIndex="15"/>
+                    <Button x:Name="BtnEsportaJson"
+                            Style="{StaticResource ModernButton}"
+                            Grid.Column="0"
+                            Content="Esporta JSON"
+                            Padding="14,6"
+                            Margin="0,0,8,0"
+                            FontWeight="SemiBold"
+                            IsEnabled="False"/>
 
-                    <Button x:Name="BtnEsportaHtml" Grid.Column="1" Content="Esporta HTML"
-                            Style="{StaticResource ModernButton}" Padding="14,6" Margin="8,0,0,0" IsEnabled="False" TabIndex="16"/>
+                    <Button x:Name="BtnEsportaHtml"
+                            Style="{StaticResource ModernButton}"
+                            Grid.Column="1"
+                            Content="Esporta HTML"
+                            Padding="14,6"
+                            Margin="0,0,16,0"
+                            FontWeight="SemiBold"
+                            IsEnabled="False"/>
 
-                    <CheckBox x:Name="ChkSalvaLogTecnico" Grid.Column="2"
-                              Content="Includi file di log tecnico accanto all'export"
-                              VerticalAlignment="Center" Margin="14,0,0,0" TabIndex="17"/>
+                    <CheckBox x:Name="ChkSalvaLogTecnico"
+                              Grid.Column="2"
+                              VerticalAlignment="Center"
+                              Foreground="{DynamicResource TextPrimary}"
+                              Content="Includi file di log tecnico accanto all'export"/>
 
-                    <TextBlock x:Name="TxtRiepilogoFooter" Grid.Column="3"
-                               Text="Riepilogo calcolato dal codice: nessuna scansione eseguita"
-                               Foreground="{DynamicResource TextSecondary}" FontWeight="SemiBold"
-                               VerticalAlignment="Center" HorizontalAlignment="Right" FontSize="12"/>
+                    <TextBlock x:Name="TxtRiepilogoFooter"
+                               Grid.Column="4"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextSecondary}"
+                               Text="Riepilogo calcolato dal codice: 0 controlli valutati"/>
                 </Grid>
 
-                <TextBlock x:Name="TxtDisclaimerPermanente" Grid.Row="1"
-                           Margin="0,5,0,0" FontSize="11"
-                           Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
+                <TextBlock x:Name="TxtDisclaimerPermanente"
+                           FontSize="11"
+                           FontStyle="Italic"
+                           Foreground="{DynamicResource TextSecondary}"
+                           TextWrapping="Wrap"
                            Text="Avviso permanente: questo strumento verifica solo alcune configurazioni di sicurezza in sola lettura. Un audit conforme non dimostra l'assenza di compromissioni sul sistema."/>
-            </Grid>
+            </StackPanel>
         </Border>
     </Grid>
 </Window>
@@ -2200,7 +2808,7 @@ function Format-PromptControlloOllama {
         [PSCustomObject]$Ambiente = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -2215,7 +2823,11 @@ function Format-PromptControlloOllama {
         $Dettaglio.ComandoRimedio
     }
     else {
-        if ($Lingua -eq 'EN') { "No terminal command (manual Windows/BIOS setting)" } else { "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)" }
+        switch ($Lingua) {
+            'EN' { "No terminal command (manual Windows/BIOS setting)" }
+            'DE' { "Kein Terminal-Befehl (manuelle Windows-/BIOS-Einstellung)" }
+            default { "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)" }
+        }
     }
 
     $statoRawDett = if ($null -ne $Dettaglio.PSObject.Properties['Status'] -and $Dettaglio.Status) {
@@ -2225,9 +2837,9 @@ function Format-PromptControlloOllama {
     }
 
     if ($Lingua -eq 'EN') {
-        $verdettoEn = if ($statoRawDett -match 'fallito|failed') {
+        $verdettoEn = if ($statoRawDett -match 'fallito|failed|fehlgeschlagen') {
             "IMPORTANT FACT: This security control FAILED on this PC (it is currently NOT configured securely)."
-        } elseif ($statoRawDett -match 'superato|passed') {
+        } elseif ($statoRawDett -match 'superato|passed|bestanden') {
             "IMPORTANT FACT: This security control PASSED on this PC (it is already configured securely)."
         } else {
             "IMPORTANT FACT: This security control status is UNKNOWN (requires administrator privileges to verify)."
@@ -2249,10 +2861,35 @@ Write 3 short bullet points in ENGLISH:
 "@
         return $promptEn.Trim()
     }
+    elseif ($Lingua -eq 'DE') {
+        $verdettoDe = if ($statoRawDett -match 'fallito|failed|fehlgeschlagen') {
+            "WICHTIGE TATSACHE: Diese Sicherheitspruefung ist auf diesem PC FEHLGESCHLAGEN (momentan NICHT sicher konfiguriert)."
+        } elseif ($statoRawDett -match 'superato|passed|bestanden') {
+            "WICHTIGE TATSACHE: Diese Sicherheitspruefung wurde auf diesem PC BESTANDEN (bereits sicher konfiguriert)."
+        } else {
+            "WICHTIGE TATSACHE: Der Status dieser Sicherheitspruefung ist UNBEKANNT (Administratorrechte erforderlich)."
+        }
+        $promptDe = @"
+[SPRACHE: NUR DEUTSCH - NICHT AUF ENGLISCH SCHREIBEN]
+$verdettoDe
+Sicherheitspruefung: $($Dettaglio.Title) ($($Dettaglio.ControlId))
+Gefundener Wert auf dem PC: $($Dettaglio.ValoreOsservato)
+Erwartete sichere Einstellung: $($Dettaglio.ValoreAtteso)
+Warum es wichtig ist: $($Dettaglio.SpiegazioneSemplice)
+Wie man es behebt: $($Dettaglio.TestoRimedio)
+Befehl: $cmdRif
 
-    $verdettoIt = if ($statoRawDett -match 'fallito|failed') {
+Schreibe 3 kurze Punkte auf DEUTSCH:
+1. WAS GEFUNDEN WURDE: Erklaere klar, dass '$($Dettaglio.Title)' aktuell den Wert '$($Dettaglio.ValoreOsservato)' hat.
+2. SICHERHEITSRISIKO: Erklaere auf Deutsch, warum '$($Dettaglio.SpiegazioneSemplice)' fuer den PC wichtig ist.
+3. SICHERE BEHEBUNG: Erklaere auf Deutsch, wie man '$($Dettaglio.TestoRimedio)' anwendet.
+"@
+        return $promptDe.Trim()
+    }
+
+    $verdettoIt = if ($statoRawDett -match 'fallito|failed|fehlgeschlagen') {
         "FATTO ACCERTATO: Questo controllo di sicurezza e' FALLITO sul PC (NON e' configurato in modo sicuro)."
-    } elseif ($statoRawDett -match 'superato|passed') {
+    } elseif ($statoRawDett -match 'superato|passed|bestanden') {
         "FATTO ACCERTATO: Questo controllo di sicurezza e' SUPERATO sul PC (e' gia' attivo e sicuro)."
     } else {
         "FATTO ACCERTATO: Lo stato del controllo e' SCONOSCIUTO (servono privilegi di amministratore)."
@@ -2296,7 +2933,7 @@ function Format-PromptResocontoOllama {
         [PSCustomObject]$Ambiente = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -2313,7 +2950,7 @@ function Format-PromptResocontoOllama {
     foreach ($el in $ElementiVista) {
         if ($el.Status -eq 'fallito') {
             $nFalliti++
-            $det = Format-DettaglioControllo -Elemento $el -Modalita 'Semplice'
+            $det = Format-DettaglioControllo -Elemento $el -Modalita 'Semplice' -Lingua $Lingua
             [void]$sbFalliti.AppendLine("- [$($el.SeverityLabel.ToUpperInvariant())] $($el.ControlId) - $($el.Title)")
             [void]$sbFalliti.AppendLine("  Observed: $($det.ValoreOsservato) (Expected: $($det.ValoreAtteso))")
             [void]$sbFalliti.AppendLine("  Remediation: $($det.TestoRimedio)")
@@ -2326,6 +2963,7 @@ function Format-PromptResocontoOllama {
 
     if ($Lingua -eq 'EN') {
         $promptEn = @"
+[LANGUAGE: ENGLISH ONLY]
 You are a cybersecurity advisor for Windows 11 users.
 Analyze the following read-only deterministic security scan report and write a clear report in English with practical step-by-step recommendations to improve PC security.
 
@@ -2347,6 +2985,31 @@ Write a structured report in 4 sections:
 4. SAFETY BEST PRACTICES: final reminder (e.g. create a System Restore Point before modifying system settings).
 "@
         return $promptEn.Trim()
+    }
+    elseif ($Lingua -eq 'DE') {
+        $promptDe = @"
+[SPRACHE: NUR DEUTSCH - NICHT AUF ENGLISCH SCHREIBEN]
+Du bist ein IT-Sicherheitsberater fuer Windows 11-Benutzer.
+Analysiere den folgenden deterministischen Sicherheitsbericht und schreibe einen klaren Bericht auf DEUTSCH mit praktischen Empfehlungen zur Verbesserung der PC-Sicherheit.
+
+SYSTEM: $infoOs
+ZUSAMMENFASSUNG DES SCANS:
+- Gepruefte Kontrollen insgesamt: $($Conteggi.totale)
+- Bestanden: $($Conteggi.superato)
+- Fehlgeschlagen (Handlungsbedarf): $($Conteggi.fallito)
+- Unbekannt: $($Conteggi.sconosciuto)
+- Nicht zutreffend: $($Conteggi.non_applicabile)
+
+FEHLGESCHLAGENE PRUEFUNGEN (NACH SCHWEREGRAD SORTIERT):
+$($sbFalliti.ToString().Trim())
+
+Schreibe einen strukturierten Bericht auf DEUTSCH in 4 Abschnitten:
+1. ALLGEMEINER SICHERHEITSZUSTAND: klare Zusammenfassung des aktuellen Sicherheitsniveaus.
+2. SOFORTIGE PRIORITAETEN: welche Probleme zuerst behoben werden sollten (beginnend mit Kritisch und Hoch) und warum.
+3. SCHRITT-FUER-SCHRITT-ANLEITUNG: einfache Anweisungen zur Umsetzung der empfohlenen Verbesserungen unter Windows 11.
+4. SICHERHEITSHINWEISE: abschliessender Tipp (z. B. Systemwiederherstellungspunkt vor Systemaenderungen erstellen).
+"@
+        return $promptDe.Trim()
     }
 
     $prompt = @"
@@ -2389,7 +3052,7 @@ function Format-AnalisiLocaleControllo {
         [PSCustomObject]$Ambiente = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -2425,6 +3088,41 @@ function Format-AnalisiLocaleControllo {
             [void]$sb.AppendLine("   - Guidance: $($Dettaglio.TestoRimedio)")
             if ($Dettaglio.HaComando -and (-not [string]::IsNullOrWhiteSpace($Dettaglio.ComandoRimedio))) {
                 [void]$sb.AppendLine("   - Reference PowerShell Command (Run as Administrator):")
+                [void]$sb.AppendLine("     $($Dettaglio.ComandoRimedio)")
+            }
+        }
+        return $sb.ToString().Trim()
+    }
+    elseif ($Lingua -eq 'DE') {
+        [void]$sb.AppendLine("=== DETAILLIERTE PRUEFUNGSANALYSE: $($Dettaglio.ControlId) ===")
+        [void]$sb.AppendLine("Sicherheitspruefung: $($Dettaglio.Title)")
+        [void]$sb.AppendLine("Kategorie: $($Dettaglio.Category)  |  Schweregrad: $($Dettaglio.SeverityLabel)  |  Status: $($Dettaglio.StatusLabel)")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("1. WAS DIESES ERGEBNIS AUF IHREM PC BEDEUTET")
+        switch ($Dettaglio.Status) {
+            'superato' {
+                [void]$sb.AppendLine("   Gute Nachrichten: Der gefundene Wert ('$($Dettaglio.ValoreOsservato)') entspricht der erwarteten Sicherheitsvorgabe ('$($Dettaglio.ValoreAtteso)'). Es ist kein Eingriff erforderlich.")
+            }
+            'fallito' {
+                [void]$sb.AppendLine("   Handlungsbedarf: Der Scanner hat '$($Dettaglio.ValoreOsservato)' erkannt, waehrend die empfohlene sichere Einstellung '$($Dettaglio.ValoreAtteso)' lautet.")
+            }
+            default {
+                [void]$sb.AppendLine("   Aktuell erkannter Zustand: '$($Dettaglio.ValoreOsservato)'.")
+            }
+        }
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("2. WARUM ES WICHTIG IST & RISIKOHINWEISE")
+        [void]$sb.AppendLine("   $($Dettaglio.SpiegazioneSemplice)")
+        [void]$sb.AppendLine("   Auswirkung der Aenderung: $($Dettaglio.NoteRischi)")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("3. SICHERE BEHEBUNG (SCHRITT FUER SCHRITT)")
+        if ($Dettaglio.Status -eq 'superato') {
+            [void]$sb.AppendLine("   - Keine Aenderung erforderlich: Diese Einstellung ist bereits sicher konfiguriert.")
+        }
+        else {
+            [void]$sb.AppendLine("   - Empfohlene Massnahme: $($Dettaglio.TestoRimedio)")
+            if ($Dettaglio.HaComando -and (-not [string]::IsNullOrWhiteSpace($Dettaglio.ComandoRimedio))) {
+                [void]$sb.AppendLine("   - PowerShell-Referenzbefehl (als Administrator ausfuehren):")
                 [void]$sb.AppendLine("     $($Dettaglio.ComandoRimedio)")
             }
         }
@@ -2494,7 +3192,7 @@ function Format-ResocontoLocaleScansione {
         [PSCustomObject]$Ambiente = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -2530,7 +3228,7 @@ function Format-ResocontoLocaleScansione {
             $idxEn = 0
             foreach ($f in $fallitiEn) {
                 $idxEn++
-                $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice'
+                $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice' -Lingua 'EN'
                 [void]$sbEn.AppendLine("   Priority #$idxEn — [$($f.SeverityLabel.ToUpperInvariant())] $($f.Title) ($($f.ControlId))")
                 [void]$sbEn.AppendLine("   * Observed on PC: $($det.ValoreOsservato) (Expected: $($det.ValoreAtteso))")
                 [void]$sbEn.AppendLine("   * Why it matters: $($det.SpiegazioneSemplice)")
@@ -2545,6 +3243,50 @@ function Format-ResocontoLocaleScansione {
         [void]$sbEn.AppendLine("   - Always create a Windows System Restore Point before modifying registry or security policies.")
         [void]$sbEn.AppendLine("   - Apply changes one at a time starting from CRITICAL and HIGH severity controls.")
         return $sbEn.ToString().Trim()
+    }
+    elseif ($Lingua -eq 'DE') {
+        $sbDe = New-Object System.Text.StringBuilder
+        [void]$sbDe.AppendLine("======================================================================")
+        [void]$sbDe.AppendLine("         WINDOWS 11 SICHERHEITSBERICHT & MASSNAHMENPLAN               ")
+        [void]$sbDe.AppendLine("======================================================================")
+        if ($null -ne $Ambiente) {
+            [void]$sbDe.AppendLine("Analysiertes System: Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build)) | Admin: $($Ambiente.IsAdmin)")
+        }
+        [void]$sbDe.AppendLine("Konformitaetsrate: $perc% ($($Conteggi.superato) Bestanden von $($Conteggi.totale) Pruefungen)")
+        [void]$sbDe.AppendLine("")
+        [void]$sbDe.AppendLine("1. ZUSAMMENFASSUNG")
+        [void]$sbDe.AppendLine("   - Bestandene Pruefungen:          $($Conteggi.superato)")
+        [void]$sbDe.AppendLine("   - Fehlgeschlagen (Handlungsbed.): $($Conteggi.fallito)")
+        [void]$sbDe.AppendLine("   - Unbekannte Pruefungen:          $($Conteggi.sconosciuto)")
+        [void]$sbDe.AppendLine("   - Nicht zutreffende Pruefungen:   $($Conteggi.non_applicabile)")
+        [void]$sbDe.AppendLine("")
+
+        $fallitiDe = @($ElementiVista | Where-Object { $_.Status -eq 'fallito' })
+        if ($fallitiDe.Count -eq 0) {
+            [void]$sbDe.AppendLine("2. KEINE KRITISCHEN PROBLEME GEFUNDEN")
+            [void]$sbDe.AppendLine("   Alle geprueften Kontrollen entsprechen der empfohlenen Sicherheitskonfiguration.")
+        }
+        else {
+            [void]$sbDe.AppendLine("2. PRIORISIERTER MASSNAHMENPLAN ($($fallitiDe.Count) empfohlene Massnahmen)")
+            [void]$sbDe.AppendLine("")
+            $idxDe = 0
+            foreach ($f in $fallitiDe) {
+                $idxDe++
+                $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice' -Lingua 'DE'
+                [void]$sbDe.AppendLine("   Prioritaet #$idxDe — [$($f.SeverityLabel.ToUpperInvariant())] $($f.Title) ($($f.ControlId))")
+                [void]$sbDe.AppendLine("   * Gefunden auf PC: $($det.ValoreOsservato) (Erwartet: $($det.ValoreAtteso))")
+                [void]$sbDe.AppendLine("   * Warum wichtig:   $($det.SpiegazioneSemplice)")
+                [void]$sbDe.AppendLine("   * Behebung:        $($det.TestoRimedio)")
+                if ($det.HaComando -and (-not [string]::IsNullOrWhiteSpace($det.ComandoRimedio))) {
+                    [void]$sbDe.AppendLine("   * PowerShell-Cmd:  $($det.ComandoRimedio)")
+                }
+                [void]$sbDe.AppendLine("")
+            }
+        }
+        [void]$sbDe.AppendLine("3. EMPFOHLENE SICHERHEITSHINWEISE")
+        [void]$sbDe.AppendLine("   - Erstellen Sie vor Aenderungen an Registrierung oder Sicherheitsrichtlinien immer einen Systemwiederherstellungspunkt.")
+        [void]$sbDe.AppendLine("   - Setzen Sie Aenderungen einzeln um, beginnend mit KRITISCHEN und HOHEN Schweregraden.")
+        return $sbDe.ToString().Trim()
     }
 
     $giudizio = if ($Conteggi.fallito -eq 0) {
@@ -2865,6 +3607,10 @@ function Invoke-RichiestaOllama {
         [bool]$AutoProvision = $false,
 
         [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN', 'DE')]
+        [string]$Lingua = 'IT',
+
+        [Parameter(Mandatory = $false)]
         [scriptblock]$OnStatus = $null
     )
 
@@ -2886,9 +3632,13 @@ function Invoke-RichiestaOllama {
     $uriGen = "$urlPulito/api/generate"
 
     try {
-        $isPromptEn = ($Prompt -match '\[LANGUAGE: ENGLISH ONLY\]|Write a structured report in 4 sections')
+        $isPromptEn = ($Lingua -eq 'EN') -or ($Prompt -match '\[LANGUAGE: ENGLISH ONLY\]|Write a structured report in 4 sections')
+        $isPromptDe = ($Lingua -eq 'DE') -or ($Prompt -match '\[SPRACHE: NUR DEUTSCH|Schreibe einen strukturierten Bericht auf DEUTSCH')
         $sysMsg = if ($isPromptEn) {
             "You are a Windows 11 cybersecurity assistant. Reply strictly in ENGLISH. Never contradict the scanner facts provided in the prompt."
+        }
+        elseif ($isPromptDe) {
+            "Du bist ein IT-Sicherheitsassistent fuer Windows 11. Antworte AUSSCHLIESSLICH auf DEUTSCH (niemals auf Englisch). Halte dich strikt an die im Prompt genannten Fakten."
         }
         else {
             "Sei un assistente di sicurezza informatica per Windows 11. Rispondi ESCLUSIVAMENTE in lingua ITALIANA (non scrivere mai in inglese). Attieniti rigorosamente ai fatti indicati nel prompt."
@@ -2938,7 +3688,13 @@ function Invoke-RichiestaOllama {
                 $rispostaFinale = $TestoFallbackLocale
             }
             else {
-                $titoloIa = if ($isPromptEn) { "=== AI COMMENTARY ($Modello) ===" } else { "=== COMMENTO GENERATO DALL'IA ($Modello) ===" }
+                $titoloIa = if ($isPromptEn) {
+                    "=== AI COMMENTARY ($Modello) ==="
+                } elseif ($isPromptDe) {
+                    "=== KI-KOMMENTAR ($Modello) ==="
+                } else {
+                    "=== COMMENTO GENERATO DALL'IA ($Modello) ==="
+                }
                 $rispostaFinale = "$TestoFallbackLocale`n`n$titoloIa`n$testoRisposta"
             }
         }
@@ -5787,6 +6543,44 @@ $script:TraduzioniControlliEN = @{
     'HOME-SEC-003' = @{ cat = 'Advanced Security'; title = 'PowerShell Script Block Logging enabled';                    rat = 'Script Block Logging records executed PowerShell commands in Event Viewer to aid security auditing.'; rem = 'Enable PowerShell Script Block Logging (EnableScriptBlockLogging = 1) in Group Policy or Registry.'; risk = 'Very low: slightly increases PowerShell operational event log size.' }
 }
 
+# Traduzioni complete in Tedesco (DE) per tutti i 34 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
+$script:TraduzioniControlliDE = @{
+    'HOME-FW-001'  = @{ cat = 'Firewall';            title = 'Windows-Firewall auf allen Profilen aktiviert';                  rat = 'Die Firewall ist die erste Verteidigungslinie gegen unbefugte Netzwerkverbindungen.'; rem = 'Aktivieren Sie die Windows Defender Firewall fuer Domaenen-, Privat- und Oeffentliche Profile ueber Windows-Sicherheit oder PowerShell als Administrator.'; risk = 'Gering: Blockiert unerwuenschte eingehende Verbindungen bei normalem ausgehendem Datenverkehr.' }
+    'HOME-UAC-001' = @{ cat = 'UAC';                 title = 'Benutzerkontensteuerung (UAC) aktiviert';                        rat = 'UAC schuetzt das System, indem vor Vorgaengen mit Administratorrechten eine Bestaetigung angefordert wird.'; rem = 'Aktivieren Sie UAC (EnableLUA = 1) in den Windows-Einstellungen oder per PowerShell als Administrator. Neustart erforderlich.'; risk = 'Gering: Windows fragt vor administrativen Aenderungen nach.' }
+    'HOME-UAC-002' = @{ cat = 'UAC';                 title = 'UAC erfordert Bestaetigung fuer Rechteerhoehung';                rat = 'Wenn UAC Rechte ohne Nachfrage vergibt, kann Schadsoftware unbemerkt Administratorrechte erlangen.'; rem = 'Konfigurieren Sie UAC so, dass auf dem sicheren Desktop eine Zustimmung angefordert wird (ConsentPromptBehaviorAdmin = 2 oder 5).'; risk = 'Gering: Zeigt einen Bestaetigungsdialog an, wenn ein Programm Administratorrechte anfordert.' }
+    'HOME-UAC-003' = @{ cat = 'UAC';                 title = 'UAC erkennt Anwendungsinstallationen';                           rat = 'Die Installationserkennung verhindert unbefugte Softwareinstallationen ohne erhoehte Rechte.'; rem = 'Aktivieren Sie die Installationserkennung fuer UAC (EnableInstallerDetection = 1).'; risk = 'Sehr gering: Stellt sicher, dass Installationspakete mit Administratorzustimmung ausgefuehrt werden.' }
+    'HOME-ACC-001' = @{ cat = 'Konten';              title = 'Integriertes Gastkonto deaktiviert';                             rat = 'Das Gastkonto ermoeglicht anonymen lokalen Zugriff ohne Anmeldedaten.'; rem = 'Deaktivieren Sie das integrierte Gastkonto (SID endet auf -501) per PowerShell als Administrator.'; risk = 'Sehr gering: Verhindert nicht authentifizierte lokale Anmeldungen.' }
+    'HOME-ACC-002' = @{ cat = 'Konten';              title = 'Integriertes lokales Administratorkonto deaktiviert';            rat = 'Das Standard-Administratorkonto (-500) ist ein Hauptziel fuer Brute-Force-Angriffe.'; rem = 'Deaktivieren Sie das integrierte Administratorkonto (SID -500), nachdem Sie geprueft haben, dass ein anderes Administratorkonto existiert.'; risk = 'Mittel: Stellen Sie sicher, dass ein weiteres aktives Administratorkonto vorhanden ist.' }
+    'HOME-ACC-003' = @{ cat = 'Konten';              title = 'Kein aktives lokales Konto ohne Kennwort';                       rat = 'Konten ohne Kennwort ermoeglichen jedem mit physischem oder Netzwerkzugriff die Anmeldung.'; rem = 'Legen Sie fuer jedes aktive lokale Konto unter Windows-Einstellungen -> Konten -> Anmeldeoptionen ein starkes Kennwort fest.'; risk = 'Gering: Benutzer muessen bei der Anmeldung ein Kennwort oder eine Windows Hello-PIN eingeben.' }
+    'HOME-UPD-001' = @{ cat = 'Updates';             title = 'Automatische Updates von Windows Update aktiviert';              rat = 'Sicherheitsupdates beheben bekannte Schwachstellen; ohne sie bleibt der PC ungeschuetzt.'; rem = 'Stellen Sie sicher, dass der Dienst Windows Update (wuauserv) nicht deaktiviert ist und NoAutoUpdate entfernt wurde.'; risk = 'Gering: Windows laedt Sicherheitsupdates regelmaessig herunter und installiert sie.' }
+    'HOME-UPD-002' = @{ cat = 'Updates';             title = 'Authentischer Windows Update-Server (kein fremder WSUS)';        rat = 'Schadsoftware kann Windows Update auf einen manipulierten Server umleiten, um Sicherheitsupdates zu blockieren.'; rem = 'Entfernen Sie nicht autorisierte WUServer-Richtlinien in der Registrierung, damit Updates direkt von Microsoft bezogen werden.'; risk = 'Gering auf Heim-PCs: Stellt die offiziellen Microsoft Update-Server wieder her.' }
+    'HOME-AV-001'  = @{ cat = 'Antivirus';           title = 'Windows Defender Echtzeitschutz aktiviert';                      rat = 'Der Echtzeitschutz prueft Dateien beim Zugriff sofort und blockiert Malware unmittelbar.'; rem = 'Aktivieren Sie den Echtzeitschutz unter Windows-Sicherheit -> Viren- & Bedrohungsschutz.'; risk = 'Sehr gering: Unverzichtbarer Basisschutz gegen Malware und Ransomware.' }
+    'HOME-AV-002'  = @{ cat = 'Antivirus';           title = 'Antivirus-Signaturen aktuell (<= 7 Tage)';                       rat = 'Veraltete Virendefinitionen koennen neue Schadsoftware-Bedrohungen nicht erkennen.'; rem = 'Aktualisieren Sie die Virendefinitionen ueber Windows-Sicherheit oder Update-MpSignature.'; risk = 'Keines: Aktualisiert nur die Signaturdatenbank.' }
+    'HOME-AV-003'  = @{ cat = 'Antivirus';           title = 'Keine aktiven Viren oder Malware-Bedrohungen erkannt';           rat = 'Aktive Bedrohungen weisen auf eine laufende Infektion oder noch nicht isolierte Schadsoftware hin.'; rem = 'Oeffnen Sie Windows-Sicherheit -> Schutzverlauf oder starten Sie eine Ueberpruefung, um erkannte Bedrohungen unter Quarantaene zu stellen.'; risk = 'Keines: Isoliert und entfernt infizierte Dateien.' }
+    'HOME-AV-004'  = @{ cat = 'Antivirus';           title = 'Pruefung heruntergeladener Dateien (IOAV) & Verhaltensueberwachung aktiv'; rat = 'IOAV scannt alle aus Browsern/E-Mails geladenen Dateien, waehrend die Verhaltensueberwachung Ransomware stoppt.'; rem = 'Aktivieren Sie Verhaltensueberwachung und IOAV-Schutz in den Windows Defender-Einstellungen.'; risk = 'Sehr gering: Stellt sicher, dass heruntergeladene Dateien sofort geprueft werden.' }
+    'HOME-AV-005'  = @{ cat = 'Antivirus';           title = 'Blockierung potenziell unerwuenschter Apps (PUA) aktiviert';     rat = 'Der PUA-Schutz blockiert Adware, Bundleware, Krypto-Miner und unerwuenschte Zusatzsoftware.'; rem = 'Aktivieren Sie den PUA-Schutz (1) unter Windows-Sicherheit -> App- & Browsersteuerung -> Zuverlaessigkeitsbasierter Schutz.'; risk = 'Gering: Kann Installationsprogramme melden, die Werbesoftware mitinstallieren.' }
+    'HOME-AV-006'  = @{ cat = 'Antivirus';           title = 'Manipulationsschutz und Cloud-Schutz (MAPS) aktiviert';          rat = 'Der Manipulationsschutz verhindert das Deaktivieren von Defender durch Malware; Cloud-MAPS blockiert Zero-Day-Bedrohungen.'; rem = 'Aktivieren Sie Manipulationsschutz und Cloudbasierten Schutz unter Windows-Sicherheit -> Viren- & Bedrohungsschutz.'; risk = 'Sehr gering: Staerkt die Abwehr gegen neue Malware.' }
+    'HOME-AV-007'  = @{ cat = 'Antivirus';           title = 'Regelmaessiger Antivirus-Scan innerhalb von 14 Tagen durchgefuehrt'; rat = 'Regelmaessige Scans erkennen ruhende Bedrohungen auf der Festplatte.'; rem = 'Fuehren Sie eine Schnellueberpruefung oder vollstaendige Ueberpruefung mit Windows Defender durch.'; risk = 'Keines: Eine Schnellueberpruefung dauert nur wenige Minuten.' }
+    'HOME-AV-008'  = @{ cat = 'Antivirus';           title = 'Keine gefaehrlichen Ordner- oder Dateiausschluesse in Defender'; rat = 'Malware fuegt oft C:\, Downloads, Temp oder .exe/.ps1 zu den Defender-Ausschluessen hinzu, um sich zu verstecken.'; rem = 'Pruefen und entfernen Sie kritische Ausschluesse unter Windows-Sicherheit -> Viren- & Bedrohungsschutz -> Ausschluesse.'; risk = 'Gering: Stellt den vollstaendigen Virenschutz fuer alle Ordner wieder her.' }
+    'HOME-FIL-001' = @{ cat = 'Dateisicherheit';     title = 'Keine getarnten Dateien mit doppelter Endung (Downloads/Temp)';  rat = 'Doppelte Dateiendungen (z. B. rechnung.pdf.exe, foto.jpg.scr) taeuschen Benutzer, damit sie Malware starten.'; rem = 'Pruefen Sie gemeldete Dateien in Downloads, Desktop oder Temp und loeschen Sie unbekannte ausfuehrbare Programme.'; risk = 'Keines: Listet verdaechtige Dateien nur schreibgeschuetzt zur Pruefung auf.' }
+    'HOME-FIL-002' = @{ cat = 'Dateisicherheit';     title = 'Keine verdaechtigen oder verschleierten Befehle im Autostart (Run)'; rat = 'Malware traegt sich oft in Run/RunOnce-Schluessel ein, die auf Temp-Ordner oder versteckte PowerShell-Befehle (-enc) verweisen.'; rem = 'Pruefen Sie Task-Manager -> Autostart-Apps sowie die Run-Registrierungsschluessel und entfernen Sie unbekannte Eintraege.'; risk = 'Gering: Verhindert das automatische Mitstarten von Schadsoftware.' }
+    'HOME-FIL-003' = @{ cat = 'Dateisicherheit';     title = 'Integritaet der Windows-hosts-Datei (keine Umleitung von Sicherheitsdomains)'; rat = 'Malware kann die hosts-Datei manipulieren, um den Zugriff auf Windows Update oder Antivirus-Websites zu blockieren.'; rem = 'Pruefen Sie C:\Windows\System32\drivers\etc\hosts und entfernen Sie Zeilen, die Microsoft- oder Sicherheitsdomains umleiten.'; risk = 'Gering: Die Standard-hosts-Datei von Windows enthaelt keine aktiven Umleitungen.' }
+    'HOME-SYS-001' = @{ cat = 'Windows-Einstellungen'; title = 'Dateinamenerweiterungen im Explorer sichtbar';                 rat = 'Sichtbare Dateiendungen lassen ausfuehrbare Programme (.exe, .bat, .scr), die als Dokumente getarnt sind, sofort erkennen.'; rem = 'Aktivieren Sie im Datei-Explorer unter Anzeigen -> Einblenden -> Dateinamenerweiterungen (HideFileExt = 0).'; risk = 'Keines: Macht die tatsaechliche Endung jeder Datei sichtbar.' }
+    'HOME-SYS-002' = @{ cat = 'Windows-Einstellungen'; title = 'AutoRun und AutoPlay fuer Wechseldatentraeger (USB) deaktiviert'; rat = 'Das Deaktivieren von AutoRun/AutoPlay verhindert das automatische Starten von Schadsoftware von infizierten USB-Sticks.'; rem = 'Deaktivieren Sie Automatische Wiedergabe unter Windows-Einstellungen -> Bluetooth & Geraete -> Automatische Wiedergabe.'; risk = 'Sehr gering: USB-Laufwerke werden einfach manuell im Explorer geoeffnet.' }
+    'HOME-SYS-003' = @{ cat = 'Windows-Einstellungen'; title = 'Microsoft Defender SmartScreen fuer Apps und Dateien aktiviert'; rat = 'SmartScreen warnt vor dem Ausfuehren unbekannter oder potenziell gefaehrlicher Programme aus dem Internet.'; rem = 'Aktivieren Sie SmartScreen unter Windows-Sicherheit -> App- & Browsersteuerung -> Zuverlaessigkeitsbasierter Schutz.'; risk = 'Sehr gering: Schuetzt vor Phishing und schaedlichen Downloads.' }
+    'HOME-SYS-004' = @{ cat = 'Windows-Einstellungen'; title = 'Kernisolierung / Speicherintegritaet (HVCI) aktiviert';          rat = 'Die Speicherintegritaet nutzt Hardwarevirtualisierung, um das Einschleusen von Schadcode in Windows-Kernelprozesse zu verhindern.'; rem = 'Aktivieren Sie die Speicherintegritaet unter Windows-Sicherheit -> Geraetesicherheit -> Details zur Kernisolierung und starten Sie neu.'; risk = 'Mittel: Neustart erforderlich; sehr alte, nicht zertifizierte Hardwaretreiber koennen inkompatibel sein.' }
+    'HOME-SYS-005' = @{ cat = 'Windows-Einstellungen'; title = 'Anonyme Auflistung lokaler SAM-Konten blockiert';                rat = 'Verhindert, dass nicht authentifizierte Netzwerkbenutzer die Namen lokaler Benutzerkonten auslesen.'; rem = 'Setzen Sie RestrictAnonymousSAM auf 1 unter HKLM:\SYSTEM\CurrentControlSet\Control\Lsa.'; risk = 'Sehr gering: Empfohlene Standardeinstellung unter modernem Windows.' }
+    'HOME-RDP-001' = @{ cat = 'Remotedesktop';       title = 'Remotedesktopprotokoll (RDP) deaktiviert';                       rat = 'RDP ist eines der haeufigsten Angriffsziele; deaktivieren Sie es, wenn kein Fernzugriff benoetigt wird.'; rem = 'Deaktivieren Sie Remotedesktop unter Windows-Einstellungen -> System -> Remotedesktop (fDenyTSConnections = 1).'; risk = 'Gering fuer Heimanwender: Schliesst den Fernzugriff ueber Port 3389.' }
+    'HOME-NET-001' = @{ cat = 'Netzwerk';            title = 'Veraltetes SMBv1-Protokoll deaktiviert';                         rat = 'SMBv1 weist kritische Sicherheitsluecken auf (EternalBlue/WannaCry). Moderne Netzwerke nutzen SMBv2/SMBv3.'; rem = 'Deaktivieren Sie SMBv1 ueber Set-SmbServerConfiguration -EnableSMB1Protocol $false.'; risk = 'Gering: SMBv1 wird nur von sehr alten Geraeten (vor 2010) verwendet.' }
+    'HOME-NET-002' = @{ cat = 'Netzwerk';            title = 'NetBIOS ueber TCP/IP auf Netzwerkadaptern deaktiviert';          rat = 'NetBIOS kann Systeminformationen preisgeben und Spoofing-Angriffe im lokalen Netzwerk ermoeglichen.'; rem = 'Deaktivieren Sie NetBIOS ueber TCP/IP (NetbiosOptions = 2) auf den Netzwerkschnittstellen.'; risk = 'Gering: Moderne Windows 10/11-Netzwerke nutzen DNS statt NetBIOS.' }
+    'HOME-NET-003' = @{ cat = 'Netzwerk';            title = 'LLMNR-Multicast-Namensaufloesung deaktiviert';                   rat = 'LLMNR ist anfaellig fuer Poisoning-Angriffe im lokalen Netzwerk, bei denen Passwort-Hashes abgefangen werden koennen.'; rem = 'Deaktivieren Sie LLMNR durch EnableMulticast = 0 unter HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient.'; risk = 'Gering: Stattdessen wird die normale DNS-Aufloesung verwendet.' }
+    'HOME-ENC-001' = @{ cat = 'Verschluesselung';    title = 'BitLocker-Verschluesselung auf Systemlaufwerk (C:) aktiv';       rat = 'Die vollstaendige Laufwerksverschluesselung schuetzt Ihre persoenlichen Dateien bei Verlust oder Diebstahl des PCs.'; rem = 'Aktivieren Sie Geraeteverschluesselung oder BitLocker auf C: unter Windows-Einstellungen -> Datenschutz & Sicherheit und sichern Sie den Wiederherstellungsschluessel.'; risk = 'Mittel: Bewahren Sie immer eine Kopie des BitLocker-Wiederherstellungsschluessels an einem sicheren Ort auf.' }
+    'HOME-PRV-001' = @{ cat = 'Datenschutz';         title = 'Windows-Diagnosetelemetrie auf Minimalstufe eingestellt';        rat = 'Minimale Telemetrie begrenzt die Menge der an Microsoft gesendeten Diagnosedaten.'; rem = 'Stellen Sie Diagnosedaten unter Windows-Einstellungen -> Datenschutz & Sicherheit -> Diagnose & Feedback auf Nur erforderliche (AllowTelemetry = 1).'; risk = 'Sehr gering: Deaktiviert optionale Diagnosetelemetrie.' }
+    'HOME-SEC-001' = @{ cat = 'Erweiterte Sicherheit'; title = 'Sicherer UEFI-Start (Secure Boot) aktiviert';                  rat = 'Secure Boot blockiert unsignierte Bootloader und schuetzt den PC vor Rootkits und Bootkits.'; rem = 'Aktivieren Sie Secure Boot in den UEFI/BIOS-Einstellungen Ihres Mainboards (nicht per PowerShell aenderbar).'; risk = 'Mittel: Stellen Sie sicher, dass das Systemlaufwerk GPT verwendet, bevor Sie Secure Boot im BIOS aktivieren.' }
+    'HOME-SEC-002' = @{ cat = 'Erweiterte Sicherheit'; title = 'Schutz der lokalen Sicherheitsautoritaet (LSA / RunAsPPL) aktiv'; rat = 'Der LSA-Schutz verhindert, dass Tools zum Auslesen von Anmeldedaten (wie Mimikatz) auf den LSASS-Speicher zugreifen.'; rem = 'Aktivieren Sie den Schutz der lokalen Sicherheitsautoritaet unter Windows-Sicherheit -> Geraetesicherheit -> Kernisolierung.'; risk = 'Gering: Erfordert einen Systemneustart.' }
+    'HOME-SEC-003' = @{ cat = 'Erweiterte Sicherheit'; title = 'PowerShell Script Block Logging aktiviert';                    rat = 'Die Skriptblockprotokollierung zeichnet ausgefuehrte PowerShell-Befehle in der Ereignisanzeige fuer Sicherheitsanalysen auf.'; rem = 'Aktivieren Sie PowerShell Script Block Logging (EnableScriptBlockLogging = 1) per Gruppenrichtlinie oder Registrierung.'; risk = 'Sehr gering: Erhoeht die Groesse des PowerShell-Ereignisprotokolls geringfuegig.' }
+}
+
 function Get-ValoreProprietaSicuro {
     <#
     .SYNOPSIS
@@ -5827,7 +6621,7 @@ function Get-ValoreProprietaSicuro {
 function Get-InfoStatoVista {
     <#
     .SYNOPSIS
-        Restituisce icona testuale, etichetta e priorita' di ordinamento per uno stato (IT o EN).
+        Restituisce icona testuale, etichetta e priorita' di ordinamento per uno stato (IT, EN o DE).
     #>
     [CmdletBinding()]
     param(
@@ -5836,36 +6630,35 @@ function Get-InfoStatoVista {
         [string]$Stato = 'sconosciuto',
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
     $statoNorm = if ([string]::IsNullOrWhiteSpace($Stato)) { 'sconosciuto' } else { $Stato.Trim().ToLowerInvariant() }
-    $isEn = ($Lingua -eq 'EN')
 
     switch ($statoNorm) {
         'fallito' {
-            $short = if ($isEn) { 'Failed' } else { 'Fallito' }
+            $short = switch ($Lingua) { 'EN' { 'Failed' } 'DE' { 'Fehlgeschlagen' } default { 'Fallito' } }
             return [PSCustomObject]@{ Status = 'fallito'; Icon = '[X]'; ShortLabel = $short; Label = "[X] $short"; Rank = 1 }
         }
         'errore' {
-            $short = if ($isEn) { 'Error' } else { 'Errore' }
+            $short = switch ($Lingua) { 'EN' { 'Error' } 'DE' { 'Fehler' } default { 'Errore' } }
             return [PSCustomObject]@{ Status = 'errore'; Icon = '[!]'; ShortLabel = $short; Label = "[!] $short"; Rank = 2 }
         }
         'sconosciuto' {
-            $short = if ($isEn) { 'Unknown' } else { 'Sconosciuto' }
+            $short = switch ($Lingua) { 'EN' { 'Unknown' } 'DE' { 'Unbekannt' } default { 'Sconosciuto' } }
             return [PSCustomObject]@{ Status = 'sconosciuto'; Icon = '[?]'; ShortLabel = $short; Label = "[?] $short"; Rank = 3 }
         }
         'superato' {
-            $short = if ($isEn) { 'Passed' } else { 'Superato' }
+            $short = switch ($Lingua) { 'EN' { 'Passed' } 'DE' { 'Bestanden' } default { 'Superato' } }
             return [PSCustomObject]@{ Status = 'superato'; Icon = '[OK]'; ShortLabel = $short; Label = "[OK] $short"; Rank = 4 }
         }
         'non_applicabile' {
-            $short = if ($isEn) { 'N/A' } else { 'Non applicabile' }
+            $short = switch ($Lingua) { 'EN' { 'N/A' } 'DE' { 'N/Z' } default { 'Non applicabile' } }
             return [PSCustomObject]@{ Status = 'non_applicabile'; Icon = '[-]'; ShortLabel = $short; Label = "[-] $short"; Rank = 5 }
         }
         default {
-            $short = if ($isEn) { 'Unknown' } else { 'Sconosciuto' }
+            $short = switch ($Lingua) { 'EN' { 'Unknown' } 'DE' { 'Unbekannt' } default { 'Sconosciuto' } }
             return [PSCustomObject]@{ Status = $statoNorm; Icon = '[?]'; ShortLabel = $short; Label = "[?] $statoNorm"; Rank = 6 }
         }
     }
@@ -5874,7 +6667,7 @@ function Get-InfoStatoVista {
 function Get-InfoGravitaVista {
     <#
     .SYNOPSIS
-        Restituisce etichetta e priorita' di ordinamento (1 = piu' grave) per la gravita' (IT o EN).
+        Restituisce etichetta e priorita' di ordinamento (1 = piu' grave) per la gravita' (IT, EN o DE).
     #>
     [CmdletBinding()]
     param(
@@ -5883,27 +6676,26 @@ function Get-InfoGravitaVista {
         [string]$Gravita = 'medio',
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
     $gravNorm = if ([string]::IsNullOrWhiteSpace($Gravita)) { 'non_specificata' } else { $Gravita.Trim().ToLowerInvariant() }
-    $isEn = ($Lingua -eq 'EN')
 
     switch ($gravNorm) {
-        'critico'     { $lbl = if ($isEn) { 'Critical' } else { 'Critico' };     return [PSCustomObject]@{ Severity = 'critico';     Label = $lbl; Rank = 1 } }
-        'alto'        { $lbl = if ($isEn) { 'High' }     else { 'Alto' };        return [PSCustomObject]@{ Severity = 'alto';        Label = $lbl; Rank = 2 } }
-        'medio'       { $lbl = if ($isEn) { 'Medium' }   else { 'Medio' };       return [PSCustomObject]@{ Severity = 'medio';       Label = $lbl; Rank = 3 } }
-        'basso'       { $lbl = if ($isEn) { 'Low' }      else { 'Basso' };       return [PSCustomObject]@{ Severity = 'basso';       Label = $lbl; Rank = 4 } }
-        'informativo' { $lbl = if ($isEn) { 'Info' }     else { 'Informativo' }; return [PSCustomObject]@{ Severity = 'informativo'; Label = $lbl; Rank = 5 } }
-        default       { $lbl = if ($isEn) { 'N/A' }      else { 'N/D' };         return [PSCustomObject]@{ Severity = $gravNorm;     Label = $lbl; Rank = 99 } }
+        'critico'     { $lbl = switch ($Lingua) { 'EN' { 'Critical' } 'DE' { 'Kritisch' } default { 'Critico' } };     return [PSCustomObject]@{ Severity = 'critico';     Label = $lbl; Rank = 1 } }
+        'alto'        { $lbl = switch ($Lingua) { 'EN' { 'High' }     'DE' { 'Hoch' }     default { 'Alto' } };        return [PSCustomObject]@{ Severity = 'alto';        Label = $lbl; Rank = 2 } }
+        'medio'       { $lbl = switch ($Lingua) { 'EN' { 'Medium' }   'DE' { 'Mittel' }   default { 'Medio' } };       return [PSCustomObject]@{ Severity = 'medio';       Label = $lbl; Rank = 3 } }
+        'basso'       { $lbl = switch ($Lingua) { 'EN' { 'Low' }      'DE' { 'Niedrig' }  default { 'Basso' } };       return [PSCustomObject]@{ Severity = 'basso';       Label = $lbl; Rank = 4 } }
+        'informativo' { $lbl = switch ($Lingua) { 'EN' { 'Info' }     'DE' { 'Info' }     default { 'Informativo' } }; return [PSCustomObject]@{ Severity = 'informativo'; Label = $lbl; Rank = 5 } }
+        default       { $lbl = switch ($Lingua) { 'EN' { 'N/A' }      'DE' { 'K.A.' }     default { 'N/D' } };         return [PSCustomObject]@{ Severity = $gravNorm;     Label = $lbl; Rank = 99 } }
     }
 }
 
 function Merge-RisultatoConControllo {
     <#
     .SYNOPSIS
-        Unisce un singolo risultato del Runner con i metadati del controllo nel catalogo (IT o EN).
+        Unisce un singolo risultato del Runner con i metadati del controllo nel catalogo (IT, EN o DE).
     #>
     [CmdletBinding()]
     param(
@@ -5915,7 +6707,7 @@ function Merge-RisultatoConControllo {
         [PSCustomObject]$ControlloCatalogo = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -5930,6 +6722,11 @@ function Merge-RisultatoConControllo {
         $tr = $script:TraduzioniControlliEN[$id]
         $titolo    = $tr.title
         $categoria = $tr.cat
+    }
+    elseif ($Lingua -eq 'DE' -and $script:TraduzioniControlliDE.ContainsKey($id)) {
+        $trDe = $script:TraduzioniControlliDE[$id]
+        $titolo    = $trDe.title
+        $categoria = $trDe.cat
     }
 
     $infoStato = Get-InfoStatoVista -Stato $statoRaw -Lingua $Lingua
@@ -6011,7 +6808,7 @@ function ConvertTo-RisultatiVista {
         [PSCustomObject]$Catalogo = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -6043,18 +6840,6 @@ function Select-RisultatiVista {
     <#
     .SYNOPSIS
         Filtra la lista di elementi vista combinando stato, gravita', categoria e testo.
-    .PARAMETER Elementi
-        Array di elementi vista.
-    .PARAMETER Stato
-        Stato da filtrare ('Tutti' oppure 'superato', 'fallito', 'sconosciuto', 'non_applicabile', 'errore').
-    .PARAMETER Gravita
-        Gravita' da filtrare ('Tutte' oppure 'critico', 'alto', 'medio', 'basso', 'informativo').
-    .PARAMETER Categoria
-        Categoria da filtrare ('Tutte' oppure nome della categoria).
-    .PARAMETER TestoRicerca
-        Sottostringa da cercare (case-insensitive) su Title e ControlId.
-    .OUTPUTS
-        Array filtrato di elementi vista.
     #>
     [CmdletBinding()]
     param(
@@ -6092,7 +6877,7 @@ function Select-RisultatiVista {
     $filtrati = @()
     foreach ($el in $Elementi) {
         # 1. Filtro Stato
-        if ($statoNorm -ne 'tutti' -and $statoNorm -ne 'all') {
+        if ($statoNorm -ne 'tutti' -and $statoNorm -ne 'all' -and $statoNorm -ne 'alle') {
             $elStato      = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Status' -ValorePredefinito '')
             $elStatoShort = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'StatusShort' -ValorePredefinito '')
             if ($elStato.ToLowerInvariant() -ne $statoNorm -and $elStatoShort.ToLowerInvariant() -ne $statoNorm) {
@@ -6101,7 +6886,7 @@ function Select-RisultatiVista {
         }
 
         # 2. Filtro Gravita
-        if ($gravNorm -ne 'tutte' -and $gravNorm -ne 'tutti' -and $gravNorm -ne 'all') {
+        if ($gravNorm -ne 'tutte' -and $gravNorm -ne 'tutti' -and $gravNorm -ne 'all' -and $gravNorm -ne 'alle') {
             $elGrav    = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Severity' -ValorePredefinito '')
             $elGravLbl = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'SeverityLabel' -ValorePredefinito '')
             if ($elGrav.ToLowerInvariant() -ne $gravNorm -and $elGravLbl.ToLowerInvariant() -ne $gravNorm) {
@@ -6110,7 +6895,7 @@ function Select-RisultatiVista {
         }
 
         # 3. Filtro Categoria
-        if ($catNorm.ToLowerInvariant() -ne 'tutte' -and $catNorm.ToLowerInvariant() -ne 'tutti' -and $catNorm.ToLowerInvariant() -ne 'all') {
+        if ($catNorm.ToLowerInvariant() -ne 'tutte' -and $catNorm.ToLowerInvariant() -ne 'tutti' -and $catNorm.ToLowerInvariant() -ne 'all' -and $catNorm.ToLowerInvariant() -ne 'alle') {
             $elCat = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Category' -ValorePredefinito '')
             if (-not $elCat.Equals($catNorm, [System.StringComparison]::OrdinalIgnoreCase)) {
                 continue
@@ -6215,25 +7000,41 @@ function Format-DettaglioControllo {
         [string]$Modalita = 'Semplice',
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
     $isEn = ($Lingua -eq 'EN')
+    $isDe = ($Lingua -eq 'DE')
 
     if ($null -eq $Elemento) {
+        $titVuoto = switch ($Lingua) {
+            'EN' { 'No control selected' }
+            'DE' { 'Keine Sicherheitspruefung ausgewaehlt' }
+            default { 'Nessun controllo selezionato' }
+        }
+        $spiegVuota = switch ($Lingua) {
+            'EN' { 'Select a control from the table on the left to view its details.' }
+            'DE' { 'Waehlen Sie links in der Tabelle eine Sicherheitspruefung aus, um Details anzuzeigen.' }
+            default { 'Seleziona un controllo dalla tabella per visualizzare i dettagli.' }
+        }
+        $spiegTecVuota = switch ($Lingua) {
+            'EN' { 'Select a control from the table on the left to view technical details.' }
+            'DE' { 'Waehlen Sie links in der Tabelle eine Sicherheitspruefung aus, um technische Details anzuzeigen.' }
+            default { 'Seleziona un controllo dalla tabella per visualizzare i dettagli tecnici.' }
+        }
         return [PSCustomObject]@{
             Selezionato          = $false
             ControlId            = ''
-            Title                = if ($isEn) { 'No control selected' } else { 'Nessun controllo selezionato' }
+            Title                = $titVuoto
             Category             = '-'
             SeverityLabel        = '-'
             Status               = 'sconosciuto'
             StatusLabel          = '-'
             Modalita             = $Modalita
-            SpiegazioneSemplice  = if ($isEn) { 'Select a control from the table on the left to view its details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli.' }
-            SpiegazioneTecnica   = if ($isEn) { 'Select a control from the table on the left to view technical details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli tecnici.' }
-            TestoSpiegazione     = if ($isEn) { 'Select a control from the table on the left to view its details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli.' }
+            SpiegazioneSemplice  = $spiegVuota
+            SpiegazioneTecnica   = $spiegTecVuota
+            TestoSpiegazione     = $spiegVuota
             ValoreAtteso         = '-'
             ValoreOsservato      = '-'
             TestoRimedio         = '-'
@@ -6278,7 +7079,11 @@ function Format-DettaglioControllo {
         $spiegazioneSemplice = Get-ValoreProprietaSicuro -Oggetto $meta -NomeProprieta 'rationale' -ValorePredefinito $null
     }
     if ([string]::IsNullOrWhiteSpace([string]$spiegazioneSemplice)) {
-        $spiegazioneSemplice = if ($isEn) { "No explanation available in the catalog for this control." } else { "Nessuna spiegazione disponibile nel catalogo per questo controllo." }
+        $spiegazioneSemplice = switch ($Lingua) {
+            'EN' { "No explanation available in the catalog for this control." }
+            'DE' { "Keine Erklaerung im Katalog fuer diese Pruefung verfuegbar." }
+            default { "Nessuna spiegazione disponibile nel catalogo per questo controllo." }
+        }
     }
 
     if ($isEn -and $script:TraduzioniControlliEN.ContainsKey($id)) {
@@ -6286,6 +7091,12 @@ function Format-DettaglioControllo {
         $titolo              = $trEn.title
         $categoria           = $trEn.cat
         $spiegazioneSemplice = $trEn.rat
+    }
+    elseif ($isDe -and $script:TraduzioniControlliDE.ContainsKey($id)) {
+        $trDe = $script:TraduzioniControlliDE[$id]
+        $titolo              = $trDe.title
+        $categoria           = $trDe.cat
+        $spiegazioneSemplice = $trDe.rat
     }
 
     # Spiegazione tecnica (description + check + riferimenti + evidenza)
@@ -6390,13 +7201,26 @@ function Format-DettaglioControllo {
         $testoRimedio = $trEnRem.rem
         $noteRischi   = $trEnRem.risk
     }
+    elseif ($isDe -and (-not $haProprietaCommandEsplicita) -and $script:TraduzioniControlliDE.ContainsKey($id)) {
+        $trDeRem      = $script:TraduzioniControlliDE[$id]
+        $testoRimedio = $trDeRem.rem
+        $noteRischi   = $trDeRem.risk
+    }
 
     if ([string]::IsNullOrWhiteSpace([string]$testoRimedio)) {
-        $testoRimedio = if ($isEn) { "Manually verify this setting in Windows 11 Settings or Control Panel." } else { "Verifica manualmente questa impostazione nel Pannello di controllo o nelle Impostazioni di sicurezza di Windows 11." }
+        $testoRimedio = switch ($Lingua) {
+            'EN' { "Manually verify this setting in Windows 11 Settings or Control Panel." }
+            'DE' { "Ueberpruefen Sie diese Einstellung manuell in den Windows 11-Einstellungen oder der Systemsteuerung." }
+            default { "Verifica manualmente questa impostazione nel Pannello di controllo o nelle Impostazioni di sicurezza di Windows 11." }
+        }
     }
 
     if ([string]::IsNullOrWhiteSpace([string]$noteRischi)) {
-        $noteRischi = if ($isEn) { "Evaluate the impact before applying manual configuration changes." } else { "Valuta l'impatto prima di applicare modifiche manuali alla configurazione del sistema." }
+        $noteRischi = switch ($Lingua) {
+            'EN' { "Evaluate the impact before applying manual configuration changes." }
+            'DE' { "Pruefen Sie die Auswirkungen, bevor Sie manuelle Konfigurationsaenderungen vornehmen." }
+            default { "Valuta l'impatto prima di applicare modifiche manuali alla configurazione del sistema." }
+        }
     }
 
     # Se command e' null o stringa vuota, HaComando = $false (mostra solo il testo)
@@ -6464,10 +7288,10 @@ function Get-NomeFileExport {
 
 .DESCRIPTION
     Carica il layout XAML da src/ui/MainWindow.xaml tramite XamlReader,
-    collega i controlli con FindName, gestisce il tema chiaro/scuro,
-    la localizzazione completa bilingue (IT/EN), i filtri, il pannello
-    di dettaglio, l'export JSON/HTML e l'esecuzione asincrona della
-    scansione e dell'assistente IA Ollama in Runspace separati.
+    collega i controlli con FindName, gestisce il tema scuro/chiaro completo,
+    la localizzazione completa trilingue (IT / EN / DE) con selettore esplicito,
+    i filtri, il pannello di dettaglio, l'export JSON/HTML e l'esecuzione
+    asincrona della scansione e dell'assistente IA Ollama in Runspace separati.
     Il codice e' in SOLA LETTURA e riusa esattamente il motore di src/core.
 #>
 
@@ -6476,7 +7300,7 @@ Set-StrictMode -Version 2
 function Update-TemaFinestra {
     <#
     .SYNOPSIS
-        Applica il dizionario di colori del tema Chiaro o Scuro alle risorse della finestra.
+        Applica il dizionario completo di colori del tema Scuro o Chiaro alle risorse della finestra.
     #>
     [CmdletBinding()]
     param(
@@ -6493,13 +7317,20 @@ function Update-TemaFinestra {
     if ($Tema -eq 'Scuro') {
         $mappaColori = @{
             'BgPrimary'        = '#0B0F19'
-            'BgSurface'        = '#131C2E'
-            'BgHeader'         = '#060913'
+            'BgSurface'        = '#111827'
+            'BgElevated'       = '#1E293B'
+            'BgHeader'         = '#060911'
             'TextHeader'       = '#F8FAFC'
             'BgSubtle'         = '#0F172A'
+            'BgInput'          = '#0F172A'
+            'BgAlternating'    = '#131C2E'
+            'SelectedRowBg'    = '#1E3A8A'
+            'SelectedRowFg'    = '#FFFFFF'
+            'HoverRowBg'       = '#1E293B'
             'TextPrimary'      = '#F1F5F9'
             'TextSecondary'    = '#94A3B8'
             'BorderSubtle'     = '#1E293B'
+            'BorderStrong'     = '#334155'
             'AccentBrush'      = '#3B82F6'
             'AccentText'       = '#FFFFFF'
             'PassBg'           = '#064E3B'
@@ -6526,12 +7357,19 @@ function Update-TemaFinestra {
         $mappaColori = @{
             'BgPrimary'        = '#F1F5F9'
             'BgSurface'        = '#FFFFFF'
-            'BgHeader'         = '#0B1120'
+            'BgElevated'       = '#F8FAFC'
+            'BgHeader'         = '#0F172A'
             'TextHeader'       = '#F8FAFC'
             'BgSubtle'         = '#F8FAFC'
+            'BgInput'          = '#FFFFFF'
+            'BgAlternating'    = '#F8FAFC'
+            'SelectedRowBg'    = '#DBEAFE'
+            'SelectedRowFg'    = '#1E3A8A'
+            'HoverRowBg'       = '#EFF6FF'
             'TextPrimary'      = '#0F172A'
             'TextSecondary'    = '#475569'
             'BorderSubtle'     = '#E2E8F0'
+            'BorderStrong'     = '#CBD5E1'
             'AccentBrush'      = '#2563EB'
             'AccentText'       = '#FFFFFF'
             'PassBg'           = '#ECFDF5'
@@ -6587,7 +7425,7 @@ function Start-ScannerUI {
         [string]$VersioneTool = '0.1.0',
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$LinguaIniziale = 'IT'
     )
 
@@ -6621,6 +7459,10 @@ function Start-ScannerUI {
         TxtBadgeSolaLettura    = $finestra.FindName('TxtBadgeSolaLettura')
         TxtSottotitoloApp      = $finestra.FindName('TxtSottotitoloApp')
         TxtAmbienteInfo        = $finestra.FindName('TxtAmbienteInfo')
+        LblLinguaAttiva        = $finestra.FindName('LblLinguaAttiva')
+        BtnLinguaIT            = $finestra.FindName('BtnLinguaIT')
+        BtnLinguaEN            = $finestra.FindName('BtnLinguaEN')
+        BtnLinguaDE            = $finestra.FindName('BtnLinguaDE')
         BtnLingua              = $finestra.FindName('BtnLingua')
         BtnTema                = $finestra.FindName('BtnTema')
         BannerNonAdmin         = $finestra.FindName('BannerNonAdmin')
@@ -6707,11 +7549,12 @@ function Start-ScannerUI {
         TxtDisclaimerPermanente= $finestra.FindName('TxtDisclaimerPermanente')
     }
 
-    # Stato interno dell'interfaccia
+    # Stato interno dell'interfaccia (Tema Scuro Fluent predefinito)
     $totaleControlli = @($Catalogo.controls).Count
     $statoUI = @{
         LinguaCorrente      = $LinguaIniziale
-        TemaCorrente        = 'Chiaro'
+        TemaCorrente        = 'Scuro'
+        PaginaCorrente      = 'Scansione'
         ModalitaDettaglio   = 'Semplice'
         RisultatiGrezzi     = @()
         ElementiVista       = @()
@@ -6723,6 +7566,7 @@ function Start-ScannerUI {
         Runspace            = $null
     }
 
+    Update-TemaFinestra -Finestra $finestra -Tema $statoUI.TemaCorrente
     $ctrl.ProgressScansione.Maximum = if ($totaleControlli -gt 0) { $totaleControlli } else { 1 }
 
     # Banner giallo se non avviato come amministratore
@@ -6730,24 +7574,69 @@ function Start-ScannerUI {
         $ctrl.BannerNonAdmin.Visibility = [System.Windows.Visibility]::Visible
     }
 
-    # Funzione helper per ripopolare i filtri ComboBox nella lingua corrente
+    $convBrush = New-Object System.Windows.Media.BrushConverter
+
+    # Aggiorna l'evidenziazione visiva del selettore lingua [IT | EN | DE] e delle schede di navigazione
+    $aggiornaStileSelettori = {
+        $mappaBtnLingua = @{
+            'IT' = @{ Btn = $ctrl.BtnLinguaIT; Label = 'IT Italiano' }
+            'EN' = @{ Btn = $ctrl.BtnLinguaEN; Label = 'EN English' }
+            'DE' = @{ Btn = $ctrl.BtnLinguaDE; Label = 'DE Deutsch' }
+        }
+        foreach ($cod in @('IT', 'EN', 'DE')) {
+            $b = $mappaBtnLingua[$cod].Btn
+            $lblBase = $mappaBtnLingua[$cod].Label
+            if ($statoUI.LinguaCorrente -eq $cod) {
+                $b.Content    = "[*] $lblBase"
+                $b.Background = $convBrush.ConvertFromString('#2563EB')
+                $b.Foreground = $convBrush.ConvertFromString('#FFFFFF')
+                $b.FontWeight = [System.Windows.FontWeights]::Bold
+            }
+            else {
+                $b.Content    = $lblBase
+                $b.Background = $convBrush.ConvertFromString('Transparent')
+                $b.Foreground = $convBrush.ConvertFromString('#94A3B8')
+                $b.FontWeight = [System.Windows.FontWeights]::SemiBold
+            }
+        }
+
+        # Evidenzia la scheda pagina attiva (Tab 1 vs Tab 2)
+        if ($statoUI.PaginaCorrente -eq 'IA') {
+            $ctrl.BtnNavIA.Background        = $convBrush.ConvertFromString('#7C3AED')
+            $ctrl.BtnNavIA.Foreground        = $convBrush.ConvertFromString('#FFFFFF')
+            $ctrl.BtnNavIA.FontWeight        = [System.Windows.FontWeights]::Bold
+            $ctrl.BtnNavScansione.Background = $convBrush.ConvertFromString('Transparent')
+            $ctrl.BtnNavScansione.Foreground = $finestra.Resources['TextSecondary']
+            $ctrl.BtnNavScansione.FontWeight = [System.Windows.FontWeights]::SemiBold
+        }
+        else {
+            $ctrl.BtnNavScansione.Background = $convBrush.ConvertFromString('#2563EB')
+            $ctrl.BtnNavScansione.Foreground = $convBrush.ConvertFromString('#FFFFFF')
+            $ctrl.BtnNavScansione.FontWeight = [System.Windows.FontWeights]::Bold
+            $ctrl.BtnNavIA.Background        = $convBrush.ConvertFromString('Transparent')
+            $ctrl.BtnNavIA.Foreground        = $finestra.Resources['TextSecondary']
+            $ctrl.BtnNavIA.FontWeight        = [System.Windows.FontWeights]::SemiBold
+        }
+    }
+
+    # Funzione helper per ripopolare i filtri ComboBox nella lingua corrente (IT / EN / DE)
     $aggiornaFiltriComboLingua = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         $idxStato = if ($ctrl.CmbFiltroStato.SelectedIndex -ge 0) { $ctrl.CmbFiltroStato.SelectedIndex } else { 0 }
         $idxGrav  = if ($ctrl.CmbFiltroGravita.SelectedIndex -ge 0) { $ctrl.CmbFiltroGravita.SelectedIndex } else { 0 }
         $idxCat   = if ($ctrl.CmbFiltroCategoria.SelectedIndex -ge 0) { $ctrl.CmbFiltroCategoria.SelectedIndex } else { 0 }
 
-        $vociStato = if ($isEn) {
-            @('All', 'Failed', 'Passed', 'Unknown', 'N/A', 'Error')
-        } else {
-            @('Tutti', 'Fallito', 'Superato', 'Sconosciuto', 'Non_Applicabile', 'Errore')
+        $vociStato = switch ($lang) {
+            'EN' { @('All', 'Failed', 'Passed', 'Unknown', 'N/A', 'Error') }
+            'DE' { @('Alle', 'Fehlgeschlagen', 'Bestanden', 'Unbekannt', 'N/Z', 'Fehler') }
+            default { @('Tutti', 'Fallito', 'Superato', 'Sconosciuto', 'Non_Applicabile', 'Errore') }
         }
 
-        $vociGrav = if ($isEn) {
-            @('All', 'Critical', 'High', 'Medium', 'Low', 'Info')
-        } else {
-            @('Tutte', 'Critico', 'Alto', 'Medio', 'Basso', 'Informativo')
+        $vociGrav = switch ($lang) {
+            'EN' { @('All', 'Critical', 'High', 'Medium', 'Low', 'Info') }
+            'DE' { @('Alle', 'Kritisch', 'Hoch', 'Mittel', 'Niedrig', 'Info') }
+            default { @('Tutte', 'Critico', 'Alto', 'Medio', 'Basso', 'Informativo') }
         }
 
         $ctrl.CmbFiltroStato.Items.Clear()
@@ -6771,8 +7660,11 @@ function Start-ScannerUI {
         foreach ($c in $Catalogo.controls) {
             $cid = [string]$c.id
             $catVal = [string]$c.category
-            if ($isEn -and $script:TraduzioniControlliEN.ContainsKey($cid)) {
+            if ($lang -eq 'EN' -and $script:TraduzioniControlliEN.ContainsKey($cid)) {
                 $catVal = $script:TraduzioniControlliEN[$cid].cat
+            }
+            elseif ($lang -eq 'DE' -and $script:TraduzioniControlliDE.ContainsKey($cid)) {
+                $catVal = $script:TraduzioniControlliDE[$cid].cat
             }
             if ($catVal -and ($categorieUniche -notcontains $catVal)) {
                 $categorieUniche += $catVal
@@ -6781,7 +7673,7 @@ function Start-ScannerUI {
 
         $ctrl.CmbFiltroCategoria.Items.Clear()
         $itemTutte = New-Object System.Windows.Controls.ComboBoxItem
-        $itemTutte.Content = if ($isEn) { 'All' } else { 'Tutte' }
+        $itemTutte.Content = switch ($lang) { 'EN' { 'All' } 'DE' { 'Alle' } default { 'Tutte' } }
         [void]$ctrl.CmbFiltroCategoria.Items.Add($itemTutte)
 
         foreach ($cat in ($categorieUniche | Sort-Object)) {
@@ -6794,26 +7686,39 @@ function Start-ScannerUI {
 
     # --- Funzioni di aggiornamento UI ---
     $aggiornaPannelloDettaglio = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
-        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita $statoUI.ModalitaDettaglio -Lingua $statoUI.LinguaCorrente
+        $lang = $statoUI.LinguaCorrente
+        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita $statoUI.ModalitaDettaglio -Lingua $lang
         $ctrl.TxtDettaglioTitolo.Text = $dettaglio.Title
 
-        if ($isEn) {
-            $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Status: $($dettaglio.StatusLabel)  |  Severity: $($dettaglio.SeverityLabel)  |  Category: $($dettaglio.Category)"
-        }
-        else {
-            $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Stato: $($dettaglio.StatusLabel)  |  Gravita': $($dettaglio.SeverityLabel)  |  Categoria: $($dettaglio.Category)"
+        switch ($lang) {
+            'EN' {
+                $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Status: $($dettaglio.StatusLabel)  |  Severity: $($dettaglio.SeverityLabel)  |  Category: $($dettaglio.Category)"
+            }
+            'DE' {
+                $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Status: $($dettaglio.StatusLabel)  |  Schweregrad: $($dettaglio.SeverityLabel)  |  Kategorie: $($dettaglio.Category)"
+            }
+            default {
+                $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Stato: $($dettaglio.StatusLabel)  |  Gravita': $($dettaglio.SeverityLabel)  |  Categoria: $($dettaglio.Category)"
+            }
         }
 
         if ($statoUI.ModalitaDettaglio -eq 'Tecnico') {
-            $ctrl.TxtTitoloSpiegazione.Text = if ($isEn) { "Technical details & references" } else { "Dettaglio tecnico e riferimenti" }
-            $ctrl.BtnModoTecnico.FontWeight = [System.Windows.FontWeights]::Bold
+            $ctrl.TxtTitoloSpiegazione.Text = switch ($lang) {
+                'EN' { "Technical details & references" }
+                'DE' { "Technische Details & Referenzen" }
+                default { "Dettaglio tecnico e riferimenti" }
+            }
+            $ctrl.BtnModoTecnico.FontWeight  = [System.Windows.FontWeights]::Bold
             $ctrl.BtnModoSemplice.FontWeight = [System.Windows.FontWeights]::Normal
         }
         else {
-            $ctrl.TxtTitoloSpiegazione.Text = if ($isEn) { "Why it matters (simple explanation)" } else { "Perche' conta (spiegazione semplice)" }
+            $ctrl.TxtTitoloSpiegazione.Text = switch ($lang) {
+                'EN' { "Why it matters (simple explanation)" }
+                'DE' { "Warum es wichtig ist (einfache Erklaerung)" }
+                default { "Perche' conta (spiegazione semplice)" }
+            }
             $ctrl.BtnModoSemplice.FontWeight = [System.Windows.FontWeights]::Bold
-            $ctrl.BtnModoTecnico.FontWeight = [System.Windows.FontWeights]::Normal
+            $ctrl.BtnModoTecnico.FontWeight  = [System.Windows.FontWeights]::Normal
         }
 
         $ctrl.TxtDettaglioSpiegazione.Text = $dettaglio.TestoSpiegazione
@@ -6843,30 +7748,40 @@ function Start-ScannerUI {
 
     $aggiornaConteggiERiepilogo = {
         $conteggi = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
-        if ($isEn) {
-            $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Passed"
-            $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Failed"
-            $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Unknown"
-            $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) N/A"
-            $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errors"
-            $ctrl.TxtRiepilogoFooter.Text     = "Summary: $($conteggi.totale) controls evaluated ($($conteggi.superato) passed, $($conteggi.fallito) failed, $($conteggi.sconosciuto) unknown)"
-        }
-        else {
-            $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Superati"
-            $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Falliti"
-            $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Sconosciuti"
-            $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) Non applicabili"
-            $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errori"
-            $ctrl.TxtRiepilogoFooter.Text     = "Riepilogo calcolato dal codice: $($conteggi.totale) controlli valutati ($($conteggi.superato) superati, $($conteggi.fallito) falliti, $($conteggi.sconosciuto) sconosciuti)"
+        switch ($lang) {
+            'EN' {
+                $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Passed"
+                $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Failed"
+                $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Unknown"
+                $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) N/A"
+                $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errors"
+                $ctrl.TxtRiepilogoFooter.Text     = "Summary: $($conteggi.totale) controls evaluated ($($conteggi.superato) passed, $($conteggi.fallito) failed, $($conteggi.sconosciuto) unknown)"
+            }
+            'DE' {
+                $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Bestanden"
+                $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Fehlgeschlagen"
+                $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Unbekannt"
+                $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) N/Z"
+                $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Fehler"
+                $ctrl.TxtRiepilogoFooter.Text     = "Zusammenfassung: $($conteggi.totale) Pruefungen ausgewertet ($($conteggi.superato) bestanden, $($conteggi.fallito) fehlgeschlagen, $($conteggi.sconosciuto) unbekannt)"
+            }
+            default {
+                $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Superati"
+                $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Falliti"
+                $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Sconosciuti"
+                $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) Non applicabili"
+                $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errori"
+                $ctrl.TxtRiepilogoFooter.Text     = "Riepilogo calcolato dal codice: $($conteggi.totale) controlli valutati ($($conteggi.superato) superati, $($conteggi.fallito) falliti, $($conteggi.sconosciuto) sconosciuti)"
+            }
         }
 
         if ($conteggi.errore -gt 0) {
-            $ctrl.TxtBannerErrore.Text = if ($isEn) {
-                "Some controls ($($conteggi.errore)) returned an unexpected read error. Select the control for details or export the technical log."
-            } else {
-                "Alcuni controlli ($($conteggi.errore)) hanno restituito un imprevisto durante la lettura. Seleziona il controllo per maggiori informazioni o esporta il log tecnico."
+            $ctrl.TxtBannerErrore.Text = switch ($lang) {
+                'EN' { "Some controls ($($conteggi.errore)) returned an unexpected read error. Select the control for details or export the technical log." }
+                'DE' { "Einige Pruefungen ($($conteggi.errore)) haben einen unerwarteten Lesefehler gemeldet. Waehlen Sie die Pruefung fuer Details oder exportieren Sie das technische Protokoll." }
+                default { "Alcuni controlli ($($conteggi.errore)) hanno restituito un imprevisto durante la lettura. Seleziona il controllo per maggiori informazioni o esporta il log tecnico." }
             }
             $ctrl.BannerErrore.Visibility = [System.Windows.Visibility]::Visible
         }
@@ -6890,10 +7805,10 @@ function Start-ScannerUI {
             $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         }
         elseif ($filtrati.Count -eq 0) {
-            $ctrl.TxtMessaggioGuida.Text = if ($statoUI.LinguaCorrente -eq 'EN') {
-                "No controls match the selected filters."
-            } else {
-                "Nessun controllo corrisponde ai filtri selezionati."
+            $ctrl.TxtMessaggioGuida.Text = switch ($statoUI.LinguaCorrente) {
+                'EN' { "No controls match the selected filters." }
+                'DE' { "Keine Sicherheitspruefungen entsprechen den ausgewaehlten Filtern." }
+                default { "Nessun controllo corrisponde ai filtri selezionati." }
             }
             $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         }
@@ -6913,25 +7828,37 @@ function Start-ScannerUI {
         }
     }
 
+    $aggiornaTestoPulsanteTema = {
+        $lang = $statoUI.LinguaCorrente
+        $isScuro = ($statoUI.TemaCorrente -eq 'Scuro')
+        $ctrl.BtnTema.Content = switch ($lang) {
+            'EN' { if ($isScuro) { "Active Theme: Dark" } else { "Active Theme: Light" } }
+            'DE' { if ($isScuro) { "Design: Dunkel" }     else { "Design: Hell" } }
+            default { if ($isScuro) { "Tema attivo: Scuro" } else { "Tema attivo: Chiaro" } }
+        }
+    }
+
     $applicaLinguaUI = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         $testoAdmin = if ($Ambiente.IsAdmin) {
-            if ($isEn) { 'Yes' } else { 'Si' }
+            switch ($lang) { 'EN' { 'Yes' } 'DE' { 'Ja' } default { 'Si' } }
         } else {
-            'No'
+            switch ($lang) { 'DE' { 'Nein' } default { 'No' } }
         }
         $ctrl.TxtAmbienteInfo.Text = "Windows 11 $($Ambiente.Edition) $($Ambiente.Build) | Admin: $testoAdmin"
 
-        if ($isEn) {
+        & $aggiornaStileSelettori
+        & $aggiornaTestoPulsanteTema
+
+        if ($lang -eq 'EN') {
             $finestra.Title                        = "Windows 11 Security Scanner (Read-Only)"
             $ctrl.TxtTitoloApp.Text                = "Windows 11 Security Scanner"
             $ctrl.TxtBadgeSolaLettura.Text         = "READ-ONLY"
             $ctrl.TxtSottotitoloApp.Text           = "$totaleControlli Deterministic Controls + Local AI Security Advisor (Ollama)"
-            $ctrl.BtnLingua.Content                = "Lang: IT"
-            $ctrl.BtnTema.Content                  = if ($statoUI.TemaCorrente -eq 'Chiaro') { "Theme: Dark" } else { "Theme: Light" }
+            $ctrl.LblLinguaAttiva.Text             = "Language:"
             $ctrl.TxtBannerNonAdmin.Text           = "[!] Non-administrative session: some controls will report 'Unknown'. Restart as Administrator for a complete audit."
             $ctrl.BtnRiavviaAdmin.Content          = "Restart as Administrator"
-            $ctrl.BtnNavScansione.Content          = "1. Security Controls & Details"
+            $ctrl.BtnNavScansione.Content          = "1. Controls & Details"
             $ctrl.BtnNavIA.Content                 = "2. AI Security Advisor (Ollama)"
             $ctrl.BtnAvvia.Content                 = "Start Scan ($totaleControlli controls)"
             $ctrl.BtnAnnulla.Content               = "Cancel"
@@ -6974,17 +7901,67 @@ function Start-ScannerUI {
             $ctrl.ChkSalvaLogTecnico.Content       = "Include technical error log next to export"
             $ctrl.TxtDisclaimerPermanente.Text     = "Permanent Notice: This tool audits security configurations strictly in read-only mode. A compliant audit does not guarantee the absence of system compromise."
         }
+        elseif ($lang -eq 'DE') {
+            $finestra.Title                        = "Windows 11 Sicherheitsscanner (Schreibgeschuetzt)"
+            $ctrl.TxtTitoloApp.Text                = "Windows 11 Sicherheitsscanner"
+            $ctrl.TxtBadgeSolaLettura.Text         = "NUR LESEN"
+            $ctrl.TxtSottotitoloApp.Text           = "$totaleControlli Deterministische Pruefungen + Lokaler KI-Berater (Ollama)"
+            $ctrl.LblLinguaAttiva.Text             = "Sprache:"
+            $ctrl.TxtBannerNonAdmin.Text           = "[!] Sitzung ohne Administratorrechte: Einige Pruefungen melden 'Unbekannt'. Starten Sie als Administrator neu fuer eine vollstaendige Analyse."
+            $ctrl.BtnRiavviaAdmin.Content          = "Als Administrator neustarten"
+            $ctrl.BtnNavScansione.Content          = "1. Pruefungen & Details"
+            $ctrl.BtnNavIA.Content                 = "2. KI-Sicherheitsberater (Ollama)"
+            $ctrl.BtnAvvia.Content                 = "Scan starten ($totaleControlli Pruefungen)"
+            $ctrl.BtnAnnulla.Content               = "Abbrechen"
+            $ctrl.BtnResocontoLLM.Content          = "KI-Sicherheitsbericht oeffnen"
+            $ctrl.LblFiltroStato.Text              = "Status:"
+            $ctrl.LblFiltroGravita.Text            = "Schweregrad:"
+            $ctrl.LblFiltroCategoria.Text          = "Kategorie:"
+            $ctrl.LblFiltroCerca.Text              = "Suche:"
+            $ctrl.BtnResetFiltri.Content           = "Filter zuruecksetzen"
+            $ctrl.ColStato.Header                  = "Status"
+            $ctrl.ColGravita.Header                = "Schweregrad"
+            $ctrl.ColCategoria.Header              = "Kategorie"
+            $ctrl.ColId.Header                     = "ID"
+            $ctrl.ColControllo.Header              = "Sicherheitspruefung"
+            $ctrl.TxtSottotitoloGuida.Text         = "Der Scanner arbeitet ausschliesslich schreibgeschuetzt und aendert keine Windows-Einstellungen."
+            $ctrl.BtnModoSemplice.Content          = "Einfache Ansicht"
+            $ctrl.BtnModoTecnico.Content           = "Technische Details"
+            $ctrl.BtnSpiegaLLM.Content             = "Mit KI erklaeren (Seite 2)"
+            $ctrl.LblValoreAtteso.Text             = "ERWARTETER WERT"
+            $ctrl.LblValoreOsservato.Text          = "GEFUNDENER WERT"
+            $ctrl.LblComeCorreggere.Text           = "Manuelle Behebung (Anleitung)"
+            $ctrl.LblComandoRif.Text               = "REFERENZBEFEHL (WIRD NICHT AUTOMATISCH AUSGEFUEHRT):"
+            $ctrl.BtnCopiaComando.Content          = "Befehl kopieren"
+            $ctrl.TxtFeedbackCopia.Text            = "Kopiert!"
+            $ctrl.LblNoteRischi.Text               = "Risiko- & Auswirkungshinweise"
+            $ctrl.LblMotoreIaTitle.Text            = "LOKALE KI-ENGINE (OLLAMA)"
+            $ctrl.LblIndirizzoOllama.Text          = "Ollama-Serveradresse:"
+            $ctrl.LblModelloOllama.Text            = "Leichtes LLM-Modell:"
+            $ctrl.TxtChkAutoInstalla.Text          = "Falls Ollama auf der VM fehlt, automatisch im Hintergrund installieren und starten"
+            $ctrl.BtnVerificaOllama.Content        = "Ollama pruefen / Auto-Setup"
+            $ctrl.LblGeneraAnalisiTitle.Text       = "ANALYSE & EMPFEHLUNGEN ERSTELLEN"
+            $ctrl.BtnResocontoTab.Content          = "Vollstaendigen PC-Bericht erstellen"
+            $ctrl.BtnSpiegaControlloTab.Content    = "Ausgewaehlte Pruefung erklaeren"
+            $ctrl.LblCriticitaRilevate.Text        = "ERKANNTE PROBLEME (ZUM ANALYSIEREN KLICKEN):"
+            $ctrl.LblTitoloResocontoIA.Text        = "KI-SICHERHEITSBERICHT & MASSNAHMENPLAN"
+            $ctrl.BtnCopiaRispostaLLM.Content      = "KI-Bericht kopieren"
+            $ctrl.BtnTornaScansione.Content        = "Zurueck zur Tabelle"
+            $ctrl.BtnEsportaJson.Content           = "JSON exportieren"
+            $ctrl.BtnEsportaHtml.Content           = "HTML exportieren"
+            $ctrl.ChkSalvaLogTecnico.Content       = "Technisches Fehlerprotokoll neben dem Export speichern"
+            $ctrl.TxtDisclaimerPermanente.Text     = "Dauerhafter Hinweis: Dieses Tool prueft Sicherheitskonfigurationen ausschliesslich schreibgeschuetzt. Ein konformes Audit garantiert nicht die Abwesenheit einer Kompromittierung."
+        }
         else {
             $finestra.Title                        = "Scanner Sicurezza Windows 11 (Sola Lettura)"
             $ctrl.TxtTitoloApp.Text                = "Scanner Sicurezza Windows 11"
             $ctrl.TxtBadgeSolaLettura.Text         = "SOLA LETTURA"
             $ctrl.TxtSottotitoloApp.Text           = "$totaleControlli Controlli Deterministici + Assistente IA Locale (Ollama)"
-            $ctrl.BtnLingua.Content                = "Lang: EN"
-            $ctrl.BtnTema.Content                  = if ($statoUI.TemaCorrente -eq 'Chiaro') { "Tema: Scuro" } else { "Tema: Chiaro" }
+            $ctrl.LblLinguaAttiva.Text             = "Lingua:"
             $ctrl.TxtBannerNonAdmin.Text           = "[!] Sessione non amministrativa: alcuni controlli risulteranno 'Sconosciuto'. Riavvia come Amministratore per l'analisi completa."
             $ctrl.BtnRiavviaAdmin.Content          = "Riavvia come amministratore"
             $ctrl.BtnNavScansione.Content          = "1. Tabella Controlli & Dettagli"
-            $ctrl.BtnNavIA.Content                 = "2. Pagina Resoconto IA (Ollama)"
+            $ctrl.BtnNavIA.Content                 = "2. Assistente IA (Ollama)"
             $ctrl.BtnAvvia.Content                 = "Avvia scansione ($totaleControlli controlli)"
             $ctrl.BtnAnnulla.Content               = "Annulla"
             $ctrl.BtnResocontoLLM.Content          = "Apri Resoconto IA & Consigli"
@@ -7030,11 +8007,17 @@ function Start-ScannerUI {
         & $aggiornaFiltriComboLingua
 
         if ($statoUI.RisultatiGrezzi.Count -eq 0) {
-            if ($isEn) {
+            if ($lang -eq 'EN') {
                 $ctrl.TxtMessaggioGuida.Text = "Click 'Start Scan' to audit all $totaleControlli Windows 11 security controls."
                 $ctrl.TxtProgresso.Text      = "Ready (0/$totaleControlli)"
                 $ctrl.TxtStatoLLM.Text       = "Status: Ready (auto-connects or auto-installs Ollama on demand)"
                 $ctrl.TxtRispostaLLM.Text    = "1. Run the PC scan using the 'Start Scan (34 controls)' button at the top.`r`n2. Click 'Generate Full PC Security Report' on the left to get an executive summary, prioritized remediation plan, and hardening recommendations.`r`n3. On a VM without Ollama installed, leave the auto-install checkbox enabled: the tool will silently configure Ollama or provide an instant built-in expert analysis."
+            }
+            elseif ($lang -eq 'DE') {
+                $ctrl.TxtMessaggioGuida.Text = "Klicken Sie auf 'Scan starten', um alle $totaleControlli Windows 11-Sicherheitspruefungen durchzufuehren."
+                $ctrl.TxtProgresso.Text      = "Bereit (0/$totaleControlli)"
+                $ctrl.TxtStatoLLM.Text       = "Status: Bereit (verbindet oder installiert Ollama bei Bedarf automatisch)"
+                $ctrl.TxtRispostaLLM.Text    = "1. Starten Sie zuerst den PC-Scan ueber die Schaltflaeche 'Scan starten (34 Pruefungen)' oben.`r`n2. Klicken Sie links auf 'Vollstaendigen PC-Bericht erstellen', um eine Zusammenfassung und einen priorisierten Massnahmenplan zu erhalten.`r`n3. Auf einer VM ohne Ollama lassen Sie das Kontrollkaestchen aktiviert: Das Tool richtet Ollama automatisch ein oder liefert sofort eine integrierte Expertenanalyse."
             }
             else {
                 $ctrl.TxtMessaggioGuida.Text = "Premi 'Avvia scansione' per analizzare i $totaleControlli controlli di sicurezza del PC."
@@ -7048,7 +8031,7 @@ function Start-ScannerUI {
             $idSelPrec = if ($null -ne $statoUI.ElementoSelezionato) { $statoUI.ElementoSelezionato.ControlId } else { $null }
 
             # Rigenera gli elementi della vista nella lingua selezionata
-            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $statoUI.LinguaCorrente)
+            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $lang)
             if ($null -ne $idSelPrec) {
                 foreach ($el in $statoUI.ElementiVista) {
                     if ($el.ControlId -eq $idSelPrec) {
@@ -7059,7 +8042,11 @@ function Start-ScannerUI {
             }
 
             if (-not $statoUI.ScansioneInCorso) {
-                $ctrl.TxtProgresso.Text = if ($isEn) { "Completed ($nValutati/$nValutati)" } else { "Completata ($nValutati/$nValutati)" }
+                $ctrl.TxtProgresso.Text = switch ($lang) {
+                    'EN' { "Completed ($nValutati/$nValutati)" }
+                    'DE' { "Abgeschlossen ($nValutati/$nValutati)" }
+                    default { "Completata ($nValutati/$nValutati)" }
+                }
             }
 
             # Aggiorna la lista delle criticita' nella Pagina 2 (IA)
@@ -7071,14 +8058,22 @@ function Start-ScannerUI {
 
             # Aggiorna anche il testo del Resoconto IA nella lingua selezionata cosi' non resta mai nella lingua precedente
             if ($statoUI.UltimaModalitaIA -eq 'Controllo' -and $null -ne $statoUI.ElementoSelezionato) {
-                $dettCorr = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $statoUI.LinguaCorrente
-                $ctrl.TxtRispostaLLM.Text = Format-AnalisiLocaleControllo -Dettaglio $dettCorr -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-                $ctrl.TxtStatoLLM.Text    = if ($isEn) { "Completed: Instant Security Analysis ($($dettCorr.ControlId))" } else { "Completato: Analisi di Sicurezza ($($dettCorr.ControlId))" }
+                $dettCorr = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $lang
+                $ctrl.TxtRispostaLLM.Text = Format-AnalisiLocaleControllo -Dettaglio $dettCorr -Ambiente $Ambiente -Lingua $lang
+                $ctrl.TxtStatoLLM.Text    = switch ($lang) {
+                    'EN' { "Completed: Instant Security Analysis ($($dettCorr.ControlId))" }
+                    'DE' { "Abgeschlossen: Sicherheitsanalyse ($($dettCorr.ControlId))" }
+                    default { "Completato: Analisi di Sicurezza ($($dettCorr.ControlId))" }
+                }
             }
             else {
                 $conteggiCorr = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-                $ctrl.TxtRispostaLLM.Text = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggiCorr -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-                $ctrl.TxtStatoLLM.Text    = if ($isEn) { "Completed: Full PC Security Report (EN)" } else { "Completato: Resoconto Completo Sicurezza PC (IT)" }
+                $ctrl.TxtRispostaLLM.Text = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggiCorr -Ambiente $Ambiente -Lingua $lang
+                $ctrl.TxtStatoLLM.Text    = switch ($lang) {
+                    'EN' { "Completed: Full PC Security Report (EN)" }
+                    'DE' { "Abgeschlossen: Vollstaendiger PC-Sicherheitsbericht (DE)" }
+                    default { "Completato: Resoconto Completo Sicurezza PC (IT)" }
+                }
             }
 
             & $applicaFiltriTabella
@@ -7088,34 +8083,36 @@ function Start-ScannerUI {
         & $aggiornaPannelloDettaglio
     }
 
-    $ctrl.BtnLingua.Add_Click({
-        if ($statoUI.LinguaCorrente -eq 'IT') {
-            $statoUI.LinguaCorrente = 'EN'
-        }
-        else {
-            $statoUI.LinguaCorrente = 'IT'
-        }
+    # --- Eventi Selettore Lingua Esplicito [IT | EN | DE] ---
+    $ctrl.BtnLinguaIT.Add_Click({
+        $statoUI.LinguaCorrente = 'IT'
+        & $applicaLinguaUI
+    })
+    $ctrl.BtnLinguaEN.Add_Click({
+        $statoUI.LinguaCorrente = 'EN'
+        & $applicaLinguaUI
+    })
+    $ctrl.BtnLinguaDE.Add_Click({
+        $statoUI.LinguaCorrente = 'DE'
         & $applicaLinguaUI
     })
 
-    # --- Eventi Tema ---
+    # --- Eventi Tema (Scuro <-> Chiaro) ---
     $ctrl.BtnTema.Add_Click({
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
         if ($statoUI.TemaCorrente -eq 'Chiaro') {
             $statoUI.TemaCorrente = 'Scuro'
-            Update-TemaFinestra -Finestra $finestra -Tema 'Scuro'
-            $ctrl.BtnTema.Content = if ($isEn) { 'Theme: Light' } else { 'Tema: Chiaro' }
         }
         else {
             $statoUI.TemaCorrente = 'Chiaro'
-            Update-TemaFinestra -Finestra $finestra -Tema 'Chiaro'
-            $ctrl.BtnTema.Content = if ($isEn) { 'Theme: Dark' } else { 'Tema: Scuro' }
         }
+        Update-TemaFinestra -Finestra $finestra -Tema $statoUI.TemaCorrente
+        & $aggiornaStileSelettori
+        & $aggiornaTestoPulsanteTema
     })
 
     # --- Evento Riavvia come Amministratore ---
     $ctrl.BtnRiavviaAdmin.Add_Click({
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         try {
             $percorsoEntry = if ($PercorsoProgetto -and (Test-Path -LiteralPath (Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'))) {
                 Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'
@@ -7141,19 +8138,19 @@ function Start-ScannerUI {
                 $finestra.Close()
             }
             else {
-                $msg = if ($isEn) {
-                    "Launched from remote memory: open a new PowerShell window as Administrator and re-run the command."
-                } else {
-                    "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando."
+                $msg = switch ($lang) {
+                    'EN' { "Launched from remote memory: open a new PowerShell window as Administrator and re-run the command." }
+                    'DE' { "Aus dem Remote-Speicher gestartet: Oeffnen Sie ein neues PowerShell-Fenster als Administrator und fuehren Sie den Befehl erneut aus." }
+                    default { "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando." }
                 }
                 [System.Windows.MessageBox]::Show($msg, $finestra.Title, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
             }
         }
         catch {
-            $msgErr = if ($isEn) {
-                "Restart as Administrator was canceled or failed."
-            } else {
-                "Riavvio come amministratore annullato o non riuscito."
+            $msgErr = switch ($lang) {
+                'EN' { "Restart as Administrator was canceled or failed." }
+                'DE' { "Neustart als Administrator wurde abgebrochen oder ist fehlgeschlagen." }
+                default { "Riavvio come amministratore annullato o non riuscito." }
             }
             [System.Windows.MessageBox]::Show($msgErr, $finestra.Title, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
         }
@@ -7202,6 +8199,9 @@ function Start-ScannerUI {
     # --- Navigazione tra Pagina 1 (Scansione) e Pagina 2 (Resoconto IA a tutto schermo) ---
     $mostraPagina = {
         param([string]$NomePagina)
+        $statoUI.PaginaCorrente = $NomePagina
+        & $aggiornaStileSelettori
+
         if ($NomePagina -eq 'IA') {
             $ctrl.GridPaginaScansione.Visibility = [System.Windows.Visibility]::Collapsed
             $ctrl.GridPaginaIA.Visibility        = [System.Windows.Visibility]::Visible
@@ -7240,7 +8240,7 @@ function Start-ScannerUI {
             [string]$TestoFallback = ''
         )
 
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         # Passa automaticamente alla Pagina 2 (Pagina dedicata Assistente IA)
         & $mostraPagina 'IA'
@@ -7262,22 +8262,26 @@ function Start-ScannerUI {
         $ctrl.BtnResocontoLLM.IsEnabled       = $false
         $ctrl.BtnResocontoTab.IsEnabled       = $false
         $ctrl.BtnVerificaOllama.IsEnabled     = $false
-        $ctrl.TxtStatoLLM.Text                = if ($isEn) { "$EtichettaOperazione in progress ($modelloScelto)..." } else { "$EtichettaOperazione in corso ($modelloScelto)..." }
+        $ctrl.TxtStatoLLM.Text                = switch ($lang) {
+            'EN' { "$EtichettaOperazione in progress ($modelloScelto)..." }
+            'DE' { "$EtichettaOperazione laeuft ($modelloScelto)..." }
+            default { "$EtichettaOperazione in corso ($modelloScelto)..." }
+        }
 
         # Mostra subito l'analisi preliminare mentre Ollama genera (o si auto-installa sulla VM)
         if (-not [string]::IsNullOrWhiteSpace($TestoFallback)) {
-            $bannerAttesa = if ($isEn) {
-                "[Connecting/Preparing Ollama ($modelloScelto) in background... Here is the immediate structured report:]"
-            } else {
-                "[Connessione/Preparazione di Ollama ($modelloScelto) in corso in background... Ecco intanto il resoconto strutturato immediato:]"
+            $bannerAttesa = switch ($lang) {
+                'EN' { "[Connecting/Preparing Ollama ($modelloScelto) in background... Here is the immediate structured report:]" }
+                'DE' { "[Verbindung/Vorbereitung von Ollama ($modelloScelto) im Hintergrund... Hier ist der sofortige strukturierte Bericht:]" }
+                default { "[Connessione/Preparazione di Ollama ($modelloScelto) in corso in background... Ecco intanto il resoconto strutturato immediato:]" }
             }
             $ctrl.TxtRispostaLLM.Text = "$bannerAttesa`n`n$TestoFallback"
         }
         else {
-            $ctrl.TxtRispostaLLM.Text = if ($isEn) {
-                "Processing with Ollama ($modelloScelto)... If you are on a VM without Ollama, the scanner is auto-configuring it in background."
-            } else {
-                "Elaborazione in corso con Ollama ($modelloScelto)... Se ti trovi su una VM senza Ollama, lo scanner lo sta configurando automaticamente in background."
+            $ctrl.TxtRispostaLLM.Text = switch ($lang) {
+                'EN' { "Processing with Ollama ($modelloScelto)... If you are on a VM without Ollama, the scanner is auto-configuring it in background." }
+                'DE' { "Verarbeitung mit Ollama ($modelloScelto)... Auf einer VM ohne Ollama wird der Dienst automatisch im Hintergrund eingerichtet." }
+                default { "Elaborazione in corso con Ollama ($modelloScelto)... Se ti trovi su una VM senza Ollama, lo scanner lo sta configurando automaticamente in background." }
             }
         }
 
@@ -7288,7 +8292,7 @@ function Start-ScannerUI {
 
         $callbackFineLlm = [Action[object]]{
             param($EsitoLlm)
-            $isEnNow = ($statoUI.LinguaCorrente -eq 'EN')
+            $langNow = $statoUI.LinguaCorrente
             $ctrl.BtnSpiegaLLM.IsEnabled          = $true
             $ctrl.BtnSpiegaControlloTab.IsEnabled = $true
             $ctrl.BtnResocontoTab.IsEnabled       = $true
@@ -7300,11 +8304,19 @@ function Start-ScannerUI {
             if ($EsitoLlm.Successo) {
                 $sec = [math]::Round(($EsitoLlm.DurataMs / 1000.0), 1)
                 $sorgente = if ($null -ne $EsitoLlm.PSObject.Properties['Sorgente']) { $EsitoLlm.Sorgente } else { $EsitoLlm.Modello }
-                $ctrl.TxtStatoLLM.Text    = if ($isEnNow) { "Completed by: $sorgente (${sec}s)" } else { "Completato da: $sorgente (${sec}s)" }
+                $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                    'EN' { "Completed by: $sorgente (${sec}s)" }
+                    'DE' { "Abgeschlossen von: $sorgente (${sec}s)" }
+                    default { "Completato da: $sorgente (${sec}s)" }
+                }
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Risposta
             }
             else {
-                $ctrl.TxtStatoLLM.Text    = if ($isEnNow) { "Status: $($EsitoLlm.Modello) unavailable" } else { "Stato: $($EsitoLlm.Modello) non disponibile" }
+                $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                    'EN' { "Status: $($EsitoLlm.Modello) unavailable" }
+                    'DE' { "Status: $($EsitoLlm.Modello) nicht verfuegbar" }
+                    default { "Stato: $($EsitoLlm.Modello) non disponibile" }
+                }
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Errore
             }
         }
@@ -7316,7 +8328,7 @@ function Start-ScannerUI {
             Endpoint       = $endpointScelto
             Fallback       = $TestoFallback
             AutoProvision  = $autoInstalla
-            Lingua         = $statoUI.LinguaCorrente
+            Lingua         = $lang
             CallbackStato  = $callbackStatoLlm
             CallbackFine   = $callbackFineLlm
         })
@@ -7360,16 +8372,20 @@ function Start-ScannerUI {
 
     # --- Pulsante Verifica / Auto-Configura Ollama in background ---
     $ctrl.BtnVerificaOllama.Add_Click({
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         $endpointScelto = if ([string]::IsNullOrWhiteSpace($ctrl.TxtEndpointOllama.Text)) { 'http://127.0.0.1:11434' } else { $ctrl.TxtEndpointOllama.Text.Trim() }
         $autoInst = ($ctrl.ChkAutoInstallaOllama.IsChecked -eq $true)
         $ctrl.BtnVerificaOllama.IsEnabled = $false
-        $ctrl.TxtStatoLLM.Text = if ($isEn) { "Checking or auto-installing Ollama..." } else { "Verifica o installazione automatica di Ollama in corso..." }
+        $ctrl.TxtStatoLLM.Text = switch ($lang) {
+            'EN' { "Checking or auto-installing Ollama..." }
+            'DE' { "Ollama wird geprueft oder automatisch installiert..." }
+            default { "Verifica o installazione automatica di Ollama in corso..." }
+        }
 
         $cbStato = [Action[string]]{ param([string]$m) $ctrl.TxtStatoLLM.Text = $m }
         $cbFine  = [Action[object]]{
             param($statoOll)
-            $isEnNow = ($statoUI.LinguaCorrente -eq 'EN')
+            $langNow = $statoUI.LinguaCorrente
             $ctrl.BtnVerificaOllama.IsEnabled = $true
             if ($statoOll.Disponibile) {
                 $ctrl.TxtEndpointOllama.Text = $statoOll.Endpoint
@@ -7381,25 +8397,25 @@ function Start-ScannerUI {
                         [void]$ctrl.CmbModelloOllama.Items.Add($itemM)
                     }
                     $ctrl.CmbModelloOllama.SelectedIndex = 0
-                    $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
-                        "Ollama connected on $($statoOll.Endpoint)! Ready models: $($statoOll.Modelli -join ', ')"
-                    } else {
-                        "Ollama connesso su $($statoOll.Endpoint)! Modelli pronti: $($statoOll.Modelli -join ', ')"
+                    $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                        'EN' { "Ollama connected on $($statoOll.Endpoint)! Ready models: $($statoOll.Modelli -join ', ')" }
+                        'DE' { "Ollama verbunden auf $($statoOll.Endpoint)! Bereite Modelle: $($statoOll.Modelli -join ', ')" }
+                        default { "Ollama connesso su $($statoOll.Endpoint)! Modelli pronti: $($statoOll.Modelli -join ', ')" }
                     }
                 }
                 else {
-                    $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
-                        "Ollama active on $($statoOll.Endpoint)! Model '$($ctrl.CmbModelloOllama.Text)' will be downloaded automatically on first analysis."
-                    } else {
-                        "Ollama attivo su $($statoOll.Endpoint)! Il modello '$($ctrl.CmbModelloOllama.Text)' verra' scaricato automaticamente alla prima analisi."
+                    $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                        'EN' { "Ollama active on $($statoOll.Endpoint)! Model '$($ctrl.CmbModelloOllama.Text)' will be downloaded automatically on first analysis." }
+                        'DE' { "Ollama aktiv auf $($statoOll.Endpoint)! Modell '$($ctrl.CmbModelloOllama.Text)' wird bei der ersten Analyse automatisch geladen." }
+                        default { "Ollama attivo su $($statoOll.Endpoint)! Il modello '$($ctrl.CmbModelloOllama.Text)' verra' scaricato automaticamente alla prima analisi." }
                     }
                 }
             }
             else {
-                $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
-                    "Ollama unreachable: Built-in Expert Security Engine is active."
-                } else {
-                    "Ollama non raggiungibile: attivo il Motore Esperto Integrato."
+                $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                    'EN' { "Ollama unreachable: Built-in Expert Security Engine is active." }
+                    'DE' { "Ollama nicht erreichbar: Integrierte Experten-Engine ist aktiv." }
+                    default { "Ollama non raggiungibile: attivo il Motore Esperto Integrato." }
                 }
             }
         }
@@ -7441,41 +8457,49 @@ function Start-ScannerUI {
 
     # --- Azione: Spiega controllo selezionato ---
     $eseguiSpiegazioneControllo = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         & $mostraPagina 'IA'
         if ($null -eq $statoUI.ElementoSelezionato) {
-            $ctrl.TxtStatoLLM.Text = if ($isEn) {
-                "Please select a control from the 'Detected Issues' list on the left (or from the Controls Table) first."
-            } else {
-                "Seleziona prima un controllo dalla lista 'Criticita' rilevate' qui a sinistra (o dalla Tabella Controlli)."
+            $ctrl.TxtStatoLLM.Text = switch ($lang) {
+                'EN' { "Please select a control from the 'Detected Issues' list on the left (or from the Controls Table) first." }
+                'DE' { "Bitte waehlen Sie zuerst links in der Liste 'Erkannte Probleme' (oder in der Tabelle) eine Sicherheitspruefung aus." }
+                default { "Seleziona prima un controllo dalla lista 'Criticita' rilevate' qui a sinistra (o dalla Tabella Controlli)." }
             }
             return
         }
         $statoUI.UltimaModalitaIA = 'Controllo'
-        $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $statoUI.LinguaCorrente
-        $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        $lblOp       = if ($isEn) { "Analyzing $($dettaglio.ControlId)" } else { "Analisi di $($dettaglio.ControlId)" }
+        $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $lang
+        $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $lang
+        $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $lang
+        $lblOp       = switch ($lang) {
+            'EN' { "Analyzing $($dettaglio.ControlId)" }
+            'DE' { "Analyse von $($dettaglio.ControlId)" }
+            default { "Analisi di $($dettaglio.ControlId)" }
+        }
         & $avviaRichiestaOllamaAsincrona $promptCtrl $lblOp $fallbackLoc
     }
 
     # --- Azione: Genera Resoconto Completo della Scansione ---
     $eseguiResocontoScansione = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         & $mostraPagina 'IA'
         if ($statoUI.ElementiVista.Count -eq 0) {
-            $ctrl.TxtStatoLLM.Text = if ($isEn) {
-                "Click 'Start Scan' at the top first to collect PC security data."
-            } else {
-                "Premi prima 'Avvia scansione' in alto per raccogliere i dati del PC."
+            $ctrl.TxtStatoLLM.Text = switch ($lang) {
+                'EN' { "Click 'Start Scan' at the top first to collect PC security data." }
+                'DE' { "Klicken Sie zuerst oben auf 'Scan starten', um die Sicherheitsdaten des PCs zu erfassen." }
+                default { "Premi prima 'Avvia scansione' in alto per raccogliere i dati del PC." }
             }
             return
         }
         $statoUI.UltimaModalitaIA = 'Resoconto'
         $conteggi    = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        $lblOp       = if ($isEn) { "Generating Full PC Security Report" } else { "Generazione Resoconto Sicurezza PC" }
+        $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $lang
+        $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $lang
+        $lblOp       = switch ($lang) {
+            'EN' { "Generating Full PC Security Report" }
+            'DE' { "Erstellung des PC-Sicherheitsberichts" }
+            default { "Generazione Resoconto Sicurezza PC" }
+        }
         & $avviaRichiestaOllamaAsincrona $promptRes $lblOp $fallbackRes
     }
 
@@ -7485,17 +8509,21 @@ function Start-ScannerUI {
     $ctrl.BtnResocontoTab.Add_Click($eseguiResocontoScansione)
 
     $ctrl.BtnCopiaRispostaLLM.Add_Click({
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         if (-not [string]::IsNullOrWhiteSpace($ctrl.TxtRispostaLLM.Text)) {
             [System.Windows.Clipboard]::SetText($ctrl.TxtRispostaLLM.Text)
-            $ctrl.TxtStatoLLM.Text = if ($isEn) { "AI Report copied to Windows clipboard!" } else { "Resoconto copiato negli appunti di Windows!" }
+            $ctrl.TxtStatoLLM.Text = switch ($lang) {
+                'EN' { "AI Report copied to Windows clipboard!" }
+                'DE' { "KI-Bericht in die Windows-Zwischenablage kopiert!" }
+                default { "Resoconto copiato negli appunti di Windows!" }
+            }
         }
     })
 
     # --- Avvia scansione in Runspace separato ---
     $ctrl.BtnAvvia.Add_Click({
         if ($statoUI.ScansioneInCorso) { return }
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         $statoUI.ScansioneInCorso    = $true
         $statoUI.RisultatiGrezzi     = @()
@@ -7508,8 +8536,16 @@ function Start-ScannerUI {
         $ctrl.BtnEsportaHtml.IsEnabled  = $false
         $ctrl.BannerErrore.Visibility   = [System.Windows.Visibility]::Collapsed
         $ctrl.ProgressScansione.Value   = 0
-        $ctrl.TxtProgresso.Text         = if ($isEn) { "Starting scan..." } else { "Avvio scansione..." }
-        $ctrl.TxtMessaggioGuida.Text    = if ($isEn) { "Scan in progress... Results will appear as controls are evaluated." } else { "Scansione in corso... I risultati compariranno man mano." }
+        $ctrl.TxtProgresso.Text         = switch ($lang) {
+            'EN' { "Starting scan..." }
+            'DE' { "Scan wird gestartet..." }
+            default { "Avvio scansione..." }
+        }
+        $ctrl.TxtMessaggioGuida.Text    = switch ($lang) {
+            'EN' { "Scan in progress... Results will appear as controls are evaluated." }
+            'DE' { "Scan laeuft... Ergebnisse werden fortlaufend angezeigt." }
+            default { "Scansione in corso... I risultati compariranno man mano." }
+        }
         $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         $ctrl.GridRisultati.ItemsSource = @()
         & $aggiornaConteggiERiepilogo
@@ -7519,13 +8555,17 @@ function Start-ScannerUI {
         $callbackProgresso = [Action[int, int, object]]{
             param([int]$Indice, [int]$Totale, [object]$RisultatoSingolo)
 
-            $isEnProg = ($statoUI.LinguaCorrente -eq 'EN')
+            $langProg = $statoUI.LinguaCorrente
             $statoUI.RisultatiGrezzi += $RisultatoSingolo
-            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $statoUI.LinguaCorrente)
+            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $langProg)
 
             $ctrl.ProgressScansione.Maximum = if ($Totale -gt 0) { $Totale } else { 1 }
             $ctrl.ProgressScansione.Value   = $Indice
-            $ctrl.TxtProgresso.Text         = if ($isEnProg) { "Progress: $Indice/$Totale" } else { "Avanzamento: $Indice/$Totale" }
+            $ctrl.TxtProgresso.Text         = switch ($langProg) {
+                'EN' { "Progress: $Indice/$Totale" }
+                'DE' { "Fortschritt: $Indice/$Totale" }
+                default { "Avanzamento: $Indice/$Totale" }
+            }
 
             & $aggiornaConteggiERiepilogo
             & $applicaFiltriTabella
@@ -7533,7 +8573,7 @@ function Start-ScannerUI {
 
         # Callback invocato sul thread UI al termine (o annullamento) della scansione
         $callbackFine = [Action]{
-            $isEnEnd = ($statoUI.LinguaCorrente -eq 'EN')
+            $langEnd = $statoUI.LinguaCorrente
             $statoUI.ScansioneInCorso   = $false
             $ctrl.BtnAvvia.IsEnabled    = $true
             $ctrl.BtnAnnulla.IsEnabled  = $false
@@ -7546,22 +8586,38 @@ function Start-ScannerUI {
             }
 
             if ($null -ne $statoUI.SyncRunspace -and $statoUI.SyncRunspace.ErroreFatale) {
-                $ctrl.TxtBannerErrore.Text = if ($isEnEnd) {
-                    "An error occurred during the scan execution. Please retry or export the technical log."
-                } else {
-                    "Si e' verificato un problema durante l'esecuzione della scansione. Riprova o esporta il log tecnico."
+                $ctrl.TxtBannerErrore.Text = switch ($langEnd) {
+                    'EN' { "An error occurred during the scan execution. Please retry or export the technical log." }
+                    'DE' { "Waehrend des Scans ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder exportieren Sie das technische Protokoll." }
+                    default { "Si e' verificato un problema durante l'esecuzione della scansione. Riprova o esporta il log tecnico." }
                 }
                 $ctrl.BannerErrore.Visibility = [System.Windows.Visibility]::Visible
-                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Stopped on error ($nValutati/$totaleControlli)" } else { "Interrotto per errore ($nValutati/$totaleControlli)" }
+                $ctrl.TxtProgresso.Text = switch ($langEnd) {
+                    'EN' { "Stopped on error ($nValutati/$totaleControlli)" }
+                    'DE' { "Wegen Fehler gestoppt ($nValutati/$totaleControlli)" }
+                    default { "Interrotto per errore ($nValutati/$totaleControlli)" }
+                }
             }
             elseif ($null -ne $statoUI.SyncRunspace -and $statoUI.SyncRunspace.AnnullaRichiesto) {
-                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Canceled ($nValutati/$totaleControlli)" } else { "Annullata ($nValutati/$totaleControlli)" }
+                $ctrl.TxtProgresso.Text = switch ($langEnd) {
+                    'EN' { "Canceled ($nValutati/$totaleControlli)" }
+                    'DE' { "Abgebrochen ($nValutati/$totaleControlli)" }
+                    default { "Annullata ($nValutati/$totaleControlli)" }
+                }
                 if ($nValutati -eq 0) {
-                    $ctrl.TxtMessaggioGuida.Text = if ($isEnEnd) { "Scan canceled. Click 'Start Scan' to try again." } else { "Scansione annullata. Premi 'Avvia scansione' per riprovare." }
+                    $ctrl.TxtMessaggioGuida.Text = switch ($langEnd) {
+                        'EN' { "Scan canceled. Click 'Start Scan' to try again." }
+                        'DE' { "Scan abgebrochen. Klicken Sie auf 'Scan starten', um es erneut zu versuchen." }
+                        default { "Scansione annullata. Premi 'Avvia scansione' per riprovare." }
+                    }
                 }
             }
             else {
-                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Completed ($nValutati/$nValutati)" } else { "Completata ($nValutati/$nValutati)" }
+                $ctrl.TxtProgresso.Text = switch ($langEnd) {
+                    'EN' { "Completed ($nValutati/$nValutati)" }
+                    'DE' { "Abgeschlossen ($nValutati/$nValutati)" }
+                    default { "Completata ($nValutati/$nValutati)" }
+                }
             }
 
             & $aggiornaConteggiERiepilogo
@@ -7678,17 +8734,21 @@ function Start-ScannerUI {
         if ($statoUI.ScansioneInCorso -and $null -ne $statoUI.SyncRunspace) {
             $statoUI.SyncRunspace.AnnullaRichiesto = $true
             $ctrl.BtnAnnulla.IsEnabled = $false
-            $ctrl.TxtProgresso.Text = if ($statoUI.LinguaCorrente -eq 'EN') { "Canceling..." } else { "Annullamento in corso..." }
+            $ctrl.TxtProgresso.Text = switch ($statoUI.LinguaCorrente) {
+                'EN' { "Canceling..." }
+                'DE' { "Wird abgebrochen..." }
+                default { "Annullamento in corso..." }
+            }
         }
     })
 
     # --- Export JSON ---
     $ctrl.BtnEsportaJson.Add_Click({
         if ($statoUI.RisultatiGrezzi.Count -eq 0) { return }
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         $dialogo = New-Object Microsoft.Win32.SaveFileDialog
-        $dialogo.Title      = if ($isEn) { "Export JSON Report" } else { "Esporta report JSON" }
+        $dialogo.Title      = switch ($lang) { 'EN' { "Export JSON Report" } 'DE' { "JSON-Bericht exportieren" } default { "Esporta report JSON" } }
         $dialogo.Filter     = "JSON (*.json)|*.json"
         $dialogo.FileName   = (Get-NomeFileExport -Estensione 'json')
         $dialogo.DefaultExt = ".json"
@@ -7703,10 +8763,10 @@ function Start-ScannerUI {
                 Export-TechnicalLog -Report $report -PercorsoFile $percorsoLog
             }
 
-            $ctrl.TxtRiepilogoFooter.Text = if ($isEn) {
-                "Exported JSON: $(Split-Path -Leaf $dialogo.FileName)"
-            } else {
-                "Esportato JSON: $(Split-Path -Leaf $dialogo.FileName)"
+            $ctrl.TxtRiepilogoFooter.Text = switch ($lang) {
+                'EN' { "Exported JSON: $(Split-Path -Leaf $dialogo.FileName)" }
+                'DE' { "JSON exportiert: $(Split-Path -Leaf $dialogo.FileName)" }
+                default { "Esportato JSON: $(Split-Path -Leaf $dialogo.FileName)" }
             }
         }
     })
@@ -7714,10 +8774,10 @@ function Start-ScannerUI {
     # --- Export HTML ---
     $ctrl.BtnEsportaHtml.Add_Click({
         if ($statoUI.RisultatiGrezzi.Count -eq 0) { return }
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         $dialogo = New-Object Microsoft.Win32.SaveFileDialog
-        $dialogo.Title      = if ($isEn) { "Export HTML Report" } else { "Esporta report HTML" }
+        $dialogo.Title      = switch ($lang) { 'EN' { "Export HTML Report" } 'DE' { "HTML-Bericht exportieren" } default { "Esporta report HTML" } }
         $dialogo.Filter     = "HTML (*.html)|*.html"
         $dialogo.FileName   = (Get-NomeFileExport -Estensione 'html')
         $dialogo.DefaultExt = ".html"
@@ -7732,10 +8792,10 @@ function Start-ScannerUI {
                 Export-TechnicalLog -Report $report -PercorsoFile $percorsoLog
             }
 
-            $ctrl.TxtRiepilogoFooter.Text = if ($isEn) {
-                "Exported HTML: $(Split-Path -Leaf $dialogo.FileName)"
-            } else {
-                "Esportato HTML: $(Split-Path -Leaf $dialogo.FileName)"
+            $ctrl.TxtRiepilogoFooter.Text = switch ($lang) {
+                'EN' { "Exported HTML: $(Split-Path -Leaf $dialogo.FileName)" }
+                'DE' { "HTML exportiert: $(Split-Path -Leaf $dialogo.FileName)" }
+                default { "Esportato HTML: $(Split-Path -Leaf $dialogo.FileName)" }
             }
         }
     })
@@ -7773,7 +8833,7 @@ function Invoke-Win11Scanner {
         [switch]$Headless,
         [string]$OutFile,
         [string[]]$ControlId,
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lang = $script:LinguaPredefinita
     )
 

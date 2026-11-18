@@ -34,7 +34,7 @@ function Format-PromptControlloOllama {
         [PSCustomObject]$Ambiente = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -49,7 +49,11 @@ function Format-PromptControlloOllama {
         $Dettaglio.ComandoRimedio
     }
     else {
-        if ($Lingua -eq 'EN') { "No terminal command (manual Windows/BIOS setting)" } else { "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)" }
+        switch ($Lingua) {
+            'EN' { "No terminal command (manual Windows/BIOS setting)" }
+            'DE' { "Kein Terminal-Befehl (manuelle Windows-/BIOS-Einstellung)" }
+            default { "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)" }
+        }
     }
 
     $statoRawDett = if ($null -ne $Dettaglio.PSObject.Properties['Status'] -and $Dettaglio.Status) {
@@ -59,9 +63,9 @@ function Format-PromptControlloOllama {
     }
 
     if ($Lingua -eq 'EN') {
-        $verdettoEn = if ($statoRawDett -match 'fallito|failed') {
+        $verdettoEn = if ($statoRawDett -match 'fallito|failed|fehlgeschlagen') {
             "IMPORTANT FACT: This security control FAILED on this PC (it is currently NOT configured securely)."
-        } elseif ($statoRawDett -match 'superato|passed') {
+        } elseif ($statoRawDett -match 'superato|passed|bestanden') {
             "IMPORTANT FACT: This security control PASSED on this PC (it is already configured securely)."
         } else {
             "IMPORTANT FACT: This security control status is UNKNOWN (requires administrator privileges to verify)."
@@ -83,10 +87,35 @@ Write 3 short bullet points in ENGLISH:
 "@
         return $promptEn.Trim()
     }
+    elseif ($Lingua -eq 'DE') {
+        $verdettoDe = if ($statoRawDett -match 'fallito|failed|fehlgeschlagen') {
+            "WICHTIGE TATSACHE: Diese Sicherheitspruefung ist auf diesem PC FEHLGESCHLAGEN (momentan NICHT sicher konfiguriert)."
+        } elseif ($statoRawDett -match 'superato|passed|bestanden') {
+            "WICHTIGE TATSACHE: Diese Sicherheitspruefung wurde auf diesem PC BESTANDEN (bereits sicher konfiguriert)."
+        } else {
+            "WICHTIGE TATSACHE: Der Status dieser Sicherheitspruefung ist UNBEKANNT (Administratorrechte erforderlich)."
+        }
+        $promptDe = @"
+[SPRACHE: NUR DEUTSCH - NICHT AUF ENGLISCH SCHREIBEN]
+$verdettoDe
+Sicherheitspruefung: $($Dettaglio.Title) ($($Dettaglio.ControlId))
+Gefundener Wert auf dem PC: $($Dettaglio.ValoreOsservato)
+Erwartete sichere Einstellung: $($Dettaglio.ValoreAtteso)
+Warum es wichtig ist: $($Dettaglio.SpiegazioneSemplice)
+Wie man es behebt: $($Dettaglio.TestoRimedio)
+Befehl: $cmdRif
 
-    $verdettoIt = if ($statoRawDett -match 'fallito|failed') {
+Schreibe 3 kurze Punkte auf DEUTSCH:
+1. WAS GEFUNDEN WURDE: Erklaere klar, dass '$($Dettaglio.Title)' aktuell den Wert '$($Dettaglio.ValoreOsservato)' hat.
+2. SICHERHEITSRISIKO: Erklaere auf Deutsch, warum '$($Dettaglio.SpiegazioneSemplice)' fuer den PC wichtig ist.
+3. SICHERE BEHEBUNG: Erklaere auf Deutsch, wie man '$($Dettaglio.TestoRimedio)' anwendet.
+"@
+        return $promptDe.Trim()
+    }
+
+    $verdettoIt = if ($statoRawDett -match 'fallito|failed|fehlgeschlagen') {
         "FATTO ACCERTATO: Questo controllo di sicurezza e' FALLITO sul PC (NON e' configurato in modo sicuro)."
-    } elseif ($statoRawDett -match 'superato|passed') {
+    } elseif ($statoRawDett -match 'superato|passed|bestanden') {
         "FATTO ACCERTATO: Questo controllo di sicurezza e' SUPERATO sul PC (e' gia' attivo e sicuro)."
     } else {
         "FATTO ACCERTATO: Lo stato del controllo e' SCONOSCIUTO (servono privilegi di amministratore)."
@@ -130,7 +159,7 @@ function Format-PromptResocontoOllama {
         [PSCustomObject]$Ambiente = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -147,7 +176,7 @@ function Format-PromptResocontoOllama {
     foreach ($el in $ElementiVista) {
         if ($el.Status -eq 'fallito') {
             $nFalliti++
-            $det = Format-DettaglioControllo -Elemento $el -Modalita 'Semplice'
+            $det = Format-DettaglioControllo -Elemento $el -Modalita 'Semplice' -Lingua $Lingua
             [void]$sbFalliti.AppendLine("- [$($el.SeverityLabel.ToUpperInvariant())] $($el.ControlId) - $($el.Title)")
             [void]$sbFalliti.AppendLine("  Observed: $($det.ValoreOsservato) (Expected: $($det.ValoreAtteso))")
             [void]$sbFalliti.AppendLine("  Remediation: $($det.TestoRimedio)")
@@ -160,6 +189,7 @@ function Format-PromptResocontoOllama {
 
     if ($Lingua -eq 'EN') {
         $promptEn = @"
+[LANGUAGE: ENGLISH ONLY]
 You are a cybersecurity advisor for Windows 11 users.
 Analyze the following read-only deterministic security scan report and write a clear report in English with practical step-by-step recommendations to improve PC security.
 
@@ -181,6 +211,31 @@ Write a structured report in 4 sections:
 4. SAFETY BEST PRACTICES: final reminder (e.g. create a System Restore Point before modifying system settings).
 "@
         return $promptEn.Trim()
+    }
+    elseif ($Lingua -eq 'DE') {
+        $promptDe = @"
+[SPRACHE: NUR DEUTSCH - NICHT AUF ENGLISCH SCHREIBEN]
+Du bist ein IT-Sicherheitsberater fuer Windows 11-Benutzer.
+Analysiere den folgenden deterministischen Sicherheitsbericht und schreibe einen klaren Bericht auf DEUTSCH mit praktischen Empfehlungen zur Verbesserung der PC-Sicherheit.
+
+SYSTEM: $infoOs
+ZUSAMMENFASSUNG DES SCANS:
+- Gepruefte Kontrollen insgesamt: $($Conteggi.totale)
+- Bestanden: $($Conteggi.superato)
+- Fehlgeschlagen (Handlungsbedarf): $($Conteggi.fallito)
+- Unbekannt: $($Conteggi.sconosciuto)
+- Nicht zutreffend: $($Conteggi.non_applicabile)
+
+FEHLGESCHLAGENE PRUEFUNGEN (NACH SCHWEREGRAD SORTIERT):
+$($sbFalliti.ToString().Trim())
+
+Schreibe einen strukturierten Bericht auf DEUTSCH in 4 Abschnitten:
+1. ALLGEMEINER SICHERHEITSZUSTAND: klare Zusammenfassung des aktuellen Sicherheitsniveaus.
+2. SOFORTIGE PRIORITAETEN: welche Probleme zuerst behoben werden sollten (beginnend mit Kritisch und Hoch) und warum.
+3. SCHRITT-FUER-SCHRITT-ANLEITUNG: einfache Anweisungen zur Umsetzung der empfohlenen Verbesserungen unter Windows 11.
+4. SICHERHEITSHINWEISE: abschliessender Tipp (z. B. Systemwiederherstellungspunkt vor Systemaenderungen erstellen).
+"@
+        return $promptDe.Trim()
     }
 
     $prompt = @"
@@ -223,7 +278,7 @@ function Format-AnalisiLocaleControllo {
         [PSCustomObject]$Ambiente = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -259,6 +314,41 @@ function Format-AnalisiLocaleControllo {
             [void]$sb.AppendLine("   - Guidance: $($Dettaglio.TestoRimedio)")
             if ($Dettaglio.HaComando -and (-not [string]::IsNullOrWhiteSpace($Dettaglio.ComandoRimedio))) {
                 [void]$sb.AppendLine("   - Reference PowerShell Command (Run as Administrator):")
+                [void]$sb.AppendLine("     $($Dettaglio.ComandoRimedio)")
+            }
+        }
+        return $sb.ToString().Trim()
+    }
+    elseif ($Lingua -eq 'DE') {
+        [void]$sb.AppendLine("=== DETAILLIERTE PRUEFUNGSANALYSE: $($Dettaglio.ControlId) ===")
+        [void]$sb.AppendLine("Sicherheitspruefung: $($Dettaglio.Title)")
+        [void]$sb.AppendLine("Kategorie: $($Dettaglio.Category)  |  Schweregrad: $($Dettaglio.SeverityLabel)  |  Status: $($Dettaglio.StatusLabel)")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("1. WAS DIESES ERGEBNIS AUF IHREM PC BEDEUTET")
+        switch ($Dettaglio.Status) {
+            'superato' {
+                [void]$sb.AppendLine("   Gute Nachrichten: Der gefundene Wert ('$($Dettaglio.ValoreOsservato)') entspricht der erwarteten Sicherheitsvorgabe ('$($Dettaglio.ValoreAtteso)'). Es ist kein Eingriff erforderlich.")
+            }
+            'fallito' {
+                [void]$sb.AppendLine("   Handlungsbedarf: Der Scanner hat '$($Dettaglio.ValoreOsservato)' erkannt, waehrend die empfohlene sichere Einstellung '$($Dettaglio.ValoreAtteso)' lautet.")
+            }
+            default {
+                [void]$sb.AppendLine("   Aktuell erkannter Zustand: '$($Dettaglio.ValoreOsservato)'.")
+            }
+        }
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("2. WARUM ES WICHTIG IST & RISIKOHINWEISE")
+        [void]$sb.AppendLine("   $($Dettaglio.SpiegazioneSemplice)")
+        [void]$sb.AppendLine("   Auswirkung der Aenderung: $($Dettaglio.NoteRischi)")
+        [void]$sb.AppendLine("")
+        [void]$sb.AppendLine("3. SICHERE BEHEBUNG (SCHRITT FUER SCHRITT)")
+        if ($Dettaglio.Status -eq 'superato') {
+            [void]$sb.AppendLine("   - Keine Aenderung erforderlich: Diese Einstellung ist bereits sicher konfiguriert.")
+        }
+        else {
+            [void]$sb.AppendLine("   - Empfohlene Massnahme: $($Dettaglio.TestoRimedio)")
+            if ($Dettaglio.HaComando -and (-not [string]::IsNullOrWhiteSpace($Dettaglio.ComandoRimedio))) {
+                [void]$sb.AppendLine("   - PowerShell-Referenzbefehl (als Administrator ausfuehren):")
                 [void]$sb.AppendLine("     $($Dettaglio.ComandoRimedio)")
             }
         }
@@ -328,7 +418,7 @@ function Format-ResocontoLocaleScansione {
         [PSCustomObject]$Ambiente = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -364,7 +454,7 @@ function Format-ResocontoLocaleScansione {
             $idxEn = 0
             foreach ($f in $fallitiEn) {
                 $idxEn++
-                $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice'
+                $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice' -Lingua 'EN'
                 [void]$sbEn.AppendLine("   Priority #$idxEn — [$($f.SeverityLabel.ToUpperInvariant())] $($f.Title) ($($f.ControlId))")
                 [void]$sbEn.AppendLine("   * Observed on PC: $($det.ValoreOsservato) (Expected: $($det.ValoreAtteso))")
                 [void]$sbEn.AppendLine("   * Why it matters: $($det.SpiegazioneSemplice)")
@@ -379,6 +469,50 @@ function Format-ResocontoLocaleScansione {
         [void]$sbEn.AppendLine("   - Always create a Windows System Restore Point before modifying registry or security policies.")
         [void]$sbEn.AppendLine("   - Apply changes one at a time starting from CRITICAL and HIGH severity controls.")
         return $sbEn.ToString().Trim()
+    }
+    elseif ($Lingua -eq 'DE') {
+        $sbDe = New-Object System.Text.StringBuilder
+        [void]$sbDe.AppendLine("======================================================================")
+        [void]$sbDe.AppendLine("         WINDOWS 11 SICHERHEITSBERICHT & MASSNAHMENPLAN               ")
+        [void]$sbDe.AppendLine("======================================================================")
+        if ($null -ne $Ambiente) {
+            [void]$sbDe.AppendLine("Analysiertes System: Windows 11 $($Ambiente.Edition) (Build $($Ambiente.Build)) | Admin: $($Ambiente.IsAdmin)")
+        }
+        [void]$sbDe.AppendLine("Konformitaetsrate: $perc% ($($Conteggi.superato) Bestanden von $($Conteggi.totale) Pruefungen)")
+        [void]$sbDe.AppendLine("")
+        [void]$sbDe.AppendLine("1. ZUSAMMENFASSUNG")
+        [void]$sbDe.AppendLine("   - Bestandene Pruefungen:          $($Conteggi.superato)")
+        [void]$sbDe.AppendLine("   - Fehlgeschlagen (Handlungsbed.): $($Conteggi.fallito)")
+        [void]$sbDe.AppendLine("   - Unbekannte Pruefungen:          $($Conteggi.sconosciuto)")
+        [void]$sbDe.AppendLine("   - Nicht zutreffende Pruefungen:   $($Conteggi.non_applicabile)")
+        [void]$sbDe.AppendLine("")
+
+        $fallitiDe = @($ElementiVista | Where-Object { $_.Status -eq 'fallito' })
+        if ($fallitiDe.Count -eq 0) {
+            [void]$sbDe.AppendLine("2. KEINE KRITISCHEN PROBLEME GEFUNDEN")
+            [void]$sbDe.AppendLine("   Alle geprueften Kontrollen entsprechen der empfohlenen Sicherheitskonfiguration.")
+        }
+        else {
+            [void]$sbDe.AppendLine("2. PRIORISIERTER MASSNAHMENPLAN ($($fallitiDe.Count) empfohlene Massnahmen)")
+            [void]$sbDe.AppendLine("")
+            $idxDe = 0
+            foreach ($f in $fallitiDe) {
+                $idxDe++
+                $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice' -Lingua 'DE'
+                [void]$sbDe.AppendLine("   Prioritaet #$idxDe — [$($f.SeverityLabel.ToUpperInvariant())] $($f.Title) ($($f.ControlId))")
+                [void]$sbDe.AppendLine("   * Gefunden auf PC: $($det.ValoreOsservato) (Erwartet: $($det.ValoreAtteso))")
+                [void]$sbDe.AppendLine("   * Warum wichtig:   $($det.SpiegazioneSemplice)")
+                [void]$sbDe.AppendLine("   * Behebung:        $($det.TestoRimedio)")
+                if ($det.HaComando -and (-not [string]::IsNullOrWhiteSpace($det.ComandoRimedio))) {
+                    [void]$sbDe.AppendLine("   * PowerShell-Cmd:  $($det.ComandoRimedio)")
+                }
+                [void]$sbDe.AppendLine("")
+            }
+        }
+        [void]$sbDe.AppendLine("3. EMPFOHLENE SICHERHEITSHINWEISE")
+        [void]$sbDe.AppendLine("   - Erstellen Sie vor Aenderungen an Registrierung oder Sicherheitsrichtlinien immer einen Systemwiederherstellungspunkt.")
+        [void]$sbDe.AppendLine("   - Setzen Sie Aenderungen einzeln um, beginnend mit KRITISCHEN und HOHEN Schweregraden.")
+        return $sbDe.ToString().Trim()
     }
 
     $giudizio = if ($Conteggi.fallito -eq 0) {
@@ -699,6 +833,10 @@ function Invoke-RichiestaOllama {
         [bool]$AutoProvision = $false,
 
         [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN', 'DE')]
+        [string]$Lingua = 'IT',
+
+        [Parameter(Mandatory = $false)]
         [scriptblock]$OnStatus = $null
     )
 
@@ -720,9 +858,13 @@ function Invoke-RichiestaOllama {
     $uriGen = "$urlPulito/api/generate"
 
     try {
-        $isPromptEn = ($Prompt -match '\[LANGUAGE: ENGLISH ONLY\]|Write a structured report in 4 sections')
+        $isPromptEn = ($Lingua -eq 'EN') -or ($Prompt -match '\[LANGUAGE: ENGLISH ONLY\]|Write a structured report in 4 sections')
+        $isPromptDe = ($Lingua -eq 'DE') -or ($Prompt -match '\[SPRACHE: NUR DEUTSCH|Schreibe einen strukturierten Bericht auf DEUTSCH')
         $sysMsg = if ($isPromptEn) {
             "You are a Windows 11 cybersecurity assistant. Reply strictly in ENGLISH. Never contradict the scanner facts provided in the prompt."
+        }
+        elseif ($isPromptDe) {
+            "Du bist ein IT-Sicherheitsassistent fuer Windows 11. Antworte AUSSCHLIESSLICH auf DEUTSCH (niemals auf Englisch). Halte dich strikt an die im Prompt genannten Fakten."
         }
         else {
             "Sei un assistente di sicurezza informatica per Windows 11. Rispondi ESCLUSIVAMENTE in lingua ITALIANA (non scrivere mai in inglese). Attieniti rigorosamente ai fatti indicati nel prompt."
@@ -772,7 +914,13 @@ function Invoke-RichiestaOllama {
                 $rispostaFinale = $TestoFallbackLocale
             }
             else {
-                $titoloIa = if ($isPromptEn) { "=== AI COMMENTARY ($Modello) ===" } else { "=== COMMENTO GENERATO DALL'IA ($Modello) ===" }
+                $titoloIa = if ($isPromptEn) {
+                    "=== AI COMMENTARY ($Modello) ==="
+                } elseif ($isPromptDe) {
+                    "=== KI-KOMMENTAR ($Modello) ==="
+                } else {
+                    "=== COMMENTO GENERATO DALL'IA ($Modello) ==="
+                }
                 $rispostaFinale = "$TestoFallbackLocale`n`n$titoloIa`n$testoRisposta"
             }
         }

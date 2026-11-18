@@ -4,10 +4,10 @@
 
 .DESCRIPTION
     Carica il layout XAML da src/ui/MainWindow.xaml tramite XamlReader,
-    collega i controlli con FindName, gestisce il tema chiaro/scuro,
-    la localizzazione completa bilingue (IT/EN), i filtri, il pannello
-    di dettaglio, l'export JSON/HTML e l'esecuzione asincrona della
-    scansione e dell'assistente IA Ollama in Runspace separati.
+    collega i controlli con FindName, gestisce il tema scuro/chiaro completo,
+    la localizzazione completa trilingue (IT / EN / DE) con selettore esplicito,
+    i filtri, il pannello di dettaglio, l'export JSON/HTML e l'esecuzione
+    asincrona della scansione e dell'assistente IA Ollama in Runspace separati.
     Il codice e' in SOLA LETTURA e riusa esattamente il motore di src/core.
 #>
 
@@ -16,7 +16,7 @@ Set-StrictMode -Version 2
 function Update-TemaFinestra {
     <#
     .SYNOPSIS
-        Applica il dizionario di colori del tema Chiaro o Scuro alle risorse della finestra.
+        Applica il dizionario completo di colori del tema Scuro o Chiaro alle risorse della finestra.
     #>
     [CmdletBinding()]
     param(
@@ -33,13 +33,20 @@ function Update-TemaFinestra {
     if ($Tema -eq 'Scuro') {
         $mappaColori = @{
             'BgPrimary'        = '#0B0F19'
-            'BgSurface'        = '#131C2E'
-            'BgHeader'         = '#060913'
+            'BgSurface'        = '#111827'
+            'BgElevated'       = '#1E293B'
+            'BgHeader'         = '#060911'
             'TextHeader'       = '#F8FAFC'
             'BgSubtle'         = '#0F172A'
+            'BgInput'          = '#0F172A'
+            'BgAlternating'    = '#131C2E'
+            'SelectedRowBg'    = '#1E3A8A'
+            'SelectedRowFg'    = '#FFFFFF'
+            'HoverRowBg'       = '#1E293B'
             'TextPrimary'      = '#F1F5F9'
             'TextSecondary'    = '#94A3B8'
             'BorderSubtle'     = '#1E293B'
+            'BorderStrong'     = '#334155'
             'AccentBrush'      = '#3B82F6'
             'AccentText'       = '#FFFFFF'
             'PassBg'           = '#064E3B'
@@ -66,12 +73,19 @@ function Update-TemaFinestra {
         $mappaColori = @{
             'BgPrimary'        = '#F1F5F9'
             'BgSurface'        = '#FFFFFF'
-            'BgHeader'         = '#0B1120'
+            'BgElevated'       = '#F8FAFC'
+            'BgHeader'         = '#0F172A'
             'TextHeader'       = '#F8FAFC'
             'BgSubtle'         = '#F8FAFC'
+            'BgInput'          = '#FFFFFF'
+            'BgAlternating'    = '#F8FAFC'
+            'SelectedRowBg'    = '#DBEAFE'
+            'SelectedRowFg'    = '#1E3A8A'
+            'HoverRowBg'       = '#EFF6FF'
             'TextPrimary'      = '#0F172A'
             'TextSecondary'    = '#475569'
             'BorderSubtle'     = '#E2E8F0'
+            'BorderStrong'     = '#CBD5E1'
             'AccentBrush'      = '#2563EB'
             'AccentText'       = '#FFFFFF'
             'PassBg'           = '#ECFDF5'
@@ -127,7 +141,7 @@ function Start-ScannerUI {
         [string]$VersioneTool = '0.1.0',
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$LinguaIniziale = 'IT'
     )
 
@@ -161,6 +175,10 @@ function Start-ScannerUI {
         TxtBadgeSolaLettura    = $finestra.FindName('TxtBadgeSolaLettura')
         TxtSottotitoloApp      = $finestra.FindName('TxtSottotitoloApp')
         TxtAmbienteInfo        = $finestra.FindName('TxtAmbienteInfo')
+        LblLinguaAttiva        = $finestra.FindName('LblLinguaAttiva')
+        BtnLinguaIT            = $finestra.FindName('BtnLinguaIT')
+        BtnLinguaEN            = $finestra.FindName('BtnLinguaEN')
+        BtnLinguaDE            = $finestra.FindName('BtnLinguaDE')
         BtnLingua              = $finestra.FindName('BtnLingua')
         BtnTema                = $finestra.FindName('BtnTema')
         BannerNonAdmin         = $finestra.FindName('BannerNonAdmin')
@@ -247,11 +265,12 @@ function Start-ScannerUI {
         TxtDisclaimerPermanente= $finestra.FindName('TxtDisclaimerPermanente')
     }
 
-    # Stato interno dell'interfaccia
+    # Stato interno dell'interfaccia (Tema Scuro Fluent predefinito)
     $totaleControlli = @($Catalogo.controls).Count
     $statoUI = @{
         LinguaCorrente      = $LinguaIniziale
-        TemaCorrente        = 'Chiaro'
+        TemaCorrente        = 'Scuro'
+        PaginaCorrente      = 'Scansione'
         ModalitaDettaglio   = 'Semplice'
         RisultatiGrezzi     = @()
         ElementiVista       = @()
@@ -263,6 +282,7 @@ function Start-ScannerUI {
         Runspace            = $null
     }
 
+    Update-TemaFinestra -Finestra $finestra -Tema $statoUI.TemaCorrente
     $ctrl.ProgressScansione.Maximum = if ($totaleControlli -gt 0) { $totaleControlli } else { 1 }
 
     # Banner giallo se non avviato come amministratore
@@ -270,24 +290,69 @@ function Start-ScannerUI {
         $ctrl.BannerNonAdmin.Visibility = [System.Windows.Visibility]::Visible
     }
 
-    # Funzione helper per ripopolare i filtri ComboBox nella lingua corrente
+    $convBrush = New-Object System.Windows.Media.BrushConverter
+
+    # Aggiorna l'evidenziazione visiva del selettore lingua [IT | EN | DE] e delle schede di navigazione
+    $aggiornaStileSelettori = {
+        $mappaBtnLingua = @{
+            'IT' = @{ Btn = $ctrl.BtnLinguaIT; Label = 'IT Italiano' }
+            'EN' = @{ Btn = $ctrl.BtnLinguaEN; Label = 'EN English' }
+            'DE' = @{ Btn = $ctrl.BtnLinguaDE; Label = 'DE Deutsch' }
+        }
+        foreach ($cod in @('IT', 'EN', 'DE')) {
+            $b = $mappaBtnLingua[$cod].Btn
+            $lblBase = $mappaBtnLingua[$cod].Label
+            if ($statoUI.LinguaCorrente -eq $cod) {
+                $b.Content    = "[*] $lblBase"
+                $b.Background = $convBrush.ConvertFromString('#2563EB')
+                $b.Foreground = $convBrush.ConvertFromString('#FFFFFF')
+                $b.FontWeight = [System.Windows.FontWeights]::Bold
+            }
+            else {
+                $b.Content    = $lblBase
+                $b.Background = $convBrush.ConvertFromString('Transparent')
+                $b.Foreground = $convBrush.ConvertFromString('#94A3B8')
+                $b.FontWeight = [System.Windows.FontWeights]::SemiBold
+            }
+        }
+
+        # Evidenzia la scheda pagina attiva (Tab 1 vs Tab 2)
+        if ($statoUI.PaginaCorrente -eq 'IA') {
+            $ctrl.BtnNavIA.Background        = $convBrush.ConvertFromString('#7C3AED')
+            $ctrl.BtnNavIA.Foreground        = $convBrush.ConvertFromString('#FFFFFF')
+            $ctrl.BtnNavIA.FontWeight        = [System.Windows.FontWeights]::Bold
+            $ctrl.BtnNavScansione.Background = $convBrush.ConvertFromString('Transparent')
+            $ctrl.BtnNavScansione.Foreground = $finestra.Resources['TextSecondary']
+            $ctrl.BtnNavScansione.FontWeight = [System.Windows.FontWeights]::SemiBold
+        }
+        else {
+            $ctrl.BtnNavScansione.Background = $convBrush.ConvertFromString('#2563EB')
+            $ctrl.BtnNavScansione.Foreground = $convBrush.ConvertFromString('#FFFFFF')
+            $ctrl.BtnNavScansione.FontWeight = [System.Windows.FontWeights]::Bold
+            $ctrl.BtnNavIA.Background        = $convBrush.ConvertFromString('Transparent')
+            $ctrl.BtnNavIA.Foreground        = $finestra.Resources['TextSecondary']
+            $ctrl.BtnNavIA.FontWeight        = [System.Windows.FontWeights]::SemiBold
+        }
+    }
+
+    # Funzione helper per ripopolare i filtri ComboBox nella lingua corrente (IT / EN / DE)
     $aggiornaFiltriComboLingua = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         $idxStato = if ($ctrl.CmbFiltroStato.SelectedIndex -ge 0) { $ctrl.CmbFiltroStato.SelectedIndex } else { 0 }
         $idxGrav  = if ($ctrl.CmbFiltroGravita.SelectedIndex -ge 0) { $ctrl.CmbFiltroGravita.SelectedIndex } else { 0 }
         $idxCat   = if ($ctrl.CmbFiltroCategoria.SelectedIndex -ge 0) { $ctrl.CmbFiltroCategoria.SelectedIndex } else { 0 }
 
-        $vociStato = if ($isEn) {
-            @('All', 'Failed', 'Passed', 'Unknown', 'N/A', 'Error')
-        } else {
-            @('Tutti', 'Fallito', 'Superato', 'Sconosciuto', 'Non_Applicabile', 'Errore')
+        $vociStato = switch ($lang) {
+            'EN' { @('All', 'Failed', 'Passed', 'Unknown', 'N/A', 'Error') }
+            'DE' { @('Alle', 'Fehlgeschlagen', 'Bestanden', 'Unbekannt', 'N/Z', 'Fehler') }
+            default { @('Tutti', 'Fallito', 'Superato', 'Sconosciuto', 'Non_Applicabile', 'Errore') }
         }
 
-        $vociGrav = if ($isEn) {
-            @('All', 'Critical', 'High', 'Medium', 'Low', 'Info')
-        } else {
-            @('Tutte', 'Critico', 'Alto', 'Medio', 'Basso', 'Informativo')
+        $vociGrav = switch ($lang) {
+            'EN' { @('All', 'Critical', 'High', 'Medium', 'Low', 'Info') }
+            'DE' { @('Alle', 'Kritisch', 'Hoch', 'Mittel', 'Niedrig', 'Info') }
+            default { @('Tutte', 'Critico', 'Alto', 'Medio', 'Basso', 'Informativo') }
         }
 
         $ctrl.CmbFiltroStato.Items.Clear()
@@ -311,8 +376,11 @@ function Start-ScannerUI {
         foreach ($c in $Catalogo.controls) {
             $cid = [string]$c.id
             $catVal = [string]$c.category
-            if ($isEn -and $script:TraduzioniControlliEN.ContainsKey($cid)) {
+            if ($lang -eq 'EN' -and $script:TraduzioniControlliEN.ContainsKey($cid)) {
                 $catVal = $script:TraduzioniControlliEN[$cid].cat
+            }
+            elseif ($lang -eq 'DE' -and $script:TraduzioniControlliDE.ContainsKey($cid)) {
+                $catVal = $script:TraduzioniControlliDE[$cid].cat
             }
             if ($catVal -and ($categorieUniche -notcontains $catVal)) {
                 $categorieUniche += $catVal
@@ -321,7 +389,7 @@ function Start-ScannerUI {
 
         $ctrl.CmbFiltroCategoria.Items.Clear()
         $itemTutte = New-Object System.Windows.Controls.ComboBoxItem
-        $itemTutte.Content = if ($isEn) { 'All' } else { 'Tutte' }
+        $itemTutte.Content = switch ($lang) { 'EN' { 'All' } 'DE' { 'Alle' } default { 'Tutte' } }
         [void]$ctrl.CmbFiltroCategoria.Items.Add($itemTutte)
 
         foreach ($cat in ($categorieUniche | Sort-Object)) {
@@ -334,26 +402,39 @@ function Start-ScannerUI {
 
     # --- Funzioni di aggiornamento UI ---
     $aggiornaPannelloDettaglio = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
-        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita $statoUI.ModalitaDettaglio -Lingua $statoUI.LinguaCorrente
+        $lang = $statoUI.LinguaCorrente
+        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita $statoUI.ModalitaDettaglio -Lingua $lang
         $ctrl.TxtDettaglioTitolo.Text = $dettaglio.Title
 
-        if ($isEn) {
-            $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Status: $($dettaglio.StatusLabel)  |  Severity: $($dettaglio.SeverityLabel)  |  Category: $($dettaglio.Category)"
-        }
-        else {
-            $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Stato: $($dettaglio.StatusLabel)  |  Gravita': $($dettaglio.SeverityLabel)  |  Categoria: $($dettaglio.Category)"
+        switch ($lang) {
+            'EN' {
+                $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Status: $($dettaglio.StatusLabel)  |  Severity: $($dettaglio.SeverityLabel)  |  Category: $($dettaglio.Category)"
+            }
+            'DE' {
+                $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Status: $($dettaglio.StatusLabel)  |  Schweregrad: $($dettaglio.SeverityLabel)  |  Kategorie: $($dettaglio.Category)"
+            }
+            default {
+                $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Stato: $($dettaglio.StatusLabel)  |  Gravita': $($dettaglio.SeverityLabel)  |  Categoria: $($dettaglio.Category)"
+            }
         }
 
         if ($statoUI.ModalitaDettaglio -eq 'Tecnico') {
-            $ctrl.TxtTitoloSpiegazione.Text = if ($isEn) { "Technical details & references" } else { "Dettaglio tecnico e riferimenti" }
-            $ctrl.BtnModoTecnico.FontWeight = [System.Windows.FontWeights]::Bold
+            $ctrl.TxtTitoloSpiegazione.Text = switch ($lang) {
+                'EN' { "Technical details & references" }
+                'DE' { "Technische Details & Referenzen" }
+                default { "Dettaglio tecnico e riferimenti" }
+            }
+            $ctrl.BtnModoTecnico.FontWeight  = [System.Windows.FontWeights]::Bold
             $ctrl.BtnModoSemplice.FontWeight = [System.Windows.FontWeights]::Normal
         }
         else {
-            $ctrl.TxtTitoloSpiegazione.Text = if ($isEn) { "Why it matters (simple explanation)" } else { "Perche' conta (spiegazione semplice)" }
+            $ctrl.TxtTitoloSpiegazione.Text = switch ($lang) {
+                'EN' { "Why it matters (simple explanation)" }
+                'DE' { "Warum es wichtig ist (einfache Erklaerung)" }
+                default { "Perche' conta (spiegazione semplice)" }
+            }
             $ctrl.BtnModoSemplice.FontWeight = [System.Windows.FontWeights]::Bold
-            $ctrl.BtnModoTecnico.FontWeight = [System.Windows.FontWeights]::Normal
+            $ctrl.BtnModoTecnico.FontWeight  = [System.Windows.FontWeights]::Normal
         }
 
         $ctrl.TxtDettaglioSpiegazione.Text = $dettaglio.TestoSpiegazione
@@ -383,30 +464,40 @@ function Start-ScannerUI {
 
     $aggiornaConteggiERiepilogo = {
         $conteggi = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
-        if ($isEn) {
-            $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Passed"
-            $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Failed"
-            $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Unknown"
-            $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) N/A"
-            $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errors"
-            $ctrl.TxtRiepilogoFooter.Text     = "Summary: $($conteggi.totale) controls evaluated ($($conteggi.superato) passed, $($conteggi.fallito) failed, $($conteggi.sconosciuto) unknown)"
-        }
-        else {
-            $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Superati"
-            $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Falliti"
-            $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Sconosciuti"
-            $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) Non applicabili"
-            $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errori"
-            $ctrl.TxtRiepilogoFooter.Text     = "Riepilogo calcolato dal codice: $($conteggi.totale) controlli valutati ($($conteggi.superato) superati, $($conteggi.fallito) falliti, $($conteggi.sconosciuto) sconosciuti)"
+        switch ($lang) {
+            'EN' {
+                $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Passed"
+                $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Failed"
+                $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Unknown"
+                $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) N/A"
+                $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errors"
+                $ctrl.TxtRiepilogoFooter.Text     = "Summary: $($conteggi.totale) controls evaluated ($($conteggi.superato) passed, $($conteggi.fallito) failed, $($conteggi.sconosciuto) unknown)"
+            }
+            'DE' {
+                $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Bestanden"
+                $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Fehlgeschlagen"
+                $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Unbekannt"
+                $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) N/Z"
+                $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Fehler"
+                $ctrl.TxtRiepilogoFooter.Text     = "Zusammenfassung: $($conteggi.totale) Pruefungen ausgewertet ($($conteggi.superato) bestanden, $($conteggi.fallito) fehlgeschlagen, $($conteggi.sconosciuto) unbekannt)"
+            }
+            default {
+                $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Superati"
+                $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Falliti"
+                $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Sconosciuti"
+                $ctrl.TxtCountNonApplicabili.Text = "[-] $($conteggi.non_applicabile) Non applicabili"
+                $ctrl.TxtCountErrori.Text         = "[!] $($conteggi.errore) Errori"
+                $ctrl.TxtRiepilogoFooter.Text     = "Riepilogo calcolato dal codice: $($conteggi.totale) controlli valutati ($($conteggi.superato) superati, $($conteggi.fallito) falliti, $($conteggi.sconosciuto) sconosciuti)"
+            }
         }
 
         if ($conteggi.errore -gt 0) {
-            $ctrl.TxtBannerErrore.Text = if ($isEn) {
-                "Some controls ($($conteggi.errore)) returned an unexpected read error. Select the control for details or export the technical log."
-            } else {
-                "Alcuni controlli ($($conteggi.errore)) hanno restituito un imprevisto durante la lettura. Seleziona il controllo per maggiori informazioni o esporta il log tecnico."
+            $ctrl.TxtBannerErrore.Text = switch ($lang) {
+                'EN' { "Some controls ($($conteggi.errore)) returned an unexpected read error. Select the control for details or export the technical log." }
+                'DE' { "Einige Pruefungen ($($conteggi.errore)) haben einen unerwarteten Lesefehler gemeldet. Waehlen Sie die Pruefung fuer Details oder exportieren Sie das technische Protokoll." }
+                default { "Alcuni controlli ($($conteggi.errore)) hanno restituito un imprevisto durante la lettura. Seleziona il controllo per maggiori informazioni o esporta il log tecnico." }
             }
             $ctrl.BannerErrore.Visibility = [System.Windows.Visibility]::Visible
         }
@@ -430,10 +521,10 @@ function Start-ScannerUI {
             $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         }
         elseif ($filtrati.Count -eq 0) {
-            $ctrl.TxtMessaggioGuida.Text = if ($statoUI.LinguaCorrente -eq 'EN') {
-                "No controls match the selected filters."
-            } else {
-                "Nessun controllo corrisponde ai filtri selezionati."
+            $ctrl.TxtMessaggioGuida.Text = switch ($statoUI.LinguaCorrente) {
+                'EN' { "No controls match the selected filters." }
+                'DE' { "Keine Sicherheitspruefungen entsprechen den ausgewaehlten Filtern." }
+                default { "Nessun controllo corrisponde ai filtri selezionati." }
             }
             $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         }
@@ -453,25 +544,37 @@ function Start-ScannerUI {
         }
     }
 
+    $aggiornaTestoPulsanteTema = {
+        $lang = $statoUI.LinguaCorrente
+        $isScuro = ($statoUI.TemaCorrente -eq 'Scuro')
+        $ctrl.BtnTema.Content = switch ($lang) {
+            'EN' { if ($isScuro) { "Active Theme: Dark" } else { "Active Theme: Light" } }
+            'DE' { if ($isScuro) { "Design: Dunkel" }     else { "Design: Hell" } }
+            default { if ($isScuro) { "Tema attivo: Scuro" } else { "Tema attivo: Chiaro" } }
+        }
+    }
+
     $applicaLinguaUI = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         $testoAdmin = if ($Ambiente.IsAdmin) {
-            if ($isEn) { 'Yes' } else { 'Si' }
+            switch ($lang) { 'EN' { 'Yes' } 'DE' { 'Ja' } default { 'Si' } }
         } else {
-            'No'
+            switch ($lang) { 'DE' { 'Nein' } default { 'No' } }
         }
         $ctrl.TxtAmbienteInfo.Text = "Windows 11 $($Ambiente.Edition) $($Ambiente.Build) | Admin: $testoAdmin"
 
-        if ($isEn) {
+        & $aggiornaStileSelettori
+        & $aggiornaTestoPulsanteTema
+
+        if ($lang -eq 'EN') {
             $finestra.Title                        = "Windows 11 Security Scanner (Read-Only)"
             $ctrl.TxtTitoloApp.Text                = "Windows 11 Security Scanner"
             $ctrl.TxtBadgeSolaLettura.Text         = "READ-ONLY"
             $ctrl.TxtSottotitoloApp.Text           = "$totaleControlli Deterministic Controls + Local AI Security Advisor (Ollama)"
-            $ctrl.BtnLingua.Content                = "Lang: IT"
-            $ctrl.BtnTema.Content                  = if ($statoUI.TemaCorrente -eq 'Chiaro') { "Theme: Dark" } else { "Theme: Light" }
+            $ctrl.LblLinguaAttiva.Text             = "Language:"
             $ctrl.TxtBannerNonAdmin.Text           = "[!] Non-administrative session: some controls will report 'Unknown'. Restart as Administrator for a complete audit."
             $ctrl.BtnRiavviaAdmin.Content          = "Restart as Administrator"
-            $ctrl.BtnNavScansione.Content          = "1. Security Controls & Details"
+            $ctrl.BtnNavScansione.Content          = "1. Controls & Details"
             $ctrl.BtnNavIA.Content                 = "2. AI Security Advisor (Ollama)"
             $ctrl.BtnAvvia.Content                 = "Start Scan ($totaleControlli controls)"
             $ctrl.BtnAnnulla.Content               = "Cancel"
@@ -514,17 +617,67 @@ function Start-ScannerUI {
             $ctrl.ChkSalvaLogTecnico.Content       = "Include technical error log next to export"
             $ctrl.TxtDisclaimerPermanente.Text     = "Permanent Notice: This tool audits security configurations strictly in read-only mode. A compliant audit does not guarantee the absence of system compromise."
         }
+        elseif ($lang -eq 'DE') {
+            $finestra.Title                        = "Windows 11 Sicherheitsscanner (Schreibgeschuetzt)"
+            $ctrl.TxtTitoloApp.Text                = "Windows 11 Sicherheitsscanner"
+            $ctrl.TxtBadgeSolaLettura.Text         = "NUR LESEN"
+            $ctrl.TxtSottotitoloApp.Text           = "$totaleControlli Deterministische Pruefungen + Lokaler KI-Berater (Ollama)"
+            $ctrl.LblLinguaAttiva.Text             = "Sprache:"
+            $ctrl.TxtBannerNonAdmin.Text           = "[!] Sitzung ohne Administratorrechte: Einige Pruefungen melden 'Unbekannt'. Starten Sie als Administrator neu fuer eine vollstaendige Analyse."
+            $ctrl.BtnRiavviaAdmin.Content          = "Als Administrator neustarten"
+            $ctrl.BtnNavScansione.Content          = "1. Pruefungen & Details"
+            $ctrl.BtnNavIA.Content                 = "2. KI-Sicherheitsberater (Ollama)"
+            $ctrl.BtnAvvia.Content                 = "Scan starten ($totaleControlli Pruefungen)"
+            $ctrl.BtnAnnulla.Content               = "Abbrechen"
+            $ctrl.BtnResocontoLLM.Content          = "KI-Sicherheitsbericht oeffnen"
+            $ctrl.LblFiltroStato.Text              = "Status:"
+            $ctrl.LblFiltroGravita.Text            = "Schweregrad:"
+            $ctrl.LblFiltroCategoria.Text          = "Kategorie:"
+            $ctrl.LblFiltroCerca.Text              = "Suche:"
+            $ctrl.BtnResetFiltri.Content           = "Filter zuruecksetzen"
+            $ctrl.ColStato.Header                  = "Status"
+            $ctrl.ColGravita.Header                = "Schweregrad"
+            $ctrl.ColCategoria.Header              = "Kategorie"
+            $ctrl.ColId.Header                     = "ID"
+            $ctrl.ColControllo.Header              = "Sicherheitspruefung"
+            $ctrl.TxtSottotitoloGuida.Text         = "Der Scanner arbeitet ausschliesslich schreibgeschuetzt und aendert keine Windows-Einstellungen."
+            $ctrl.BtnModoSemplice.Content          = "Einfache Ansicht"
+            $ctrl.BtnModoTecnico.Content           = "Technische Details"
+            $ctrl.BtnSpiegaLLM.Content             = "Mit KI erklaeren (Seite 2)"
+            $ctrl.LblValoreAtteso.Text             = "ERWARTETER WERT"
+            $ctrl.LblValoreOsservato.Text          = "GEFUNDENER WERT"
+            $ctrl.LblComeCorreggere.Text           = "Manuelle Behebung (Anleitung)"
+            $ctrl.LblComandoRif.Text               = "REFERENZBEFEHL (WIRD NICHT AUTOMATISCH AUSGEFUEHRT):"
+            $ctrl.BtnCopiaComando.Content          = "Befehl kopieren"
+            $ctrl.TxtFeedbackCopia.Text            = "Kopiert!"
+            $ctrl.LblNoteRischi.Text               = "Risiko- & Auswirkungshinweise"
+            $ctrl.LblMotoreIaTitle.Text            = "LOKALE KI-ENGINE (OLLAMA)"
+            $ctrl.LblIndirizzoOllama.Text          = "Ollama-Serveradresse:"
+            $ctrl.LblModelloOllama.Text            = "Leichtes LLM-Modell:"
+            $ctrl.TxtChkAutoInstalla.Text          = "Falls Ollama auf der VM fehlt, automatisch im Hintergrund installieren und starten"
+            $ctrl.BtnVerificaOllama.Content        = "Ollama pruefen / Auto-Setup"
+            $ctrl.LblGeneraAnalisiTitle.Text       = "ANALYSE & EMPFEHLUNGEN ERSTELLEN"
+            $ctrl.BtnResocontoTab.Content          = "Vollstaendigen PC-Bericht erstellen"
+            $ctrl.BtnSpiegaControlloTab.Content    = "Ausgewaehlte Pruefung erklaeren"
+            $ctrl.LblCriticitaRilevate.Text        = "ERKANNTE PROBLEME (ZUM ANALYSIEREN KLICKEN):"
+            $ctrl.LblTitoloResocontoIA.Text        = "KI-SICHERHEITSBERICHT & MASSNAHMENPLAN"
+            $ctrl.BtnCopiaRispostaLLM.Content      = "KI-Bericht kopieren"
+            $ctrl.BtnTornaScansione.Content        = "Zurueck zur Tabelle"
+            $ctrl.BtnEsportaJson.Content           = "JSON exportieren"
+            $ctrl.BtnEsportaHtml.Content           = "HTML exportieren"
+            $ctrl.ChkSalvaLogTecnico.Content       = "Technisches Fehlerprotokoll neben dem Export speichern"
+            $ctrl.TxtDisclaimerPermanente.Text     = "Dauerhafter Hinweis: Dieses Tool prueft Sicherheitskonfigurationen ausschliesslich schreibgeschuetzt. Ein konformes Audit garantiert nicht die Abwesenheit einer Kompromittierung."
+        }
         else {
             $finestra.Title                        = "Scanner Sicurezza Windows 11 (Sola Lettura)"
             $ctrl.TxtTitoloApp.Text                = "Scanner Sicurezza Windows 11"
             $ctrl.TxtBadgeSolaLettura.Text         = "SOLA LETTURA"
             $ctrl.TxtSottotitoloApp.Text           = "$totaleControlli Controlli Deterministici + Assistente IA Locale (Ollama)"
-            $ctrl.BtnLingua.Content                = "Lang: EN"
-            $ctrl.BtnTema.Content                  = if ($statoUI.TemaCorrente -eq 'Chiaro') { "Tema: Scuro" } else { "Tema: Chiaro" }
+            $ctrl.LblLinguaAttiva.Text             = "Lingua:"
             $ctrl.TxtBannerNonAdmin.Text           = "[!] Sessione non amministrativa: alcuni controlli risulteranno 'Sconosciuto'. Riavvia come Amministratore per l'analisi completa."
             $ctrl.BtnRiavviaAdmin.Content          = "Riavvia come amministratore"
             $ctrl.BtnNavScansione.Content          = "1. Tabella Controlli & Dettagli"
-            $ctrl.BtnNavIA.Content                 = "2. Pagina Resoconto IA (Ollama)"
+            $ctrl.BtnNavIA.Content                 = "2. Assistente IA (Ollama)"
             $ctrl.BtnAvvia.Content                 = "Avvia scansione ($totaleControlli controlli)"
             $ctrl.BtnAnnulla.Content               = "Annulla"
             $ctrl.BtnResocontoLLM.Content          = "Apri Resoconto IA & Consigli"
@@ -570,11 +723,17 @@ function Start-ScannerUI {
         & $aggiornaFiltriComboLingua
 
         if ($statoUI.RisultatiGrezzi.Count -eq 0) {
-            if ($isEn) {
+            if ($lang -eq 'EN') {
                 $ctrl.TxtMessaggioGuida.Text = "Click 'Start Scan' to audit all $totaleControlli Windows 11 security controls."
                 $ctrl.TxtProgresso.Text      = "Ready (0/$totaleControlli)"
                 $ctrl.TxtStatoLLM.Text       = "Status: Ready (auto-connects or auto-installs Ollama on demand)"
                 $ctrl.TxtRispostaLLM.Text    = "1. Run the PC scan using the 'Start Scan (34 controls)' button at the top.`r`n2. Click 'Generate Full PC Security Report' on the left to get an executive summary, prioritized remediation plan, and hardening recommendations.`r`n3. On a VM without Ollama installed, leave the auto-install checkbox enabled: the tool will silently configure Ollama or provide an instant built-in expert analysis."
+            }
+            elseif ($lang -eq 'DE') {
+                $ctrl.TxtMessaggioGuida.Text = "Klicken Sie auf 'Scan starten', um alle $totaleControlli Windows 11-Sicherheitspruefungen durchzufuehren."
+                $ctrl.TxtProgresso.Text      = "Bereit (0/$totaleControlli)"
+                $ctrl.TxtStatoLLM.Text       = "Status: Bereit (verbindet oder installiert Ollama bei Bedarf automatisch)"
+                $ctrl.TxtRispostaLLM.Text    = "1. Starten Sie zuerst den PC-Scan ueber die Schaltflaeche 'Scan starten (34 Pruefungen)' oben.`r`n2. Klicken Sie links auf 'Vollstaendigen PC-Bericht erstellen', um eine Zusammenfassung und einen priorisierten Massnahmenplan zu erhalten.`r`n3. Auf einer VM ohne Ollama lassen Sie das Kontrollkaestchen aktiviert: Das Tool richtet Ollama automatisch ein oder liefert sofort eine integrierte Expertenanalyse."
             }
             else {
                 $ctrl.TxtMessaggioGuida.Text = "Premi 'Avvia scansione' per analizzare i $totaleControlli controlli di sicurezza del PC."
@@ -588,7 +747,7 @@ function Start-ScannerUI {
             $idSelPrec = if ($null -ne $statoUI.ElementoSelezionato) { $statoUI.ElementoSelezionato.ControlId } else { $null }
 
             # Rigenera gli elementi della vista nella lingua selezionata
-            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $statoUI.LinguaCorrente)
+            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $lang)
             if ($null -ne $idSelPrec) {
                 foreach ($el in $statoUI.ElementiVista) {
                     if ($el.ControlId -eq $idSelPrec) {
@@ -599,7 +758,11 @@ function Start-ScannerUI {
             }
 
             if (-not $statoUI.ScansioneInCorso) {
-                $ctrl.TxtProgresso.Text = if ($isEn) { "Completed ($nValutati/$nValutati)" } else { "Completata ($nValutati/$nValutati)" }
+                $ctrl.TxtProgresso.Text = switch ($lang) {
+                    'EN' { "Completed ($nValutati/$nValutati)" }
+                    'DE' { "Abgeschlossen ($nValutati/$nValutati)" }
+                    default { "Completata ($nValutati/$nValutati)" }
+                }
             }
 
             # Aggiorna la lista delle criticita' nella Pagina 2 (IA)
@@ -611,14 +774,22 @@ function Start-ScannerUI {
 
             # Aggiorna anche il testo del Resoconto IA nella lingua selezionata cosi' non resta mai nella lingua precedente
             if ($statoUI.UltimaModalitaIA -eq 'Controllo' -and $null -ne $statoUI.ElementoSelezionato) {
-                $dettCorr = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $statoUI.LinguaCorrente
-                $ctrl.TxtRispostaLLM.Text = Format-AnalisiLocaleControllo -Dettaglio $dettCorr -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-                $ctrl.TxtStatoLLM.Text    = if ($isEn) { "Completed: Instant Security Analysis ($($dettCorr.ControlId))" } else { "Completato: Analisi di Sicurezza ($($dettCorr.ControlId))" }
+                $dettCorr = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $lang
+                $ctrl.TxtRispostaLLM.Text = Format-AnalisiLocaleControllo -Dettaglio $dettCorr -Ambiente $Ambiente -Lingua $lang
+                $ctrl.TxtStatoLLM.Text    = switch ($lang) {
+                    'EN' { "Completed: Instant Security Analysis ($($dettCorr.ControlId))" }
+                    'DE' { "Abgeschlossen: Sicherheitsanalyse ($($dettCorr.ControlId))" }
+                    default { "Completato: Analisi di Sicurezza ($($dettCorr.ControlId))" }
+                }
             }
             else {
                 $conteggiCorr = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-                $ctrl.TxtRispostaLLM.Text = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggiCorr -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-                $ctrl.TxtStatoLLM.Text    = if ($isEn) { "Completed: Full PC Security Report (EN)" } else { "Completato: Resoconto Completo Sicurezza PC (IT)" }
+                $ctrl.TxtRispostaLLM.Text = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggiCorr -Ambiente $Ambiente -Lingua $lang
+                $ctrl.TxtStatoLLM.Text    = switch ($lang) {
+                    'EN' { "Completed: Full PC Security Report (EN)" }
+                    'DE' { "Abgeschlossen: Vollstaendiger PC-Sicherheitsbericht (DE)" }
+                    default { "Completato: Resoconto Completo Sicurezza PC (IT)" }
+                }
             }
 
             & $applicaFiltriTabella
@@ -628,34 +799,36 @@ function Start-ScannerUI {
         & $aggiornaPannelloDettaglio
     }
 
-    $ctrl.BtnLingua.Add_Click({
-        if ($statoUI.LinguaCorrente -eq 'IT') {
-            $statoUI.LinguaCorrente = 'EN'
-        }
-        else {
-            $statoUI.LinguaCorrente = 'IT'
-        }
+    # --- Eventi Selettore Lingua Esplicito [IT | EN | DE] ---
+    $ctrl.BtnLinguaIT.Add_Click({
+        $statoUI.LinguaCorrente = 'IT'
+        & $applicaLinguaUI
+    })
+    $ctrl.BtnLinguaEN.Add_Click({
+        $statoUI.LinguaCorrente = 'EN'
+        & $applicaLinguaUI
+    })
+    $ctrl.BtnLinguaDE.Add_Click({
+        $statoUI.LinguaCorrente = 'DE'
         & $applicaLinguaUI
     })
 
-    # --- Eventi Tema ---
+    # --- Eventi Tema (Scuro <-> Chiaro) ---
     $ctrl.BtnTema.Add_Click({
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
         if ($statoUI.TemaCorrente -eq 'Chiaro') {
             $statoUI.TemaCorrente = 'Scuro'
-            Update-TemaFinestra -Finestra $finestra -Tema 'Scuro'
-            $ctrl.BtnTema.Content = if ($isEn) { 'Theme: Light' } else { 'Tema: Chiaro' }
         }
         else {
             $statoUI.TemaCorrente = 'Chiaro'
-            Update-TemaFinestra -Finestra $finestra -Tema 'Chiaro'
-            $ctrl.BtnTema.Content = if ($isEn) { 'Theme: Dark' } else { 'Tema: Scuro' }
         }
+        Update-TemaFinestra -Finestra $finestra -Tema $statoUI.TemaCorrente
+        & $aggiornaStileSelettori
+        & $aggiornaTestoPulsanteTema
     })
 
     # --- Evento Riavvia come Amministratore ---
     $ctrl.BtnRiavviaAdmin.Add_Click({
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         try {
             $percorsoEntry = if ($PercorsoProgetto -and (Test-Path -LiteralPath (Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'))) {
                 Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'
@@ -681,19 +854,19 @@ function Start-ScannerUI {
                 $finestra.Close()
             }
             else {
-                $msg = if ($isEn) {
-                    "Launched from remote memory: open a new PowerShell window as Administrator and re-run the command."
-                } else {
-                    "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando."
+                $msg = switch ($lang) {
+                    'EN' { "Launched from remote memory: open a new PowerShell window as Administrator and re-run the command." }
+                    'DE' { "Aus dem Remote-Speicher gestartet: Oeffnen Sie ein neues PowerShell-Fenster als Administrator und fuehren Sie den Befehl erneut aus." }
+                    default { "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando." }
                 }
                 [System.Windows.MessageBox]::Show($msg, $finestra.Title, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
             }
         }
         catch {
-            $msgErr = if ($isEn) {
-                "Restart as Administrator was canceled or failed."
-            } else {
-                "Riavvio come amministratore annullato o non riuscito."
+            $msgErr = switch ($lang) {
+                'EN' { "Restart as Administrator was canceled or failed." }
+                'DE' { "Neustart als Administrator wurde abgebrochen oder ist fehlgeschlagen." }
+                default { "Riavvio come amministratore annullato o non riuscito." }
             }
             [System.Windows.MessageBox]::Show($msgErr, $finestra.Title, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
         }
@@ -742,6 +915,9 @@ function Start-ScannerUI {
     # --- Navigazione tra Pagina 1 (Scansione) e Pagina 2 (Resoconto IA a tutto schermo) ---
     $mostraPagina = {
         param([string]$NomePagina)
+        $statoUI.PaginaCorrente = $NomePagina
+        & $aggiornaStileSelettori
+
         if ($NomePagina -eq 'IA') {
             $ctrl.GridPaginaScansione.Visibility = [System.Windows.Visibility]::Collapsed
             $ctrl.GridPaginaIA.Visibility        = [System.Windows.Visibility]::Visible
@@ -780,7 +956,7 @@ function Start-ScannerUI {
             [string]$TestoFallback = ''
         )
 
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         # Passa automaticamente alla Pagina 2 (Pagina dedicata Assistente IA)
         & $mostraPagina 'IA'
@@ -802,22 +978,26 @@ function Start-ScannerUI {
         $ctrl.BtnResocontoLLM.IsEnabled       = $false
         $ctrl.BtnResocontoTab.IsEnabled       = $false
         $ctrl.BtnVerificaOllama.IsEnabled     = $false
-        $ctrl.TxtStatoLLM.Text                = if ($isEn) { "$EtichettaOperazione in progress ($modelloScelto)..." } else { "$EtichettaOperazione in corso ($modelloScelto)..." }
+        $ctrl.TxtStatoLLM.Text                = switch ($lang) {
+            'EN' { "$EtichettaOperazione in progress ($modelloScelto)..." }
+            'DE' { "$EtichettaOperazione laeuft ($modelloScelto)..." }
+            default { "$EtichettaOperazione in corso ($modelloScelto)..." }
+        }
 
         # Mostra subito l'analisi preliminare mentre Ollama genera (o si auto-installa sulla VM)
         if (-not [string]::IsNullOrWhiteSpace($TestoFallback)) {
-            $bannerAttesa = if ($isEn) {
-                "[Connecting/Preparing Ollama ($modelloScelto) in background... Here is the immediate structured report:]"
-            } else {
-                "[Connessione/Preparazione di Ollama ($modelloScelto) in corso in background... Ecco intanto il resoconto strutturato immediato:]"
+            $bannerAttesa = switch ($lang) {
+                'EN' { "[Connecting/Preparing Ollama ($modelloScelto) in background... Here is the immediate structured report:]" }
+                'DE' { "[Verbindung/Vorbereitung von Ollama ($modelloScelto) im Hintergrund... Hier ist der sofortige strukturierte Bericht:]" }
+                default { "[Connessione/Preparazione di Ollama ($modelloScelto) in corso in background... Ecco intanto il resoconto strutturato immediato:]" }
             }
             $ctrl.TxtRispostaLLM.Text = "$bannerAttesa`n`n$TestoFallback"
         }
         else {
-            $ctrl.TxtRispostaLLM.Text = if ($isEn) {
-                "Processing with Ollama ($modelloScelto)... If you are on a VM without Ollama, the scanner is auto-configuring it in background."
-            } else {
-                "Elaborazione in corso con Ollama ($modelloScelto)... Se ti trovi su una VM senza Ollama, lo scanner lo sta configurando automaticamente in background."
+            $ctrl.TxtRispostaLLM.Text = switch ($lang) {
+                'EN' { "Processing with Ollama ($modelloScelto)... If you are on a VM without Ollama, the scanner is auto-configuring it in background." }
+                'DE' { "Verarbeitung mit Ollama ($modelloScelto)... Auf einer VM ohne Ollama wird der Dienst automatisch im Hintergrund eingerichtet." }
+                default { "Elaborazione in corso con Ollama ($modelloScelto)... Se ti trovi su una VM senza Ollama, lo scanner lo sta configurando automaticamente in background." }
             }
         }
 
@@ -828,7 +1008,7 @@ function Start-ScannerUI {
 
         $callbackFineLlm = [Action[object]]{
             param($EsitoLlm)
-            $isEnNow = ($statoUI.LinguaCorrente -eq 'EN')
+            $langNow = $statoUI.LinguaCorrente
             $ctrl.BtnSpiegaLLM.IsEnabled          = $true
             $ctrl.BtnSpiegaControlloTab.IsEnabled = $true
             $ctrl.BtnResocontoTab.IsEnabled       = $true
@@ -840,11 +1020,19 @@ function Start-ScannerUI {
             if ($EsitoLlm.Successo) {
                 $sec = [math]::Round(($EsitoLlm.DurataMs / 1000.0), 1)
                 $sorgente = if ($null -ne $EsitoLlm.PSObject.Properties['Sorgente']) { $EsitoLlm.Sorgente } else { $EsitoLlm.Modello }
-                $ctrl.TxtStatoLLM.Text    = if ($isEnNow) { "Completed by: $sorgente (${sec}s)" } else { "Completato da: $sorgente (${sec}s)" }
+                $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                    'EN' { "Completed by: $sorgente (${sec}s)" }
+                    'DE' { "Abgeschlossen von: $sorgente (${sec}s)" }
+                    default { "Completato da: $sorgente (${sec}s)" }
+                }
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Risposta
             }
             else {
-                $ctrl.TxtStatoLLM.Text    = if ($isEnNow) { "Status: $($EsitoLlm.Modello) unavailable" } else { "Stato: $($EsitoLlm.Modello) non disponibile" }
+                $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                    'EN' { "Status: $($EsitoLlm.Modello) unavailable" }
+                    'DE' { "Status: $($EsitoLlm.Modello) nicht verfuegbar" }
+                    default { "Stato: $($EsitoLlm.Modello) non disponibile" }
+                }
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Errore
             }
         }
@@ -856,7 +1044,7 @@ function Start-ScannerUI {
             Endpoint       = $endpointScelto
             Fallback       = $TestoFallback
             AutoProvision  = $autoInstalla
-            Lingua         = $statoUI.LinguaCorrente
+            Lingua         = $lang
             CallbackStato  = $callbackStatoLlm
             CallbackFine   = $callbackFineLlm
         })
@@ -900,16 +1088,20 @@ function Start-ScannerUI {
 
     # --- Pulsante Verifica / Auto-Configura Ollama in background ---
     $ctrl.BtnVerificaOllama.Add_Click({
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         $endpointScelto = if ([string]::IsNullOrWhiteSpace($ctrl.TxtEndpointOllama.Text)) { 'http://127.0.0.1:11434' } else { $ctrl.TxtEndpointOllama.Text.Trim() }
         $autoInst = ($ctrl.ChkAutoInstallaOllama.IsChecked -eq $true)
         $ctrl.BtnVerificaOllama.IsEnabled = $false
-        $ctrl.TxtStatoLLM.Text = if ($isEn) { "Checking or auto-installing Ollama..." } else { "Verifica o installazione automatica di Ollama in corso..." }
+        $ctrl.TxtStatoLLM.Text = switch ($lang) {
+            'EN' { "Checking or auto-installing Ollama..." }
+            'DE' { "Ollama wird geprueft oder automatisch installiert..." }
+            default { "Verifica o installazione automatica di Ollama in corso..." }
+        }
 
         $cbStato = [Action[string]]{ param([string]$m) $ctrl.TxtStatoLLM.Text = $m }
         $cbFine  = [Action[object]]{
             param($statoOll)
-            $isEnNow = ($statoUI.LinguaCorrente -eq 'EN')
+            $langNow = $statoUI.LinguaCorrente
             $ctrl.BtnVerificaOllama.IsEnabled = $true
             if ($statoOll.Disponibile) {
                 $ctrl.TxtEndpointOllama.Text = $statoOll.Endpoint
@@ -921,25 +1113,25 @@ function Start-ScannerUI {
                         [void]$ctrl.CmbModelloOllama.Items.Add($itemM)
                     }
                     $ctrl.CmbModelloOllama.SelectedIndex = 0
-                    $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
-                        "Ollama connected on $($statoOll.Endpoint)! Ready models: $($statoOll.Modelli -join ', ')"
-                    } else {
-                        "Ollama connesso su $($statoOll.Endpoint)! Modelli pronti: $($statoOll.Modelli -join ', ')"
+                    $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                        'EN' { "Ollama connected on $($statoOll.Endpoint)! Ready models: $($statoOll.Modelli -join ', ')" }
+                        'DE' { "Ollama verbunden auf $($statoOll.Endpoint)! Bereite Modelle: $($statoOll.Modelli -join ', ')" }
+                        default { "Ollama connesso su $($statoOll.Endpoint)! Modelli pronti: $($statoOll.Modelli -join ', ')" }
                     }
                 }
                 else {
-                    $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
-                        "Ollama active on $($statoOll.Endpoint)! Model '$($ctrl.CmbModelloOllama.Text)' will be downloaded automatically on first analysis."
-                    } else {
-                        "Ollama attivo su $($statoOll.Endpoint)! Il modello '$($ctrl.CmbModelloOllama.Text)' verra' scaricato automaticamente alla prima analisi."
+                    $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                        'EN' { "Ollama active on $($statoOll.Endpoint)! Model '$($ctrl.CmbModelloOllama.Text)' will be downloaded automatically on first analysis." }
+                        'DE' { "Ollama aktiv auf $($statoOll.Endpoint)! Modell '$($ctrl.CmbModelloOllama.Text)' wird bei der ersten Analyse automatisch geladen." }
+                        default { "Ollama attivo su $($statoOll.Endpoint)! Il modello '$($ctrl.CmbModelloOllama.Text)' verra' scaricato automaticamente alla prima analisi." }
                     }
                 }
             }
             else {
-                $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
-                    "Ollama unreachable: Built-in Expert Security Engine is active."
-                } else {
-                    "Ollama non raggiungibile: attivo il Motore Esperto Integrato."
+                $ctrl.TxtStatoLLM.Text = switch ($langNow) {
+                    'EN' { "Ollama unreachable: Built-in Expert Security Engine is active." }
+                    'DE' { "Ollama nicht erreichbar: Integrierte Experten-Engine ist aktiv." }
+                    default { "Ollama non raggiungibile: attivo il Motore Esperto Integrato." }
                 }
             }
         }
@@ -981,41 +1173,49 @@ function Start-ScannerUI {
 
     # --- Azione: Spiega controllo selezionato ---
     $eseguiSpiegazioneControllo = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         & $mostraPagina 'IA'
         if ($null -eq $statoUI.ElementoSelezionato) {
-            $ctrl.TxtStatoLLM.Text = if ($isEn) {
-                "Please select a control from the 'Detected Issues' list on the left (or from the Controls Table) first."
-            } else {
-                "Seleziona prima un controllo dalla lista 'Criticita' rilevate' qui a sinistra (o dalla Tabella Controlli)."
+            $ctrl.TxtStatoLLM.Text = switch ($lang) {
+                'EN' { "Please select a control from the 'Detected Issues' list on the left (or from the Controls Table) first." }
+                'DE' { "Bitte waehlen Sie zuerst links in der Liste 'Erkannte Probleme' (oder in der Tabelle) eine Sicherheitspruefung aus." }
+                default { "Seleziona prima un controllo dalla lista 'Criticita' rilevate' qui a sinistra (o dalla Tabella Controlli)." }
             }
             return
         }
         $statoUI.UltimaModalitaIA = 'Controllo'
-        $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $statoUI.LinguaCorrente
-        $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        $lblOp       = if ($isEn) { "Analyzing $($dettaglio.ControlId)" } else { "Analisi di $($dettaglio.ControlId)" }
+        $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $lang
+        $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $lang
+        $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $lang
+        $lblOp       = switch ($lang) {
+            'EN' { "Analyzing $($dettaglio.ControlId)" }
+            'DE' { "Analyse von $($dettaglio.ControlId)" }
+            default { "Analisi di $($dettaglio.ControlId)" }
+        }
         & $avviaRichiestaOllamaAsincrona $promptCtrl $lblOp $fallbackLoc
     }
 
     # --- Azione: Genera Resoconto Completo della Scansione ---
     $eseguiResocontoScansione = {
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         & $mostraPagina 'IA'
         if ($statoUI.ElementiVista.Count -eq 0) {
-            $ctrl.TxtStatoLLM.Text = if ($isEn) {
-                "Click 'Start Scan' at the top first to collect PC security data."
-            } else {
-                "Premi prima 'Avvia scansione' in alto per raccogliere i dati del PC."
+            $ctrl.TxtStatoLLM.Text = switch ($lang) {
+                'EN' { "Click 'Start Scan' at the top first to collect PC security data." }
+                'DE' { "Klicken Sie zuerst oben auf 'Scan starten', um die Sicherheitsdaten des PCs zu erfassen." }
+                default { "Premi prima 'Avvia scansione' in alto per raccogliere i dati del PC." }
             }
             return
         }
         $statoUI.UltimaModalitaIA = 'Resoconto'
         $conteggi    = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        $lblOp       = if ($isEn) { "Generating Full PC Security Report" } else { "Generazione Resoconto Sicurezza PC" }
+        $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $lang
+        $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $lang
+        $lblOp       = switch ($lang) {
+            'EN' { "Generating Full PC Security Report" }
+            'DE' { "Erstellung des PC-Sicherheitsberichts" }
+            default { "Generazione Resoconto Sicurezza PC" }
+        }
         & $avviaRichiestaOllamaAsincrona $promptRes $lblOp $fallbackRes
     }
 
@@ -1025,17 +1225,21 @@ function Start-ScannerUI {
     $ctrl.BtnResocontoTab.Add_Click($eseguiResocontoScansione)
 
     $ctrl.BtnCopiaRispostaLLM.Add_Click({
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
         if (-not [string]::IsNullOrWhiteSpace($ctrl.TxtRispostaLLM.Text)) {
             [System.Windows.Clipboard]::SetText($ctrl.TxtRispostaLLM.Text)
-            $ctrl.TxtStatoLLM.Text = if ($isEn) { "AI Report copied to Windows clipboard!" } else { "Resoconto copiato negli appunti di Windows!" }
+            $ctrl.TxtStatoLLM.Text = switch ($lang) {
+                'EN' { "AI Report copied to Windows clipboard!" }
+                'DE' { "KI-Bericht in die Windows-Zwischenablage kopiert!" }
+                default { "Resoconto copiato negli appunti di Windows!" }
+            }
         }
     })
 
     # --- Avvia scansione in Runspace separato ---
     $ctrl.BtnAvvia.Add_Click({
         if ($statoUI.ScansioneInCorso) { return }
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         $statoUI.ScansioneInCorso    = $true
         $statoUI.RisultatiGrezzi     = @()
@@ -1048,8 +1252,16 @@ function Start-ScannerUI {
         $ctrl.BtnEsportaHtml.IsEnabled  = $false
         $ctrl.BannerErrore.Visibility   = [System.Windows.Visibility]::Collapsed
         $ctrl.ProgressScansione.Value   = 0
-        $ctrl.TxtProgresso.Text         = if ($isEn) { "Starting scan..." } else { "Avvio scansione..." }
-        $ctrl.TxtMessaggioGuida.Text    = if ($isEn) { "Scan in progress... Results will appear as controls are evaluated." } else { "Scansione in corso... I risultati compariranno man mano." }
+        $ctrl.TxtProgresso.Text         = switch ($lang) {
+            'EN' { "Starting scan..." }
+            'DE' { "Scan wird gestartet..." }
+            default { "Avvio scansione..." }
+        }
+        $ctrl.TxtMessaggioGuida.Text    = switch ($lang) {
+            'EN' { "Scan in progress... Results will appear as controls are evaluated." }
+            'DE' { "Scan laeuft... Ergebnisse werden fortlaufend angezeigt." }
+            default { "Scansione in corso... I risultati compariranno man mano." }
+        }
         $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         $ctrl.GridRisultati.ItemsSource = @()
         & $aggiornaConteggiERiepilogo
@@ -1059,13 +1271,17 @@ function Start-ScannerUI {
         $callbackProgresso = [Action[int, int, object]]{
             param([int]$Indice, [int]$Totale, [object]$RisultatoSingolo)
 
-            $isEnProg = ($statoUI.LinguaCorrente -eq 'EN')
+            $langProg = $statoUI.LinguaCorrente
             $statoUI.RisultatiGrezzi += $RisultatoSingolo
-            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $statoUI.LinguaCorrente)
+            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $langProg)
 
             $ctrl.ProgressScansione.Maximum = if ($Totale -gt 0) { $Totale } else { 1 }
             $ctrl.ProgressScansione.Value   = $Indice
-            $ctrl.TxtProgresso.Text         = if ($isEnProg) { "Progress: $Indice/$Totale" } else { "Avanzamento: $Indice/$Totale" }
+            $ctrl.TxtProgresso.Text         = switch ($langProg) {
+                'EN' { "Progress: $Indice/$Totale" }
+                'DE' { "Fortschritt: $Indice/$Totale" }
+                default { "Avanzamento: $Indice/$Totale" }
+            }
 
             & $aggiornaConteggiERiepilogo
             & $applicaFiltriTabella
@@ -1073,7 +1289,7 @@ function Start-ScannerUI {
 
         # Callback invocato sul thread UI al termine (o annullamento) della scansione
         $callbackFine = [Action]{
-            $isEnEnd = ($statoUI.LinguaCorrente -eq 'EN')
+            $langEnd = $statoUI.LinguaCorrente
             $statoUI.ScansioneInCorso   = $false
             $ctrl.BtnAvvia.IsEnabled    = $true
             $ctrl.BtnAnnulla.IsEnabled  = $false
@@ -1086,22 +1302,38 @@ function Start-ScannerUI {
             }
 
             if ($null -ne $statoUI.SyncRunspace -and $statoUI.SyncRunspace.ErroreFatale) {
-                $ctrl.TxtBannerErrore.Text = if ($isEnEnd) {
-                    "An error occurred during the scan execution. Please retry or export the technical log."
-                } else {
-                    "Si e' verificato un problema durante l'esecuzione della scansione. Riprova o esporta il log tecnico."
+                $ctrl.TxtBannerErrore.Text = switch ($langEnd) {
+                    'EN' { "An error occurred during the scan execution. Please retry or export the technical log." }
+                    'DE' { "Waehrend des Scans ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut oder exportieren Sie das technische Protokoll." }
+                    default { "Si e' verificato un problema durante l'esecuzione della scansione. Riprova o esporta il log tecnico." }
                 }
                 $ctrl.BannerErrore.Visibility = [System.Windows.Visibility]::Visible
-                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Stopped on error ($nValutati/$totaleControlli)" } else { "Interrotto per errore ($nValutati/$totaleControlli)" }
+                $ctrl.TxtProgresso.Text = switch ($langEnd) {
+                    'EN' { "Stopped on error ($nValutati/$totaleControlli)" }
+                    'DE' { "Wegen Fehler gestoppt ($nValutati/$totaleControlli)" }
+                    default { "Interrotto per errore ($nValutati/$totaleControlli)" }
+                }
             }
             elseif ($null -ne $statoUI.SyncRunspace -and $statoUI.SyncRunspace.AnnullaRichiesto) {
-                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Canceled ($nValutati/$totaleControlli)" } else { "Annullata ($nValutati/$totaleControlli)" }
+                $ctrl.TxtProgresso.Text = switch ($langEnd) {
+                    'EN' { "Canceled ($nValutati/$totaleControlli)" }
+                    'DE' { "Abgebrochen ($nValutati/$totaleControlli)" }
+                    default { "Annullata ($nValutati/$totaleControlli)" }
+                }
                 if ($nValutati -eq 0) {
-                    $ctrl.TxtMessaggioGuida.Text = if ($isEnEnd) { "Scan canceled. Click 'Start Scan' to try again." } else { "Scansione annullata. Premi 'Avvia scansione' per riprovare." }
+                    $ctrl.TxtMessaggioGuida.Text = switch ($langEnd) {
+                        'EN' { "Scan canceled. Click 'Start Scan' to try again." }
+                        'DE' { "Scan abgebrochen. Klicken Sie auf 'Scan starten', um es erneut zu versuchen." }
+                        default { "Scansione annullata. Premi 'Avvia scansione' per riprovare." }
+                    }
                 }
             }
             else {
-                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Completed ($nValutati/$nValutati)" } else { "Completata ($nValutati/$nValutati)" }
+                $ctrl.TxtProgresso.Text = switch ($langEnd) {
+                    'EN' { "Completed ($nValutati/$nValutati)" }
+                    'DE' { "Abgeschlossen ($nValutati/$nValutati)" }
+                    default { "Completata ($nValutati/$nValutati)" }
+                }
             }
 
             & $aggiornaConteggiERiepilogo
@@ -1218,17 +1450,21 @@ function Start-ScannerUI {
         if ($statoUI.ScansioneInCorso -and $null -ne $statoUI.SyncRunspace) {
             $statoUI.SyncRunspace.AnnullaRichiesto = $true
             $ctrl.BtnAnnulla.IsEnabled = $false
-            $ctrl.TxtProgresso.Text = if ($statoUI.LinguaCorrente -eq 'EN') { "Canceling..." } else { "Annullamento in corso..." }
+            $ctrl.TxtProgresso.Text = switch ($statoUI.LinguaCorrente) {
+                'EN' { "Canceling..." }
+                'DE' { "Wird abgebrochen..." }
+                default { "Annullamento in corso..." }
+            }
         }
     })
 
     # --- Export JSON ---
     $ctrl.BtnEsportaJson.Add_Click({
         if ($statoUI.RisultatiGrezzi.Count -eq 0) { return }
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         $dialogo = New-Object Microsoft.Win32.SaveFileDialog
-        $dialogo.Title      = if ($isEn) { "Export JSON Report" } else { "Esporta report JSON" }
+        $dialogo.Title      = switch ($lang) { 'EN' { "Export JSON Report" } 'DE' { "JSON-Bericht exportieren" } default { "Esporta report JSON" } }
         $dialogo.Filter     = "JSON (*.json)|*.json"
         $dialogo.FileName   = (Get-NomeFileExport -Estensione 'json')
         $dialogo.DefaultExt = ".json"
@@ -1243,10 +1479,10 @@ function Start-ScannerUI {
                 Export-TechnicalLog -Report $report -PercorsoFile $percorsoLog
             }
 
-            $ctrl.TxtRiepilogoFooter.Text = if ($isEn) {
-                "Exported JSON: $(Split-Path -Leaf $dialogo.FileName)"
-            } else {
-                "Esportato JSON: $(Split-Path -Leaf $dialogo.FileName)"
+            $ctrl.TxtRiepilogoFooter.Text = switch ($lang) {
+                'EN' { "Exported JSON: $(Split-Path -Leaf $dialogo.FileName)" }
+                'DE' { "JSON exportiert: $(Split-Path -Leaf $dialogo.FileName)" }
+                default { "Esportato JSON: $(Split-Path -Leaf $dialogo.FileName)" }
             }
         }
     })
@@ -1254,10 +1490,10 @@ function Start-ScannerUI {
     # --- Export HTML ---
     $ctrl.BtnEsportaHtml.Add_Click({
         if ($statoUI.RisultatiGrezzi.Count -eq 0) { return }
-        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $lang = $statoUI.LinguaCorrente
 
         $dialogo = New-Object Microsoft.Win32.SaveFileDialog
-        $dialogo.Title      = if ($isEn) { "Export HTML Report" } else { "Esporta report HTML" }
+        $dialogo.Title      = switch ($lang) { 'EN' { "Export HTML Report" } 'DE' { "HTML-Bericht exportieren" } default { "Esporta report HTML" } }
         $dialogo.Filter     = "HTML (*.html)|*.html"
         $dialogo.FileName   = (Get-NomeFileExport -Estensione 'html')
         $dialogo.DefaultExt = ".html"
@@ -1272,10 +1508,10 @@ function Start-ScannerUI {
                 Export-TechnicalLog -Report $report -PercorsoFile $percorsoLog
             }
 
-            $ctrl.TxtRiepilogoFooter.Text = if ($isEn) {
-                "Exported HTML: $(Split-Path -Leaf $dialogo.FileName)"
-            } else {
-                "Esportato HTML: $(Split-Path -Leaf $dialogo.FileName)"
+            $ctrl.TxtRiepilogoFooter.Text = switch ($lang) {
+                'EN' { "Exported HTML: $(Split-Path -Leaf $dialogo.FileName)" }
+                'DE' { "HTML exportiert: $(Split-Path -Leaf $dialogo.FileName)" }
+                default { "Esportato HTML: $(Split-Path -Leaf $dialogo.FileName)" }
             }
         }
     })

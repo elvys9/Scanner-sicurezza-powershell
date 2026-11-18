@@ -231,6 +231,44 @@ $script:TraduzioniControlliEN = @{
     'HOME-SEC-003' = @{ cat = 'Advanced Security'; title = 'PowerShell Script Block Logging enabled';                    rat = 'Script Block Logging records executed PowerShell commands in Event Viewer to aid security auditing.'; rem = 'Enable PowerShell Script Block Logging (EnableScriptBlockLogging = 1) in Group Policy or Registry.'; risk = 'Very low: slightly increases PowerShell operational event log size.' }
 }
 
+# Traduzioni complete in Tedesco (DE) per tutti i 34 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
+$script:TraduzioniControlliDE = @{
+    'HOME-FW-001'  = @{ cat = 'Firewall';            title = 'Windows-Firewall auf allen Profilen aktiviert';                  rat = 'Die Firewall ist die erste Verteidigungslinie gegen unbefugte Netzwerkverbindungen.'; rem = 'Aktivieren Sie die Windows Defender Firewall fuer Domaenen-, Privat- und Oeffentliche Profile ueber Windows-Sicherheit oder PowerShell als Administrator.'; risk = 'Gering: Blockiert unerwuenschte eingehende Verbindungen bei normalem ausgehendem Datenverkehr.' }
+    'HOME-UAC-001' = @{ cat = 'UAC';                 title = 'Benutzerkontensteuerung (UAC) aktiviert';                        rat = 'UAC schuetzt das System, indem vor Vorgaengen mit Administratorrechten eine Bestaetigung angefordert wird.'; rem = 'Aktivieren Sie UAC (EnableLUA = 1) in den Windows-Einstellungen oder per PowerShell als Administrator. Neustart erforderlich.'; risk = 'Gering: Windows fragt vor administrativen Aenderungen nach.' }
+    'HOME-UAC-002' = @{ cat = 'UAC';                 title = 'UAC erfordert Bestaetigung fuer Rechteerhoehung';                rat = 'Wenn UAC Rechte ohne Nachfrage vergibt, kann Schadsoftware unbemerkt Administratorrechte erlangen.'; rem = 'Konfigurieren Sie UAC so, dass auf dem sicheren Desktop eine Zustimmung angefordert wird (ConsentPromptBehaviorAdmin = 2 oder 5).'; risk = 'Gering: Zeigt einen Bestaetigungsdialog an, wenn ein Programm Administratorrechte anfordert.' }
+    'HOME-UAC-003' = @{ cat = 'UAC';                 title = 'UAC erkennt Anwendungsinstallationen';                           rat = 'Die Installationserkennung verhindert unbefugte Softwareinstallationen ohne erhoehte Rechte.'; rem = 'Aktivieren Sie die Installationserkennung fuer UAC (EnableInstallerDetection = 1).'; risk = 'Sehr gering: Stellt sicher, dass Installationspakete mit Administratorzustimmung ausgefuehrt werden.' }
+    'HOME-ACC-001' = @{ cat = 'Konten';              title = 'Integriertes Gastkonto deaktiviert';                             rat = 'Das Gastkonto ermoeglicht anonymen lokalen Zugriff ohne Anmeldedaten.'; rem = 'Deaktivieren Sie das integrierte Gastkonto (SID endet auf -501) per PowerShell als Administrator.'; risk = 'Sehr gering: Verhindert nicht authentifizierte lokale Anmeldungen.' }
+    'HOME-ACC-002' = @{ cat = 'Konten';              title = 'Integriertes lokales Administratorkonto deaktiviert';            rat = 'Das Standard-Administratorkonto (-500) ist ein Hauptziel fuer Brute-Force-Angriffe.'; rem = 'Deaktivieren Sie das integrierte Administratorkonto (SID -500), nachdem Sie geprueft haben, dass ein anderes Administratorkonto existiert.'; risk = 'Mittel: Stellen Sie sicher, dass ein weiteres aktives Administratorkonto vorhanden ist.' }
+    'HOME-ACC-003' = @{ cat = 'Konten';              title = 'Kein aktives lokales Konto ohne Kennwort';                       rat = 'Konten ohne Kennwort ermoeglichen jedem mit physischem oder Netzwerkzugriff die Anmeldung.'; rem = 'Legen Sie fuer jedes aktive lokale Konto unter Windows-Einstellungen -> Konten -> Anmeldeoptionen ein starkes Kennwort fest.'; risk = 'Gering: Benutzer muessen bei der Anmeldung ein Kennwort oder eine Windows Hello-PIN eingeben.' }
+    'HOME-UPD-001' = @{ cat = 'Updates';             title = 'Automatische Updates von Windows Update aktiviert';              rat = 'Sicherheitsupdates beheben bekannte Schwachstellen; ohne sie bleibt der PC ungeschuetzt.'; rem = 'Stellen Sie sicher, dass der Dienst Windows Update (wuauserv) nicht deaktiviert ist und NoAutoUpdate entfernt wurde.'; risk = 'Gering: Windows laedt Sicherheitsupdates regelmaessig herunter und installiert sie.' }
+    'HOME-UPD-002' = @{ cat = 'Updates';             title = 'Authentischer Windows Update-Server (kein fremder WSUS)';        rat = 'Schadsoftware kann Windows Update auf einen manipulierten Server umleiten, um Sicherheitsupdates zu blockieren.'; rem = 'Entfernen Sie nicht autorisierte WUServer-Richtlinien in der Registrierung, damit Updates direkt von Microsoft bezogen werden.'; risk = 'Gering auf Heim-PCs: Stellt die offiziellen Microsoft Update-Server wieder her.' }
+    'HOME-AV-001'  = @{ cat = 'Antivirus';           title = 'Windows Defender Echtzeitschutz aktiviert';                      rat = 'Der Echtzeitschutz prueft Dateien beim Zugriff sofort und blockiert Malware unmittelbar.'; rem = 'Aktivieren Sie den Echtzeitschutz unter Windows-Sicherheit -> Viren- & Bedrohungsschutz.'; risk = 'Sehr gering: Unverzichtbarer Basisschutz gegen Malware und Ransomware.' }
+    'HOME-AV-002'  = @{ cat = 'Antivirus';           title = 'Antivirus-Signaturen aktuell (<= 7 Tage)';                       rat = 'Veraltete Virendefinitionen koennen neue Schadsoftware-Bedrohungen nicht erkennen.'; rem = 'Aktualisieren Sie die Virendefinitionen ueber Windows-Sicherheit oder Update-MpSignature.'; risk = 'Keines: Aktualisiert nur die Signaturdatenbank.' }
+    'HOME-AV-003'  = @{ cat = 'Antivirus';           title = 'Keine aktiven Viren oder Malware-Bedrohungen erkannt';           rat = 'Aktive Bedrohungen weisen auf eine laufende Infektion oder noch nicht isolierte Schadsoftware hin.'; rem = 'Oeffnen Sie Windows-Sicherheit -> Schutzverlauf oder starten Sie eine Ueberpruefung, um erkannte Bedrohungen unter Quarantaene zu stellen.'; risk = 'Keines: Isoliert und entfernt infizierte Dateien.' }
+    'HOME-AV-004'  = @{ cat = 'Antivirus';           title = 'Pruefung heruntergeladener Dateien (IOAV) & Verhaltensueberwachung aktiv'; rat = 'IOAV scannt alle aus Browsern/E-Mails geladenen Dateien, waehrend die Verhaltensueberwachung Ransomware stoppt.'; rem = 'Aktivieren Sie Verhaltensueberwachung und IOAV-Schutz in den Windows Defender-Einstellungen.'; risk = 'Sehr gering: Stellt sicher, dass heruntergeladene Dateien sofort geprueft werden.' }
+    'HOME-AV-005'  = @{ cat = 'Antivirus';           title = 'Blockierung potenziell unerwuenschter Apps (PUA) aktiviert';     rat = 'Der PUA-Schutz blockiert Adware, Bundleware, Krypto-Miner und unerwuenschte Zusatzsoftware.'; rem = 'Aktivieren Sie den PUA-Schutz (1) unter Windows-Sicherheit -> App- & Browsersteuerung -> Zuverlaessigkeitsbasierter Schutz.'; risk = 'Gering: Kann Installationsprogramme melden, die Werbesoftware mitinstallieren.' }
+    'HOME-AV-006'  = @{ cat = 'Antivirus';           title = 'Manipulationsschutz und Cloud-Schutz (MAPS) aktiviert';          rat = 'Der Manipulationsschutz verhindert das Deaktivieren von Defender durch Malware; Cloud-MAPS blockiert Zero-Day-Bedrohungen.'; rem = 'Aktivieren Sie Manipulationsschutz und Cloudbasierten Schutz unter Windows-Sicherheit -> Viren- & Bedrohungsschutz.'; risk = 'Sehr gering: Staerkt die Abwehr gegen neue Malware.' }
+    'HOME-AV-007'  = @{ cat = 'Antivirus';           title = 'Regelmaessiger Antivirus-Scan innerhalb von 14 Tagen durchgefuehrt'; rat = 'Regelmaessige Scans erkennen ruhende Bedrohungen auf der Festplatte.'; rem = 'Fuehren Sie eine Schnellueberpruefung oder vollstaendige Ueberpruefung mit Windows Defender durch.'; risk = 'Keines: Eine Schnellueberpruefung dauert nur wenige Minuten.' }
+    'HOME-AV-008'  = @{ cat = 'Antivirus';           title = 'Keine gefaehrlichen Ordner- oder Dateiausschluesse in Defender'; rat = 'Malware fuegt oft C:\, Downloads, Temp oder .exe/.ps1 zu den Defender-Ausschluessen hinzu, um sich zu verstecken.'; rem = 'Pruefen und entfernen Sie kritische Ausschluesse unter Windows-Sicherheit -> Viren- & Bedrohungsschutz -> Ausschluesse.'; risk = 'Gering: Stellt den vollstaendigen Virenschutz fuer alle Ordner wieder her.' }
+    'HOME-FIL-001' = @{ cat = 'Dateisicherheit';     title = 'Keine getarnten Dateien mit doppelter Endung (Downloads/Temp)';  rat = 'Doppelte Dateiendungen (z. B. rechnung.pdf.exe, foto.jpg.scr) taeuschen Benutzer, damit sie Malware starten.'; rem = 'Pruefen Sie gemeldete Dateien in Downloads, Desktop oder Temp und loeschen Sie unbekannte ausfuehrbare Programme.'; risk = 'Keines: Listet verdaechtige Dateien nur schreibgeschuetzt zur Pruefung auf.' }
+    'HOME-FIL-002' = @{ cat = 'Dateisicherheit';     title = 'Keine verdaechtigen oder verschleierten Befehle im Autostart (Run)'; rat = 'Malware traegt sich oft in Run/RunOnce-Schluessel ein, die auf Temp-Ordner oder versteckte PowerShell-Befehle (-enc) verweisen.'; rem = 'Pruefen Sie Task-Manager -> Autostart-Apps sowie die Run-Registrierungsschluessel und entfernen Sie unbekannte Eintraege.'; risk = 'Gering: Verhindert das automatische Mitstarten von Schadsoftware.' }
+    'HOME-FIL-003' = @{ cat = 'Dateisicherheit';     title = 'Integritaet der Windows-hosts-Datei (keine Umleitung von Sicherheitsdomains)'; rat = 'Malware kann die hosts-Datei manipulieren, um den Zugriff auf Windows Update oder Antivirus-Websites zu blockieren.'; rem = 'Pruefen Sie C:\Windows\System32\drivers\etc\hosts und entfernen Sie Zeilen, die Microsoft- oder Sicherheitsdomains umleiten.'; risk = 'Gering: Die Standard-hosts-Datei von Windows enthaelt keine aktiven Umleitungen.' }
+    'HOME-SYS-001' = @{ cat = 'Windows-Einstellungen'; title = 'Dateinamenerweiterungen im Explorer sichtbar';                 rat = 'Sichtbare Dateiendungen lassen ausfuehrbare Programme (.exe, .bat, .scr), die als Dokumente getarnt sind, sofort erkennen.'; rem = 'Aktivieren Sie im Datei-Explorer unter Anzeigen -> Einblenden -> Dateinamenerweiterungen (HideFileExt = 0).'; risk = 'Keines: Macht die tatsaechliche Endung jeder Datei sichtbar.' }
+    'HOME-SYS-002' = @{ cat = 'Windows-Einstellungen'; title = 'AutoRun und AutoPlay fuer Wechseldatentraeger (USB) deaktiviert'; rat = 'Das Deaktivieren von AutoRun/AutoPlay verhindert das automatische Starten von Schadsoftware von infizierten USB-Sticks.'; rem = 'Deaktivieren Sie Automatische Wiedergabe unter Windows-Einstellungen -> Bluetooth & Geraete -> Automatische Wiedergabe.'; risk = 'Sehr gering: USB-Laufwerke werden einfach manuell im Explorer geoeffnet.' }
+    'HOME-SYS-003' = @{ cat = 'Windows-Einstellungen'; title = 'Microsoft Defender SmartScreen fuer Apps und Dateien aktiviert'; rat = 'SmartScreen warnt vor dem Ausfuehren unbekannter oder potenziell gefaehrlicher Programme aus dem Internet.'; rem = 'Aktivieren Sie SmartScreen unter Windows-Sicherheit -> App- & Browsersteuerung -> Zuverlaessigkeitsbasierter Schutz.'; risk = 'Sehr gering: Schuetzt vor Phishing und schaedlichen Downloads.' }
+    'HOME-SYS-004' = @{ cat = 'Windows-Einstellungen'; title = 'Kernisolierung / Speicherintegritaet (HVCI) aktiviert';          rat = 'Die Speicherintegritaet nutzt Hardwarevirtualisierung, um das Einschleusen von Schadcode in Windows-Kernelprozesse zu verhindern.'; rem = 'Aktivieren Sie die Speicherintegritaet unter Windows-Sicherheit -> Geraetesicherheit -> Details zur Kernisolierung und starten Sie neu.'; risk = 'Mittel: Neustart erforderlich; sehr alte, nicht zertifizierte Hardwaretreiber koennen inkompatibel sein.' }
+    'HOME-SYS-005' = @{ cat = 'Windows-Einstellungen'; title = 'Anonyme Auflistung lokaler SAM-Konten blockiert';                rat = 'Verhindert, dass nicht authentifizierte Netzwerkbenutzer die Namen lokaler Benutzerkonten auslesen.'; rem = 'Setzen Sie RestrictAnonymousSAM auf 1 unter HKLM:\SYSTEM\CurrentControlSet\Control\Lsa.'; risk = 'Sehr gering: Empfohlene Standardeinstellung unter modernem Windows.' }
+    'HOME-RDP-001' = @{ cat = 'Remotedesktop';       title = 'Remotedesktopprotokoll (RDP) deaktiviert';                       rat = 'RDP ist eines der haeufigsten Angriffsziele; deaktivieren Sie es, wenn kein Fernzugriff benoetigt wird.'; rem = 'Deaktivieren Sie Remotedesktop unter Windows-Einstellungen -> System -> Remotedesktop (fDenyTSConnections = 1).'; risk = 'Gering fuer Heimanwender: Schliesst den Fernzugriff ueber Port 3389.' }
+    'HOME-NET-001' = @{ cat = 'Netzwerk';            title = 'Veraltetes SMBv1-Protokoll deaktiviert';                         rat = 'SMBv1 weist kritische Sicherheitsluecken auf (EternalBlue/WannaCry). Moderne Netzwerke nutzen SMBv2/SMBv3.'; rem = 'Deaktivieren Sie SMBv1 ueber Set-SmbServerConfiguration -EnableSMB1Protocol $false.'; risk = 'Gering: SMBv1 wird nur von sehr alten Geraeten (vor 2010) verwendet.' }
+    'HOME-NET-002' = @{ cat = 'Netzwerk';            title = 'NetBIOS ueber TCP/IP auf Netzwerkadaptern deaktiviert';          rat = 'NetBIOS kann Systeminformationen preisgeben und Spoofing-Angriffe im lokalen Netzwerk ermoeglichen.'; rem = 'Deaktivieren Sie NetBIOS ueber TCP/IP (NetbiosOptions = 2) auf den Netzwerkschnittstellen.'; risk = 'Gering: Moderne Windows 10/11-Netzwerke nutzen DNS statt NetBIOS.' }
+    'HOME-NET-003' = @{ cat = 'Netzwerk';            title = 'LLMNR-Multicast-Namensaufloesung deaktiviert';                   rat = 'LLMNR ist anfaellig fuer Poisoning-Angriffe im lokalen Netzwerk, bei denen Passwort-Hashes abgefangen werden koennen.'; rem = 'Deaktivieren Sie LLMNR durch EnableMulticast = 0 unter HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient.'; risk = 'Gering: Stattdessen wird die normale DNS-Aufloesung verwendet.' }
+    'HOME-ENC-001' = @{ cat = 'Verschluesselung';    title = 'BitLocker-Verschluesselung auf Systemlaufwerk (C:) aktiv';       rat = 'Die vollstaendige Laufwerksverschluesselung schuetzt Ihre persoenlichen Dateien bei Verlust oder Diebstahl des PCs.'; rem = 'Aktivieren Sie Geraeteverschluesselung oder BitLocker auf C: unter Windows-Einstellungen -> Datenschutz & Sicherheit und sichern Sie den Wiederherstellungsschluessel.'; risk = 'Mittel: Bewahren Sie immer eine Kopie des BitLocker-Wiederherstellungsschluessels an einem sicheren Ort auf.' }
+    'HOME-PRV-001' = @{ cat = 'Datenschutz';         title = 'Windows-Diagnosetelemetrie auf Minimalstufe eingestellt';        rat = 'Minimale Telemetrie begrenzt die Menge der an Microsoft gesendeten Diagnosedaten.'; rem = 'Stellen Sie Diagnosedaten unter Windows-Einstellungen -> Datenschutz & Sicherheit -> Diagnose & Feedback auf Nur erforderliche (AllowTelemetry = 1).'; risk = 'Sehr gering: Deaktiviert optionale Diagnosetelemetrie.' }
+    'HOME-SEC-001' = @{ cat = 'Erweiterte Sicherheit'; title = 'Sicherer UEFI-Start (Secure Boot) aktiviert';                  rat = 'Secure Boot blockiert unsignierte Bootloader und schuetzt den PC vor Rootkits und Bootkits.'; rem = 'Aktivieren Sie Secure Boot in den UEFI/BIOS-Einstellungen Ihres Mainboards (nicht per PowerShell aenderbar).'; risk = 'Mittel: Stellen Sie sicher, dass das Systemlaufwerk GPT verwendet, bevor Sie Secure Boot im BIOS aktivieren.' }
+    'HOME-SEC-002' = @{ cat = 'Erweiterte Sicherheit'; title = 'Schutz der lokalen Sicherheitsautoritaet (LSA / RunAsPPL) aktiv'; rat = 'Der LSA-Schutz verhindert, dass Tools zum Auslesen von Anmeldedaten (wie Mimikatz) auf den LSASS-Speicher zugreifen.'; rem = 'Aktivieren Sie den Schutz der lokalen Sicherheitsautoritaet unter Windows-Sicherheit -> Geraetesicherheit -> Kernisolierung.'; risk = 'Gering: Erfordert einen Systemneustart.' }
+    'HOME-SEC-003' = @{ cat = 'Erweiterte Sicherheit'; title = 'PowerShell Script Block Logging aktiviert';                    rat = 'Die Skriptblockprotokollierung zeichnet ausgefuehrte PowerShell-Befehle in der Ereignisanzeige fuer Sicherheitsanalysen auf.'; rem = 'Aktivieren Sie PowerShell Script Block Logging (EnableScriptBlockLogging = 1) per Gruppenrichtlinie oder Registrierung.'; risk = 'Sehr gering: Erhoeht die Groesse des PowerShell-Ereignisprotokolls geringfuegig.' }
+}
+
 function Get-ValoreProprietaSicuro {
     <#
     .SYNOPSIS
@@ -271,7 +309,7 @@ function Get-ValoreProprietaSicuro {
 function Get-InfoStatoVista {
     <#
     .SYNOPSIS
-        Restituisce icona testuale, etichetta e priorita' di ordinamento per uno stato (IT o EN).
+        Restituisce icona testuale, etichetta e priorita' di ordinamento per uno stato (IT, EN o DE).
     #>
     [CmdletBinding()]
     param(
@@ -280,36 +318,35 @@ function Get-InfoStatoVista {
         [string]$Stato = 'sconosciuto',
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
     $statoNorm = if ([string]::IsNullOrWhiteSpace($Stato)) { 'sconosciuto' } else { $Stato.Trim().ToLowerInvariant() }
-    $isEn = ($Lingua -eq 'EN')
 
     switch ($statoNorm) {
         'fallito' {
-            $short = if ($isEn) { 'Failed' } else { 'Fallito' }
+            $short = switch ($Lingua) { 'EN' { 'Failed' } 'DE' { 'Fehlgeschlagen' } default { 'Fallito' } }
             return [PSCustomObject]@{ Status = 'fallito'; Icon = '[X]'; ShortLabel = $short; Label = "[X] $short"; Rank = 1 }
         }
         'errore' {
-            $short = if ($isEn) { 'Error' } else { 'Errore' }
+            $short = switch ($Lingua) { 'EN' { 'Error' } 'DE' { 'Fehler' } default { 'Errore' } }
             return [PSCustomObject]@{ Status = 'errore'; Icon = '[!]'; ShortLabel = $short; Label = "[!] $short"; Rank = 2 }
         }
         'sconosciuto' {
-            $short = if ($isEn) { 'Unknown' } else { 'Sconosciuto' }
+            $short = switch ($Lingua) { 'EN' { 'Unknown' } 'DE' { 'Unbekannt' } default { 'Sconosciuto' } }
             return [PSCustomObject]@{ Status = 'sconosciuto'; Icon = '[?]'; ShortLabel = $short; Label = "[?] $short"; Rank = 3 }
         }
         'superato' {
-            $short = if ($isEn) { 'Passed' } else { 'Superato' }
+            $short = switch ($Lingua) { 'EN' { 'Passed' } 'DE' { 'Bestanden' } default { 'Superato' } }
             return [PSCustomObject]@{ Status = 'superato'; Icon = '[OK]'; ShortLabel = $short; Label = "[OK] $short"; Rank = 4 }
         }
         'non_applicabile' {
-            $short = if ($isEn) { 'N/A' } else { 'Non applicabile' }
+            $short = switch ($Lingua) { 'EN' { 'N/A' } 'DE' { 'N/Z' } default { 'Non applicabile' } }
             return [PSCustomObject]@{ Status = 'non_applicabile'; Icon = '[-]'; ShortLabel = $short; Label = "[-] $short"; Rank = 5 }
         }
         default {
-            $short = if ($isEn) { 'Unknown' } else { 'Sconosciuto' }
+            $short = switch ($Lingua) { 'EN' { 'Unknown' } 'DE' { 'Unbekannt' } default { 'Sconosciuto' } }
             return [PSCustomObject]@{ Status = $statoNorm; Icon = '[?]'; ShortLabel = $short; Label = "[?] $statoNorm"; Rank = 6 }
         }
     }
@@ -318,7 +355,7 @@ function Get-InfoStatoVista {
 function Get-InfoGravitaVista {
     <#
     .SYNOPSIS
-        Restituisce etichetta e priorita' di ordinamento (1 = piu' grave) per la gravita' (IT o EN).
+        Restituisce etichetta e priorita' di ordinamento (1 = piu' grave) per la gravita' (IT, EN o DE).
     #>
     [CmdletBinding()]
     param(
@@ -327,27 +364,26 @@ function Get-InfoGravitaVista {
         [string]$Gravita = 'medio',
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
     $gravNorm = if ([string]::IsNullOrWhiteSpace($Gravita)) { 'non_specificata' } else { $Gravita.Trim().ToLowerInvariant() }
-    $isEn = ($Lingua -eq 'EN')
 
     switch ($gravNorm) {
-        'critico'     { $lbl = if ($isEn) { 'Critical' } else { 'Critico' };     return [PSCustomObject]@{ Severity = 'critico';     Label = $lbl; Rank = 1 } }
-        'alto'        { $lbl = if ($isEn) { 'High' }     else { 'Alto' };        return [PSCustomObject]@{ Severity = 'alto';        Label = $lbl; Rank = 2 } }
-        'medio'       { $lbl = if ($isEn) { 'Medium' }   else { 'Medio' };       return [PSCustomObject]@{ Severity = 'medio';       Label = $lbl; Rank = 3 } }
-        'basso'       { $lbl = if ($isEn) { 'Low' }      else { 'Basso' };       return [PSCustomObject]@{ Severity = 'basso';       Label = $lbl; Rank = 4 } }
-        'informativo' { $lbl = if ($isEn) { 'Info' }     else { 'Informativo' }; return [PSCustomObject]@{ Severity = 'informativo'; Label = $lbl; Rank = 5 } }
-        default       { $lbl = if ($isEn) { 'N/A' }      else { 'N/D' };         return [PSCustomObject]@{ Severity = $gravNorm;     Label = $lbl; Rank = 99 } }
+        'critico'     { $lbl = switch ($Lingua) { 'EN' { 'Critical' } 'DE' { 'Kritisch' } default { 'Critico' } };     return [PSCustomObject]@{ Severity = 'critico';     Label = $lbl; Rank = 1 } }
+        'alto'        { $lbl = switch ($Lingua) { 'EN' { 'High' }     'DE' { 'Hoch' }     default { 'Alto' } };        return [PSCustomObject]@{ Severity = 'alto';        Label = $lbl; Rank = 2 } }
+        'medio'       { $lbl = switch ($Lingua) { 'EN' { 'Medium' }   'DE' { 'Mittel' }   default { 'Medio' } };       return [PSCustomObject]@{ Severity = 'medio';       Label = $lbl; Rank = 3 } }
+        'basso'       { $lbl = switch ($Lingua) { 'EN' { 'Low' }      'DE' { 'Niedrig' }  default { 'Basso' } };       return [PSCustomObject]@{ Severity = 'basso';       Label = $lbl; Rank = 4 } }
+        'informativo' { $lbl = switch ($Lingua) { 'EN' { 'Info' }     'DE' { 'Info' }     default { 'Informativo' } }; return [PSCustomObject]@{ Severity = 'informativo'; Label = $lbl; Rank = 5 } }
+        default       { $lbl = switch ($Lingua) { 'EN' { 'N/A' }      'DE' { 'K.A.' }     default { 'N/D' } };         return [PSCustomObject]@{ Severity = $gravNorm;     Label = $lbl; Rank = 99 } }
     }
 }
 
 function Merge-RisultatoConControllo {
     <#
     .SYNOPSIS
-        Unisce un singolo risultato del Runner con i metadati del controllo nel catalogo (IT o EN).
+        Unisce un singolo risultato del Runner con i metadati del controllo nel catalogo (IT, EN o DE).
     #>
     [CmdletBinding()]
     param(
@@ -359,7 +395,7 @@ function Merge-RisultatoConControllo {
         [PSCustomObject]$ControlloCatalogo = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -374,6 +410,11 @@ function Merge-RisultatoConControllo {
         $tr = $script:TraduzioniControlliEN[$id]
         $titolo    = $tr.title
         $categoria = $tr.cat
+    }
+    elseif ($Lingua -eq 'DE' -and $script:TraduzioniControlliDE.ContainsKey($id)) {
+        $trDe = $script:TraduzioniControlliDE[$id]
+        $titolo    = $trDe.title
+        $categoria = $trDe.cat
     }
 
     $infoStato = Get-InfoStatoVista -Stato $statoRaw -Lingua $Lingua
@@ -455,7 +496,7 @@ function ConvertTo-RisultatiVista {
         [PSCustomObject]$Catalogo = $null,
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
@@ -487,18 +528,6 @@ function Select-RisultatiVista {
     <#
     .SYNOPSIS
         Filtra la lista di elementi vista combinando stato, gravita', categoria e testo.
-    .PARAMETER Elementi
-        Array di elementi vista.
-    .PARAMETER Stato
-        Stato da filtrare ('Tutti' oppure 'superato', 'fallito', 'sconosciuto', 'non_applicabile', 'errore').
-    .PARAMETER Gravita
-        Gravita' da filtrare ('Tutte' oppure 'critico', 'alto', 'medio', 'basso', 'informativo').
-    .PARAMETER Categoria
-        Categoria da filtrare ('Tutte' oppure nome della categoria).
-    .PARAMETER TestoRicerca
-        Sottostringa da cercare (case-insensitive) su Title e ControlId.
-    .OUTPUTS
-        Array filtrato di elementi vista.
     #>
     [CmdletBinding()]
     param(
@@ -536,7 +565,7 @@ function Select-RisultatiVista {
     $filtrati = @()
     foreach ($el in $Elementi) {
         # 1. Filtro Stato
-        if ($statoNorm -ne 'tutti' -and $statoNorm -ne 'all') {
+        if ($statoNorm -ne 'tutti' -and $statoNorm -ne 'all' -and $statoNorm -ne 'alle') {
             $elStato      = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Status' -ValorePredefinito '')
             $elStatoShort = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'StatusShort' -ValorePredefinito '')
             if ($elStato.ToLowerInvariant() -ne $statoNorm -and $elStatoShort.ToLowerInvariant() -ne $statoNorm) {
@@ -545,7 +574,7 @@ function Select-RisultatiVista {
         }
 
         # 2. Filtro Gravita
-        if ($gravNorm -ne 'tutte' -and $gravNorm -ne 'tutti' -and $gravNorm -ne 'all') {
+        if ($gravNorm -ne 'tutte' -and $gravNorm -ne 'tutti' -and $gravNorm -ne 'all' -and $gravNorm -ne 'alle') {
             $elGrav    = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Severity' -ValorePredefinito '')
             $elGravLbl = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'SeverityLabel' -ValorePredefinito '')
             if ($elGrav.ToLowerInvariant() -ne $gravNorm -and $elGravLbl.ToLowerInvariant() -ne $gravNorm) {
@@ -554,7 +583,7 @@ function Select-RisultatiVista {
         }
 
         # 3. Filtro Categoria
-        if ($catNorm.ToLowerInvariant() -ne 'tutte' -and $catNorm.ToLowerInvariant() -ne 'tutti' -and $catNorm.ToLowerInvariant() -ne 'all') {
+        if ($catNorm.ToLowerInvariant() -ne 'tutte' -and $catNorm.ToLowerInvariant() -ne 'tutti' -and $catNorm.ToLowerInvariant() -ne 'all' -and $catNorm.ToLowerInvariant() -ne 'alle') {
             $elCat = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Category' -ValorePredefinito '')
             if (-not $elCat.Equals($catNorm, [System.StringComparison]::OrdinalIgnoreCase)) {
                 continue
@@ -659,25 +688,41 @@ function Format-DettaglioControllo {
         [string]$Modalita = 'Semplice',
 
         [Parameter(Mandatory = $false)]
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lingua = 'IT'
     )
 
     $isEn = ($Lingua -eq 'EN')
+    $isDe = ($Lingua -eq 'DE')
 
     if ($null -eq $Elemento) {
+        $titVuoto = switch ($Lingua) {
+            'EN' { 'No control selected' }
+            'DE' { 'Keine Sicherheitspruefung ausgewaehlt' }
+            default { 'Nessun controllo selezionato' }
+        }
+        $spiegVuota = switch ($Lingua) {
+            'EN' { 'Select a control from the table on the left to view its details.' }
+            'DE' { 'Waehlen Sie links in der Tabelle eine Sicherheitspruefung aus, um Details anzuzeigen.' }
+            default { 'Seleziona un controllo dalla tabella per visualizzare i dettagli.' }
+        }
+        $spiegTecVuota = switch ($Lingua) {
+            'EN' { 'Select a control from the table on the left to view technical details.' }
+            'DE' { 'Waehlen Sie links in der Tabelle eine Sicherheitspruefung aus, um technische Details anzuzeigen.' }
+            default { 'Seleziona un controllo dalla tabella per visualizzare i dettagli tecnici.' }
+        }
         return [PSCustomObject]@{
             Selezionato          = $false
             ControlId            = ''
-            Title                = if ($isEn) { 'No control selected' } else { 'Nessun controllo selezionato' }
+            Title                = $titVuoto
             Category             = '-'
             SeverityLabel        = '-'
             Status               = 'sconosciuto'
             StatusLabel          = '-'
             Modalita             = $Modalita
-            SpiegazioneSemplice  = if ($isEn) { 'Select a control from the table on the left to view its details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli.' }
-            SpiegazioneTecnica   = if ($isEn) { 'Select a control from the table on the left to view technical details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli tecnici.' }
-            TestoSpiegazione     = if ($isEn) { 'Select a control from the table on the left to view its details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli.' }
+            SpiegazioneSemplice  = $spiegVuota
+            SpiegazioneTecnica   = $spiegTecVuota
+            TestoSpiegazione     = $spiegVuota
             ValoreAtteso         = '-'
             ValoreOsservato      = '-'
             TestoRimedio         = '-'
@@ -722,7 +767,11 @@ function Format-DettaglioControllo {
         $spiegazioneSemplice = Get-ValoreProprietaSicuro -Oggetto $meta -NomeProprieta 'rationale' -ValorePredefinito $null
     }
     if ([string]::IsNullOrWhiteSpace([string]$spiegazioneSemplice)) {
-        $spiegazioneSemplice = if ($isEn) { "No explanation available in the catalog for this control." } else { "Nessuna spiegazione disponibile nel catalogo per questo controllo." }
+        $spiegazioneSemplice = switch ($Lingua) {
+            'EN' { "No explanation available in the catalog for this control." }
+            'DE' { "Keine Erklaerung im Katalog fuer diese Pruefung verfuegbar." }
+            default { "Nessuna spiegazione disponibile nel catalogo per questo controllo." }
+        }
     }
 
     if ($isEn -and $script:TraduzioniControlliEN.ContainsKey($id)) {
@@ -730,6 +779,12 @@ function Format-DettaglioControllo {
         $titolo              = $trEn.title
         $categoria           = $trEn.cat
         $spiegazioneSemplice = $trEn.rat
+    }
+    elseif ($isDe -and $script:TraduzioniControlliDE.ContainsKey($id)) {
+        $trDe = $script:TraduzioniControlliDE[$id]
+        $titolo              = $trDe.title
+        $categoria           = $trDe.cat
+        $spiegazioneSemplice = $trDe.rat
     }
 
     # Spiegazione tecnica (description + check + riferimenti + evidenza)
@@ -834,13 +889,26 @@ function Format-DettaglioControllo {
         $testoRimedio = $trEnRem.rem
         $noteRischi   = $trEnRem.risk
     }
+    elseif ($isDe -and (-not $haProprietaCommandEsplicita) -and $script:TraduzioniControlliDE.ContainsKey($id)) {
+        $trDeRem      = $script:TraduzioniControlliDE[$id]
+        $testoRimedio = $trDeRem.rem
+        $noteRischi   = $trDeRem.risk
+    }
 
     if ([string]::IsNullOrWhiteSpace([string]$testoRimedio)) {
-        $testoRimedio = if ($isEn) { "Manually verify this setting in Windows 11 Settings or Control Panel." } else { "Verifica manualmente questa impostazione nel Pannello di controllo o nelle Impostazioni di sicurezza di Windows 11." }
+        $testoRimedio = switch ($Lingua) {
+            'EN' { "Manually verify this setting in Windows 11 Settings or Control Panel." }
+            'DE' { "Ueberpruefen Sie diese Einstellung manuell in den Windows 11-Einstellungen oder der Systemsteuerung." }
+            default { "Verifica manualmente questa impostazione nel Pannello di controllo o nelle Impostazioni di sicurezza di Windows 11." }
+        }
     }
 
     if ([string]::IsNullOrWhiteSpace([string]$noteRischi)) {
-        $noteRischi = if ($isEn) { "Evaluate the impact before applying manual configuration changes." } else { "Valuta l'impatto prima di applicare modifiche manuali alla configurazione del sistema." }
+        $noteRischi = switch ($Lingua) {
+            'EN' { "Evaluate the impact before applying manual configuration changes." }
+            'DE' { "Pruefen Sie die Auswirkungen, bevor Sie manuelle Konfigurationsaenderungen vornehmen." }
+            default { "Valuta l'impatto prima di applicare modifiche manuali alla configurazione del sistema." }
+        }
     }
 
     # Se command e' null o stringa vuota, HaComando = $false (mostra solo il testo)

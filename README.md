@@ -1,7 +1,7 @@
 # Windows 11 Security Scanner (PowerShell 5.1 & WPF + Local Ollama AI)
 
 > **A zero-dependency, 100% read-only security configuration, antivirus, and suspicious file scanner for Windows 11 (Home & Pro), inspired by [winutil](https://github.com/ChrisTitusTech/winutil).**  
-> Built natively for Windows PowerShell 5.1 with a two-page WPF graphical interface (Light/Dark theme, EN/IT switch), deterministic CIS-aligned checks, and an integrated **Local AI Security Advisor powered by Ollama**.
+> Built natively for Windows PowerShell 5.1 with a modernized two-page Fluent WPF graphical interface (Dark/Light themes, explicit `IT` / `EN` / `DE` language selector), 34 deterministic CIS-aligned checks, and an integrated **Local AI Security Advisor powered by Ollama**.
 
 ---
 
@@ -19,7 +19,12 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1 | iex
 ```
 
-*(Note: Inside the GUI you can also switch between **English (`EN`)** and **Italian (`IT`)**, and between **Light** and **Dark** themes at any time with a single click in the top-right corner).*
+### Option 3: Launch in German (`DE` default)
+```powershell
+irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11-de.ps1 | iex
+```
+
+*(Note: Inside the GUI you can switch at any time between **Italian (`[*] IT Italiano`)**, **English (`[*] EN English`)**, and **German (`[*] DE Deutsch`)**, as well as between **Dark** and **Light** themes with a single click in the top header).*
 
 ---
 

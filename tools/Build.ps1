@@ -105,7 +105,7 @@ function Invoke-Win11Scanner {
         [switch]$Headless,
         [string]$OutFile,
         [string[]]$ControlId,
-        [ValidateSet('IT', 'EN')]
+        [ValidateSet('IT', 'EN', 'DE')]
         [string]$Lang = $script:LinguaPredefinita
     )
 
@@ -227,3 +227,10 @@ $testoEn   = $testoIt.Replace('$script:LinguaPredefinita = ''IT''', '$script:Lin
 $testoEn   = $testoEn.Replace('dist/scanner-win11.ps1', 'dist/scanner-win11-en.ps1')
 [System.IO.File]::WriteAllText($outFileEn, $testoEn, $utf8NoBom)
 Write-Host "Script singolo (EN) compilato con successo in: $outFileEn"
+
+# Genera anche la versione con avvio predefinito in Tedesco (dist/scanner-win11-de.ps1)
+$outFileDe = Join-Path (Split-Path -Parent $OutFile) 'scanner-win11-de.ps1'
+$testoDe   = $testoIt.Replace('$script:LinguaPredefinita = ''IT''', '$script:LinguaPredefinita = ''DE''')
+$testoDe   = $testoDe.Replace('dist/scanner-win11.ps1', 'dist/scanner-win11-de.ps1')
+[System.IO.File]::WriteAllText($outFileDe, $testoDe, $utf8NoBom)
+Write-Host "Script singolo (DE) compilato con successo in: $outFileDe"
