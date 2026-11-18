@@ -834,3 +834,297 @@ function Test-WindowsUpdateAuthenticServer {
 
     return $risultato
 }
+
+function Test-WDigestDisabilitato {
+    <#
+    .SYNOPSIS
+        Verifica che la memorizzazione in chiaro delle password in memoria tramite WDigest
+        (UseLogonCredential) sia disabilitata (HOME-SYS-006).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "UseLogonCredential = 0 (o assente) in WDigest"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoWdigest = 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest'
+        $valore = 0
+
+        if (Test-Path -LiteralPath $percorsoWdigest) {
+            $propW = Get-ItemProperty -LiteralPath $percorsoWdigest -ErrorAction SilentlyContinue
+            if ($null -ne $propW -and $null -ne $propW.PSObject.Properties['UseLogonCredential'] -and $null -ne $propW.UseLogonCredential) {
+                $valore = [int]$propW.UseLogonCredential
+            }
+        }
+
+        $risultato.Evidence = @{
+            Path               = $percorsoWdigest
+            UseLogonCredential = $valore
+        }
+
+        if ($valore -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Credenziali WDigest in chiaro in memoria disabilitate (0)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "PERICOLO: WDigest UseLogonCredential = $valore (password memorizzate in chiaro in LSASS)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-AssistenzaRemotaDisabilitata {
+    <#
+    .SYNOPSIS
+        Verifica che l'Assistenza remota di Windows (fAllowToGetHelp = 0) sia disabilitata (HOME-SYS-007).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "fAllowToGetHelp = 0 in HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveRa = 'HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance'
+        $valore = 0
+        if (Test-Path -LiteralPath $chiaveRa) {
+            $propRa = Get-ItemProperty -LiteralPath $chiaveRa -ErrorAction SilentlyContinue
+            if ($null -ne $propRa -and $null -ne $propRa.PSObject.Properties['fAllowToGetHelp'] -and $null -ne $propRa.fAllowToGetHelp) {
+                $valore = [int]$propRa.fAllowToGetHelp
+            }
+        }
+
+        $risultato.Evidence = @{
+            Path            = $chiaveRa
+            fAllowToGetHelp = $valore
+        }
+
+        if ($valore -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Assistenza remota disabilitata (fAllowToGetHelp = 0)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Assistenza remota abilitata (fAllowToGetHelp = $valore)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-RegistroRemotoDisabilitato {
+    <#
+    .SYNOPSIS
+        Verifica che il servizio Registro di sistema remoto (RemoteRegistry) sia disabilitato e fermo (HOME-SYS-008).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Servizio RemoteRegistry fermo e disabilitato (Start = 4)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveRr = 'HKLM:\SYSTEM\CurrentControlSet\Services\RemoteRegistry'
+        if (-not (Test-Path -LiteralPath $chiaveRr)) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Servizio RemoteRegistry non installato"
+            return $risultato
+        }
+
+        $propRr = Get-ItemProperty -LiteralPath $chiaveRr -ErrorAction Stop
+        $startVal = if ($null -ne $propRr.PSObject.Properties['Start']) { [int]$propRr.Start } else { 4 }
+
+        $srv = Get-Service -Name 'RemoteRegistry' -ErrorAction SilentlyContinue
+        $statoSrv = if ($null -ne $srv) { [string]$srv.Status } else { 'Stopped' }
+
+        $risultato.Evidence = @{
+            Start  = $startVal
+            Status = $statoSrv
+        }
+
+        if ($startVal -eq 4 -and $statoSrv -ne 'Running') {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Servizio RemoteRegistry disabilitato (Start=4) e fermo"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Servizio RemoteRegistry non disabilitato (Start=$startVal, Status=$statoSrv)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-DepAttivo {
+    <#
+    .SYNOPSIS
+        Verifica che la Protezione esecuzione programmi (DEP / Data Execution Prevention) sia attiva (HOME-SEC-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "DataExecutionPrevention_SupportPolicy >= 2 (OptIn / OptOut / AlwaysOn)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $osCim = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        $depPol = [int]$osCim.DataExecutionPrevention_SupportPolicy
+        $depAvail = [bool]$osCim.DataExecutionPrevention_Available
+
+        $risultato.Evidence = @{
+            DEP_Available     = $depAvail
+            DEP_SupportPolicy = $depPol
+        }
+
+        if ($depAvail -and $depPol -ge 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "DEP hardware attivo (Policy = $depPol)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "DEP disabilitato (Policy = $depPol, Available = $depAvail)"
+        }
+    }
+    catch {
+        if ([Environment]::Is64BitOperatingSystem) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "DEP hardware (NX) obbligatorio attivo su architettura Windows 11 x64"
+            $risultato.Evidence = @{ Is64BitOS = $true; Fonte = 'EnvironmentFallback' }
+        }
+        elseif ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Servizio CIM non disponibile per leggere la policy DEP"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-PowerShellV2Disabilitato {
+    <#
+    .SYNOPSIS
+        Verifica che il motore obsoleto PowerShell 2.0 non sia installato, prevenendo
+        attacchi di downgrade che aggirano AMSI e Script Block Logging (HOME-SEC-005).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Motore legacy PowerShell 2.0 assente o disabilitato"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveEngineV2 = 'HKLM:\SOFTWARE\Microsoft\PowerShell\1\PowerShellEngine'
+        $v2Presente = $false
+        $psVer = ''
+
+        if (Test-Path -LiteralPath $chiaveEngineV2) {
+            $propV2 = Get-ItemProperty -LiteralPath $chiaveEngineV2 -ErrorAction SilentlyContinue
+            if ($null -ne $propV2 -and $null -ne $propV2.PSObject.Properties['PowerShellVersion']) {
+                $psVer = [string]$propV2.PowerShellVersion
+                if ($psVer -like '2.*') {
+                    # Verifica anche se la DLL di PS v2 esiste su disco
+                    $dllV2 = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\System.Management.Automation.ni.dll'
+                    if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\PowerShell\3') {
+                        # Su Windows 10/11 la chiave \1\PowerShellEngine esiste solo con PSVersion=2.0 se la feature MicrosoftWindowsPowerShellV2 e' attiva
+                        $v2Presente = $true
+                    }
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            EngineV2KeyExists = $v2Presente
+            VersionFound      = $psVer
+        }
+
+        if (-not $v2Presente) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Motore obsoleto PowerShell 2.0 non installato"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Motore obsoleto PowerShell 2.0 presente ($psVer - rischio downgrade attack)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}

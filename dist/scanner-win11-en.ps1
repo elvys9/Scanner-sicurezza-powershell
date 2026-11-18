@@ -654,6 +654,294 @@ $script:CatalogoJsonIncorporato = @'
       "references": [
         "CIS Benchmark Windows 11 - 18.9.100.1"
       ]
+    },
+    {
+      "id": "HOME-AV-009",
+      "title": "Protezione ransomware (Accesso alle cartelle controllato) attiva",
+      "category": "Antivirus",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che l'Accesso alle cartelle controllato (EnableControlledFolderAccess = 1) di Windows Defender sia attivo.",
+      "rationale": "L'accesso alle cartelle controllato impedisce a ransomware e applicazioni non autorizzate di cifrare o modificare i tuoi file personali (Documenti, Immagini, Desktop).",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderRansomwareCartelle"
+      },
+      "references": [
+        "Microsoft Defender Exploit Guard - Controlled Folder Access"
+      ]
+    },
+    {
+      "id": "HOME-AV-010",
+      "title": "Protezione di rete di Microsoft Defender (Exploit Guard) attiva",
+      "category": "Antivirus",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che la Protezione di rete di Defender (EnableNetworkProtection = 1) sia attiva in modalita' blocco.",
+      "rationale": "La protezione di rete blocca a livello di sistema le connessioni verso domini di phishing, server C2 malware ed exploit noti in qualsiasi applicazione o browser.",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderNetworkProtection"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.47.11.1"
+      ]
+    },
+    {
+      "id": "HOME-FIL-004",
+      "title": "Nessuna attivita' pianificata (Scheduled Task) sospetta o offuscata",
+      "category": "Controllo File",
+      "severity": "critico",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Analizza le Attivita' pianificate non-Microsoft alla ricerca di esecuzioni da cartelle Temp/Public o comandi PowerShell/LOLBin offuscati.",
+      "rationale": "I malware utilizzano frequentemente le Attivita' pianificate di Windows per rieseguirsi automaticamente in background ad ogni accesso o ad orari prestabiliti.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-TaskPianificatiSospetti"
+      },
+      "references": [
+        "MITRE ATT&CK T1053.005 - Scheduled Task/Job"
+      ]
+    },
+    {
+      "id": "HOME-FIL-005",
+      "title": "Nessun dirottamento di eseguibili di sistema (IFEO Debugger Hijacking)",
+      "category": "Controllo File",
+      "severity": "critico",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che nessun eseguibile di sistema o di accessibilita' (sethc.exe, utilman.exe, taskmgr.exe, MsMpEng.exe) abbia un valore Debugger in Image File Execution Options.",
+      "rationale": "Gli attaccanti usano il dirottamento IFEO per creare backdoor nella schermata di login (Sticky Keys) o per impedire l'avvio di Task Manager e Windows Defender.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-HijackingIFEO"
+      },
+      "references": [
+        "MITRE ATT&CK T1546.012 - Image File Execution Options Injection"
+      ]
+    },
+    {
+      "id": "HOME-FIL-006",
+      "title": "Nessuno script o eseguibile sospetto nella cartella Esecuzione automatica",
+      "category": "Controllo File",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Scansiona le cartelle Startup dell'utente e di sistema alla ricerca di script o eseguibili sospetti (.vbs, .js, .bat, .cmd, .ps1, .hta, .scr).",
+      "rationale": "Qualsiasi file o script inserito nella cartella Esecuzione automatica (Startup) viene lanciato automaticamente ad ogni accesso dell'utente.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-CartellaStartupUtente"
+      },
+      "references": [
+        "MITRE ATT&CK T1547.001 - Registry Run Keys / Startup Folder"
+      ]
+    },
+    {
+      "id": "HOME-ACC-004",
+      "title": "Politica di blocco account contro attacchi brute-force attiva",
+      "category": "Account",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che la soglia di blocco account (Account Lockout Threshold) sia impostata tra 1 e 10 tentativi di accesso falliti.",
+      "rationale": "Senza una soglia di blocco account, un attaccante o un malware sulla rete locale puo' tentare migliaia di password al minuto senza essere bloccato.",
+      "check": {
+        "command_ref": "Accounts.ps1#Test-PoliticaBloccoAccount"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 1.2.2"
+      ]
+    },
+    {
+      "id": "HOME-ACC-005",
+      "title": "Numero di account nel gruppo Amministratori locali ridotto al minimo (<= 2)",
+      "category": "Account",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che il gruppo locale Amministratori (SID S-1-5-32-544) non contenga piu' di 2 account abilitati.",
+      "rationale": "Limitare il numero di account con privilegi di amministratore riduce la superficie d'attacco e il rischio di compromissione totale del sistema.",
+      "check": {
+        "command_ref": "Accounts.ps1#Test-LimiteAmministratoriLocali"
+      },
+      "references": [
+        "Principio del Privilegio Minimo (Least Privilege)"
+      ]
+    },
+    {
+      "id": "HOME-NET-004",
+      "title": "Nessuna cartella condivisa di rete (SMB Share) non standard esposta",
+      "category": "Rete",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che non vi siano condivisioni SMB utente esposte sulla rete locale oltre a quelle amministrative predefinite.",
+      "rationale": "Le cartelle condivise sulla rete locale possono essere sfruttate da ransomware o utenti sulla stessa rete Wi-Fi per leggere o cifrare file.",
+      "check": {
+        "command_ref": "Network.ps1#Test-CondivisioniSmbPericolose"
+      },
+      "references": [
+        "MITRE ATT&CK T1135 - Network Share Discovery"
+      ]
+    },
+    {
+      "id": "HOME-NET-005",
+      "title": "Firma digitale SMB (SMB Signing) obbligatoria contro attacchi NTLM Relay",
+      "category": "Rete",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che RequireSecuritySignature = 1 sia attivo sia per il Server che per il Client SMB.",
+      "rationale": "La firma digitale obbligatoria dei pacchetti SMB impedisce agli attaccanti sulla rete locale di intercettare e inoltrare le tue credenziali (attacchi SMB/NTLM Relay).",
+      "check": {
+        "command_ref": "Network.ps1#Test-FirmaSmbObbligatoria"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 2.3.8.1 / 2.3.9.2"
+      ]
+    },
+    {
+      "id": "HOME-NET-006",
+      "title": "Servizio Gestione remota Windows (WinRM / PowerShell Remoting) disabilitato",
+      "category": "Rete",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che il servizio WinRM sia fermo (Stopped) per non esporre le porte di amministrazione remota 5985/5986.",
+      "rationale": "Su un PC desktop o portatile, WinRM espone un endpoint di esecuzione remota di comandi PowerShell utilizzato per movimenti laterali.",
+      "check": {
+        "command_ref": "Network.ps1#Test-WinRmDisabilitatoOSicuro"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.102.2"
+      ]
+    },
+    {
+      "id": "HOME-NET-007",
+      "title": "Risoluzione automatica proxy WPAD disabilitata (anti-MITM)",
+      "category": "Rete",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che il protocollo WPAD (Web Proxy Auto-Discovery) sia disabilitato nel registro o tramite il servizio WinHttpAutoProxySvc.",
+      "rationale": "Un attaccante sulla stessa rete locale/Wi-Fi puo' rispondere alle richieste WPAD per dirottare tutto il traffico web del PC attraverso un proxy malevolo.",
+      "check": {
+        "command_ref": "Network.ps1#Test-WpadDisabilitato"
+      },
+      "references": [
+        "MITRE ATT&CK T1557.001 - LLMNR/NBT-NS/WPAD Poisoning"
+      ]
+    },
+    {
+      "id": "HOME-SYS-006",
+      "title": "Protezione credenziali WDigest (nessuna password in chiaro in memoria)",
+      "category": "Impostazioni Windows",
+      "severity": "critico",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che UseLogonCredential in WDigest sia 0 (o assente) per impedire la memorizzazione di password in chiaro in LSASS.",
+      "rationale": "Se WDigest UseLogonCredential viene impostato a 1 da un attaccante, Windows conserva le password utente in chiaro nella memoria RAM.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-WDigestDisabilitato"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.4.8"
+      ]
+    },
+    {
+      "id": "HOME-SYS-007",
+      "title": "Assistenza remota di Windows (Remote Assistance) disabilitata",
+      "category": "Impostazioni Windows",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che fAllowToGetHelp sia impostato a 0 nella chiave Remote Assistance.",
+      "rationale": "Disabilitare l'Assistenza remota riduce il rischio di connessioni remote non autorizzate verso il PC.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-AssistenzaRemotaDisabilitata"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.65.2"
+      ]
+    },
+    {
+      "id": "HOME-SYS-008",
+      "title": "Servizio Registro di sistema remoto (Remote Registry) disabilitato",
+      "category": "Impostazioni Windows",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che il servizio RemoteRegistry sia disabilitato (Start = 4) e non in esecuzione.",
+      "rationale": "Il servizio Remote Registry permette la lettura e modifica del registro di sistema da remoto attraverso la rete.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-RegistroRemotoDisabilitato"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 5.27"
+      ]
+    },
+    {
+      "id": "HOME-SEC-004",
+      "title": "Protezione esecuzione programmi (DEP / Data Execution Prevention) attiva",
+      "category": "Sicurezza Avanzata",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica tramite WMI/CIM che la protezione hardware DEP sia disponibile e attiva per i processi di sistema.",
+      "rationale": "DEP impedisce l'esecuzione di codice malevolo (buffer overflow / shellcode) nelle aree di memoria riservate ai dati.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-DepAttivo"
+      },
+      "references": [
+        "Microsoft Windows Exploit Protection - DEP"
+      ]
+    },
+    {
+      "id": "HOME-SEC-005",
+      "title": "Motore obsoleto PowerShell v2.0 disabilitato (anti-downgrade attack)",
+      "category": "Sicurezza Avanzata",
+      "severity": "critico",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che il vecchio motore PowerShell 2.0 non sia installato o abilitato sul sistema.",
+      "rationale": "Gli attaccanti avviano 'powershell.exe -Version 2' per aggirare completamente AMSI (scansione antivirus degli script) e lo Script Block Logging di PowerShell 5.1.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-PowerShellV2Disabilitato"
+      },
+      "references": [
+        "MITRE ATT&CK T1059.001 - PowerShell Downgrade Attack"
+      ]
     }
   ]
 }
@@ -1031,7 +1319,7 @@ $script:XamlIncorporato = @'
                             </Border>
                         </StackPanel>
                         <TextBlock x:Name="TxtSottotitoloApp"
-                                   Text="34 Controlli Deterministici + Assistente IA Locale (Ollama)"
+                                   Text="50 Controlli Deterministici + Assistente IA Locale (Ollama)"
                                    FontSize="11.5"
                                    Foreground="#94A3B8"
                                    Margin="0,2,0,0"/>
@@ -4304,6 +4592,151 @@ function Test-AccountsPasswordRequired {
     return $risultato
 }
 
+function Test-PoliticaBloccoAccount {
+    <#
+    .SYNOPSIS
+        Verifica che sia attiva una soglia di blocco account (Account Lockout Threshold 1..10 tentativi)
+        contro attacchi di forza bruta locali/rete (HOME-ACC-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Soglia blocco account (Lockout threshold) tra 1 e 10 tentativi falliti"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $outNet = @(net.exe accounts 2>$null)
+        $soglia = -1
+
+        foreach ($line in $outNet) {
+            if ($line -match '(?i)(Lockout threshold|Soglia di blocco|Kontosperrungsschwelle)\s*:\s*(.+)$') {
+                $valTxt = $Matches[2].Trim()
+                if ($valTxt -match '^\d+$') {
+                    $soglia = [int]$valTxt
+                }
+                else {
+                    $soglia = 0
+                }
+                break
+            }
+        }
+
+        $risultato.Evidence = @{
+            LockoutThreshold = $soglia
+        }
+
+        if ($soglia -ge 1 -and $soglia -le 10) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Blocco account attivo dopo $soglia tentativi falliti"
+        }
+        elseif ($soglia -gt 10) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Soglia blocco account troppo permissiva ($soglia tentativi; consigliato <= 10)"
+        }
+        elseif ($soglia -eq 0) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Blocco account disabilitato (Mai / 0 tentativi)"
+        }
+        else {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Impossibile determinare la soglia di blocco account"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-LimiteAmministratoriLocali {
+    <#
+    .SYNOPSIS
+        Verifica che il gruppo Amministratori locali (SID S-1-5-32-544) non contenga un numero
+        eccessivo di account abilitati (consigliato <= 2 amministratori attivi) (HOME-ACC-005).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Massimo 2 account amministratori locali attivi (principio del privilegio minimo)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $membri = @(Get-LocalGroupMember -SID 'S-1-5-32-544' -ErrorAction Stop)
+        $utentiLocali = @(Get-LocalUser -ErrorAction SilentlyContinue)
+        $mappaDisabilitati = @{}
+        foreach ($u in $utentiLocali) {
+            if (-not $u.Enabled) {
+                $mappaDisabilitati[$u.SID.Value] = $true
+            }
+        }
+
+        $adminAttivi = @()
+        foreach ($m in $membri) {
+            $sidVal = if ($null -ne $m.PSObject.Properties['SID'] -and $null -ne $m.SID) { $m.SID.Value } else { '' }
+            if ($sidVal -and $mappaDisabilitati.ContainsKey($sidVal)) {
+                continue
+            }
+            $adminAttivi += $m.Name
+        }
+
+        $risultato.Evidence = @{
+            TotaleMembriGruppo = $membri.Count
+            AdminAttivi        = $adminAttivi
+        }
+
+        if ($adminAttivi.Count -le 2) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "$($adminAttivi.Count) amministratori attivi: $($adminAttivi -join ', ')"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevati $($adminAttivi.Count) account nel gruppo Amministratori: $($adminAttivi -join ', ')"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Cmdlet Get-LocalGroupMember non disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege|Object reference|CIM resource') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti o account Microsoft/Cloud presente nel gruppo Amministratori"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
 # =============================================================================
 # MODULO: src\core\Checks\Defender.ps1
 # =============================================================================
@@ -4937,18 +5370,147 @@ function Test-DefenderSafeExclusions {
     return $risultato
 }
 
+function Test-DefenderRansomwareCartelle {
+    <#
+    .SYNOPSIS
+        Verifica che l'Accesso alle cartelle controllato (Controlled Folder Access anti-ransomware) sia attivo (HOME-AV-009).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "EnableControlledFolderAccess = 1 (Blocco anti-ransomware attivo)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $cfa  = [int]$pref.EnableControlledFolderAccess
+
+        $risultato.Evidence = @{
+            EnableControlledFolderAccess = $cfa
+        }
+
+        if ($cfa -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Protezione ransomware (Accesso alle cartelle controllato) attiva (1)"
+        }
+        elseif ($cfa -eq 2) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Accesso alle cartelle controllato solo in modalita' audit (2)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Accesso alle cartelle controllato disattivato ($cfa)"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per leggere EnableControlledFolderAccess"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderNetworkProtection {
+    <#
+    .SYNOPSIS
+        Verifica che la Protezione di rete di Microsoft Defender Exploit Guard (EnableNetworkProtection = 1) sia attiva (HOME-AV-010).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "EnableNetworkProtection = 1 (Blocco domini malevoli attivo)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $netP = [int]$pref.EnableNetworkProtection
+
+        $risultato.Evidence = @{
+            EnableNetworkProtection = $netP
+        }
+
+        if ($netP -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Protezione di rete Defender Exploit Guard attiva in modalita' blocco (1)"
+        }
+        elseif ($netP -eq 2) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Protezione di rete solo in modalita' audit (2)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Protezione di rete disattivata ($netP)"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per leggere EnableNetworkProtection"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
 # =============================================================================
 # MODULO: src\core\Checks\FileSecurity.ps1
 # =============================================================================
 <#
 .SYNOPSIS
-    Controlli di sicurezza sui file locali, avvio automatico (persistenza) e file hosts.
+    Controlli di sicurezza sui file locali, avvio automatico (persistenza), task pianificati, IFEO e file hosts.
 
 .DESCRIPTION
     Contiene i controlli in sola lettura per:
     - HOME-FIL-001: Scansione file sospetti con doppia estensione in Download, Desktop e Temp (Test-SuspiciousDoubleExtensionFiles)
     - HOME-FIL-002: Verifica voci di avvio automatico (Run/RunOnce) contro persistenza malware (Test-StartupPersistenceEntries)
     - HOME-FIL-003: Integrita' del file hosts di Windows contro dirottamenti DNS (Test-HostsFileIntegrity)
+    - HOME-FIL-004: Verifica Attivita' pianificate (Scheduled Tasks) contro comandi offuscati (Test-TaskPianificatiSospetti)
+    - HOME-FIL-005: Verifica assenza dirottamenti IFEO Debugger (Sticky Keys / TaskMgr / Defender) (Test-HijackingIFEO)
+    - HOME-FIL-006: Scansione cartelle Esecuzione automatica (Startup) contro script sospetti (Test-CartellaStartupUtente)
     Non modifica mai lo stato del sistema.
 #>
 
@@ -4990,15 +5552,14 @@ function Test-SuspiciousDoubleExtensionFiles {
             )
         }
 
-        # Pattern doppia estensione: (estensione documento/media/archivio) seguita da (estensione eseguibile/script)
         $patternDoppiaEstensione = '(?i)\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|rtf|jpg|jpeg|png|gif|bmp|mp3|mp4|avi|zip|rar|7z)\.(exe|scr|bat|cmd|vbs|vbe|js|jse|wsf|wsh|ps1|hta|com|pif)$'
 
-        $fileSospetti   = @()
+        $fileSospetti     = @()
         $totaleAnalizzati = 0
 
         foreach ($cartella in $CartelleDaControllare) {
             if ([string]::IsNullOrWhiteSpace($cartella)) { continue }
-            if (-not (Test-Path -LiteralPath $cartella)) { continue }
+            if (-not (Test-Path -LiteralPath $cartella -ErrorAction SilentlyContinue)) { continue }
 
             $elementi = @(Get-ChildItem -LiteralPath $cartella -File -ErrorAction SilentlyContinue | Select-Object -First 1000)
             foreach ($file in $elementi) {
@@ -5150,7 +5711,7 @@ function Test-HostsFileIntegrity {
         }
 
         $righe = @(Get-Content -LiteralPath $PercorsoHosts -Encoding UTF8 -ErrorAction Stop)
-        $righeAttive = @()
+        $righeAttive   = @()
         $righeSospette = @()
 
         $patternDominiSensibili = '(?i)(windowsupdate\.com|update\.microsoft\.com|microsoft\.com|defender|virustotal\.com|malwarebytes\.com|kaspersky|bitdefender|avast|Norton|mcafee)'
@@ -5160,7 +5721,6 @@ function Test-HostsFileIntegrity {
             if ($trimmed -eq '' -or $trimmed.StartsWith('#')) {
                 continue
             }
-            # Ignora le voci standard di localhost
             if ($trimmed -match '^(127\.0\.0\.1|::1)\s+localhost(\s|$)') {
                 continue
             }
@@ -5171,9 +5731,9 @@ function Test-HostsFileIntegrity {
         }
 
         $risultato.Evidence = @{
-            Percorso            = $PercorsoHosts
-            VociPersonalizzate  = $righeAttive.Count
-            DirottamentiSospetti= $righeSospette
+            Percorso             = $PercorsoHosts
+            VociPersonalizzate   = $righeAttive.Count
+            DirottamentiSospetti = $righeSospette
         }
 
         if ($righeSospette.Count -eq 0) {
@@ -5189,6 +5749,211 @@ function Test-HostsFileIntegrity {
         $risultato.Status   = 'sconosciuto'
         $risultato.Observed = "Accesso negato in lettura al file hosts"
         $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-TaskPianificatiSospetti {
+    <#
+    .SYNOPSIS
+        Analizza le Attivita' pianificate (Scheduled Tasks) alla ricerca di persistenza malware
+        (esecuzione da Temp/Users\Public, PowerShell offuscato -enc, mshta, regsvr32, certutil) (HOME-FIL-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 attivita' pianificate sospette o offuscate"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $tasks = @(Get-ScheduledTask -ErrorAction Stop | Where-Object { $_.State -ne 'Disabled' -and $_.TaskPath -notlike '\Microsoft\*' })
+        $patternCmdSospetto = '(?i)(-enc\b|-EncodedCommand|FromBase64String|DownloadString|mshta\.exe|certutil\.exe.*-urlcache|regsvr32\.exe.*scrobj|\\AppData\\Local\\Temp\\|\\Users\\Public\\)'
+
+        $sospetti = @()
+        foreach ($t in $tasks) {
+            foreach ($act in $t.Actions) {
+                $exe = if ($null -ne $act.PSObject.Properties['Execute']) { [string]$act.Execute } else { '' }
+                $arg = if ($null -ne $act.PSObject.Properties['Arguments']) { [string]$act.Arguments } else { '' }
+                $combinato = "$exe $arg".Trim()
+                if ($combinato -match $patternCmdSospetto) {
+                    $sospetti += "$($t.TaskName) ($combinato)"
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            TaskAnalizzati = $tasks.Count
+            TaskSospetti   = $sospetti
+        }
+
+        if ($sospetti.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna attivita' pianificata sospetta rilevata ($($tasks.Count) task non-Microsoft verificati)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevate $($sospetti.Count) attivita' pianificate sospette: $($sospetti -join '; ')"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Cmdlet Get-ScheduledTask non disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi di amministratore richiesti per ispezionare tutte le Attivita' pianificate"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-HijackingIFEO {
+    <#
+    .SYNOPSIS
+        Verifica che non vi siano dirottamenti di eseguibili di sistema o accessibilita'
+        (Sticky Keys sethc.exe, utilman.exe, taskmgr.exe, MsMpEng.exe) tramite IFEO Debugger (HOME-FIL-005).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessun Debugger IFEO malevolo su eseguibili di sistema o accessibilita'"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $baseIfeo = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options'
+        $eseguibiliCritici = @(
+            'sethc.exe', 'utilman.exe', 'osk.exe', 'narrator.exe', 'magnify.exe',
+            'displayswitch.exe', 'atbroker.exe', 'taskmgr.exe', 'MsMpEng.exe',
+            'MpCmdRun.exe', 'SecHealthUI.exe', 'regedit.exe', 'powershell.exe'
+        )
+
+        $dirottati = @()
+        foreach ($exeName in $eseguibiliCritici) {
+            $chiaveExe = Join-Path $baseIfeo $exeName
+            if (Test-Path -LiteralPath $chiaveExe -ErrorAction SilentlyContinue) {
+                $prop = Get-ItemProperty -LiteralPath $chiaveExe -Name 'Debugger' -ErrorAction SilentlyContinue
+                if ($null -ne $prop -and $null -ne $prop.PSObject.Properties['Debugger'] -and (-not [string]::IsNullOrWhiteSpace([string]$prop.Debugger))) {
+                    $dirottati += "$exeName -> $($prop.Debugger)"
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            EseguibiliControllati = $eseguibiliCritici.Count
+            DirottamentiIFEO      = $dirottati
+        }
+
+        if ($dirottati.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessun dirottamento IFEO rilevato sugli eseguibili critici di sistema ($($eseguibiliCritici.Count) controllati)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevati dirottamenti IFEO sospetti: $($dirottati -join '; ')"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-CartellaStartupUtente {
+    <#
+    .SYNOPSIS
+        Scansiona le cartelle di Esecuzione automatica (Startup utente e comune) alla ricerca di
+        script o eseguibili sospetti (.vbs, .js, .bat, .cmd, .ps1, .hta, .scr) (HOME-FIL-006).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 script o eseguibili sospetti nelle cartelle Startup"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $cartelleStartup = @(
+            [Environment]::GetFolderPath('Startup'),
+            [Environment]::GetFolderPath('CommonStartup')
+        )
+
+        $patternScriptSospetto = '(?i)\.(vbs|vbe|js|jse|wsf|wsh|hta|bat|cmd|ps1|scr|pif)$'
+        $trovati = @()
+        $totFile = 0
+
+        foreach ($dir in $cartelleStartup) {
+            if ([string]::IsNullOrWhiteSpace($dir) -or (-not (Test-Path -LiteralPath $dir -ErrorAction SilentlyContinue))) { continue }
+            $files = @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue)
+            foreach ($f in $files) {
+                if ($f.Name -eq 'desktop.ini') { continue }
+                $totFile++
+                if ($f.Name -match $patternScriptSospetto) {
+                    $trovati += $f.FullName
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            FileTotaliStartup = $totFile
+            ScriptSospetti    = $trovati
+        }
+
+        if ($trovati.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuno script sospetto nelle cartelle Esecuzione automatica ($totFile elementi presenti)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $nomi = @($trovati | ForEach-Object { Split-Path -Leaf $_ })
+            $risultato.Observed = "Rilevati script/eseguibili sospetti in Startup: $($nomi -join ', ')"
+        }
     }
     catch {
         $risultato.Status = 'errore'
@@ -5458,6 +6223,277 @@ function Test-LlmnrDisabled {
         $risultato.Status   = 'sconosciuto'
         $risultato.Observed = "Accesso negato alla chiave DNSClient"
         $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-CondivisioniSmbPericolose {
+    <#
+    .SYNOPSIS
+        Verifica che non vi siano condivisioni di rete (SMB Shares) utente non standard esposte
+        (escludendo le condivisioni di sistema ADMIN$, C$, IPC$, print$) (HOME-NET-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 condivisioni SMB utente non protette o non necessarie"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $shares = @(Get-SmbShare -ErrorAction Stop)
+        $nonStandard = @()
+        foreach ($s in $shares) {
+            $nome = [string]$s.Name
+            if ($nome -notmatch '^(ADMIN\$|IPC\$|print\$|[A-Za-z]\$)$') {
+                $nonStandard += "$nome ($($s.Path))"
+            }
+        }
+
+        $risultato.Evidence = @{
+            TotaleShares      = $shares.Count
+            SharesNonStandard = $nonStandard
+        }
+
+        if ($nonStandard.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna cartella condivisa non standard esposta in rete"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Cartelle condivise in rete rilevate ($($nonStandard.Count)): $($nonStandard -join '; ')"
+        }
+    }
+    catch {
+        # Fallback su registro (HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Shares)
+        try {
+            $chiaveShares = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Shares'
+            if (Test-Path -LiteralPath $chiaveShares -ErrorAction SilentlyContinue) {
+                $propShares = Get-ItemProperty -LiteralPath $chiaveShares -ErrorAction Stop
+                $nonStdReg = @()
+                foreach ($p in $propShares.PSObject.Properties) {
+                    if ($p.Name -in @('PSPath', 'PSParentPath', 'PSChildName', 'PSDrive', 'PSProvider')) { continue }
+                    if ($p.Name -notmatch '^(ADMIN\$|IPC\$|print\$|[A-Za-z]\$)$') {
+                        $nonStdReg += $p.Name
+                    }
+                }
+                $risultato.Evidence = @{ SharesNonStandard = $nonStdReg; Fonte = 'Registry' }
+                if ($nonStdReg.Count -eq 0) {
+                    $risultato.Status   = 'superato'
+                    $risultato.Observed = "Nessuna cartella condivisa non standard rilevata nel registro LanmanServer"
+                }
+                else {
+                    $risultato.Status   = 'fallito'
+                    $risultato.Observed = "Cartelle condivise rilevate ($($nonStdReg.Count)): $($nonStdReg -join ', ')"
+                }
+                return $risultato
+            }
+        }
+        catch { }
+
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare le condivisioni SMB"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-FirmaSmbObbligatoria {
+    <#
+    .SYNOPSIS
+        Verifica che la firma digitale dei pacchetti SMB (RequireSecuritySignature = 1) sia attiva
+        per prevenire attacchi Man-in-the-Middle e NTLM Relay sulla rete locale (HOME-NET-005).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "RequireSecuritySignature = 1 su Server e Client SMB"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveSrv = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
+        $chiaveWrk = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+
+        $reqSrv = 0
+        $reqWrk = 0
+
+        if (Test-Path -LiteralPath $chiaveSrv) {
+            $pSrv = Get-ItemProperty -LiteralPath $chiaveSrv -ErrorAction SilentlyContinue
+            if ($null -ne $pSrv -and $null -ne $pSrv.PSObject.Properties['RequireSecuritySignature']) {
+                $reqSrv = [int]$pSrv.RequireSecuritySignature
+            }
+        }
+        if (Test-Path -LiteralPath $chiaveWrk) {
+            $pWrk = Get-ItemProperty -LiteralPath $chiaveWrk -ErrorAction SilentlyContinue
+            if ($null -ne $pWrk -and $null -ne $pWrk.PSObject.Properties['RequireSecuritySignature']) {
+                $reqWrk = [int]$pWrk.RequireSecuritySignature
+            }
+        }
+
+        $risultato.Evidence = @{
+            ServerRequireSecuritySignature      = $reqSrv
+            WorkstationRequireSecuritySignature = $reqWrk
+        }
+
+        if ($reqSrv -eq 1 -and $reqWrk -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Firma SMB obbligatoria attiva su Server e Client (1)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Firma SMB non obbligatoria (Server=$reqSrv, Client=$reqWrk)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-WinRmDisabilitatoOSicuro {
+    <#
+    .SYNOPSIS
+        Verifica che il servizio Windows Remote Management (WinRM / PowerShell Remoting) sia fermo
+        per non esporre le porte 5985/5986 sulla rete (HOME-NET-006).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Servizio WinRM fermo (Stopped)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $srv = Get-Service -Name 'WinRM' -ErrorAction SilentlyContinue
+        if ($null -eq $srv) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Servizio WinRM non presente"
+            return $risultato
+        }
+
+        $statoSrv = [string]$srv.Status
+        $risultato.Evidence = @{
+            ServiceName = 'WinRM'
+            Status      = $statoSrv
+        }
+
+        if ($statoSrv -ne 'Running') {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Servizio WinRM fermo ($statoSrv)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Servizio WinRM in esecuzione (Running - porta remota 5985 attiva)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-WpadDisabilitato {
+    <#
+    .SYNOPSIS
+        Verifica che il protocollo WPAD (Web Proxy Auto-Discovery) sia disabilitato per prevenire
+        attacchi di intercettazione del traffico web su reti locali/Wi-Fi (HOME-NET-007).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "DisableWpad = 1 oppure servizio WinHttpAutoProxySvc disabilitato"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveWpad = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad'
+        $disableWpad = 0
+        if (Test-Path -LiteralPath $chiaveWpad) {
+            $propWpad = Get-ItemProperty -LiteralPath $chiaveWpad -ErrorAction SilentlyContinue
+            if ($null -ne $propWpad -and $null -ne $propWpad.PSObject.Properties['DisableWpad']) {
+                $disableWpad = [int]$propWpad.DisableWpad
+            }
+        }
+
+        $chiaveSvc = 'HKLM:\SYSTEM\CurrentControlSet\Services\WinHttpAutoProxySvc'
+        $startSvc = 3
+        if (Test-Path -LiteralPath $chiaveSvc) {
+            $propSvc = Get-ItemProperty -LiteralPath $chiaveSvc -ErrorAction SilentlyContinue
+            if ($null -ne $propSvc -and $null -ne $propSvc.PSObject.Properties['Start']) {
+                $startSvc = [int]$propSvc.Start
+            }
+        }
+
+        $risultato.Evidence = @{
+            DisableWpad            = $disableWpad
+            WinHttpAutoProxyStart  = $startSvc
+        }
+
+        if ($disableWpad -eq 1 -or $startSvc -eq 4) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "WPAD disabilitato (DisableWpad=$disableWpad, ServiceStart=$startSvc)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "WPAD attivo (DisableWpad=$disableWpad, ServiceStart=$startSvc)"
+        }
     }
     catch {
         $risultato.Status = 'errore'
@@ -6307,6 +7343,300 @@ function Test-WindowsUpdateAuthenticServer {
     return $risultato
 }
 
+function Test-WDigestDisabilitato {
+    <#
+    .SYNOPSIS
+        Verifica che la memorizzazione in chiaro delle password in memoria tramite WDigest
+        (UseLogonCredential) sia disabilitata (HOME-SYS-006).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "UseLogonCredential = 0 (o assente) in WDigest"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $percorsoWdigest = 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest'
+        $valore = 0
+
+        if (Test-Path -LiteralPath $percorsoWdigest) {
+            $propW = Get-ItemProperty -LiteralPath $percorsoWdigest -ErrorAction SilentlyContinue
+            if ($null -ne $propW -and $null -ne $propW.PSObject.Properties['UseLogonCredential'] -and $null -ne $propW.UseLogonCredential) {
+                $valore = [int]$propW.UseLogonCredential
+            }
+        }
+
+        $risultato.Evidence = @{
+            Path               = $percorsoWdigest
+            UseLogonCredential = $valore
+        }
+
+        if ($valore -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Credenziali WDigest in chiaro in memoria disabilitate (0)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "PERICOLO: WDigest UseLogonCredential = $valore (password memorizzate in chiaro in LSASS)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-AssistenzaRemotaDisabilitata {
+    <#
+    .SYNOPSIS
+        Verifica che l'Assistenza remota di Windows (fAllowToGetHelp = 0) sia disabilitata (HOME-SYS-007).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "fAllowToGetHelp = 0 in HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveRa = 'HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance'
+        $valore = 0
+        if (Test-Path -LiteralPath $chiaveRa) {
+            $propRa = Get-ItemProperty -LiteralPath $chiaveRa -ErrorAction SilentlyContinue
+            if ($null -ne $propRa -and $null -ne $propRa.PSObject.Properties['fAllowToGetHelp'] -and $null -ne $propRa.fAllowToGetHelp) {
+                $valore = [int]$propRa.fAllowToGetHelp
+            }
+        }
+
+        $risultato.Evidence = @{
+            Path            = $chiaveRa
+            fAllowToGetHelp = $valore
+        }
+
+        if ($valore -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Assistenza remota disabilitata (fAllowToGetHelp = 0)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Assistenza remota abilitata (fAllowToGetHelp = $valore)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-RegistroRemotoDisabilitato {
+    <#
+    .SYNOPSIS
+        Verifica che il servizio Registro di sistema remoto (RemoteRegistry) sia disabilitato e fermo (HOME-SYS-008).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Servizio RemoteRegistry fermo e disabilitato (Start = 4)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveRr = 'HKLM:\SYSTEM\CurrentControlSet\Services\RemoteRegistry'
+        if (-not (Test-Path -LiteralPath $chiaveRr)) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Servizio RemoteRegistry non installato"
+            return $risultato
+        }
+
+        $propRr = Get-ItemProperty -LiteralPath $chiaveRr -ErrorAction Stop
+        $startVal = if ($null -ne $propRr.PSObject.Properties['Start']) { [int]$propRr.Start } else { 4 }
+
+        $srv = Get-Service -Name 'RemoteRegistry' -ErrorAction SilentlyContinue
+        $statoSrv = if ($null -ne $srv) { [string]$srv.Status } else { 'Stopped' }
+
+        $risultato.Evidence = @{
+            Start  = $startVal
+            Status = $statoSrv
+        }
+
+        if ($startVal -eq 4 -and $statoSrv -ne 'Running') {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Servizio RemoteRegistry disabilitato (Start=4) e fermo"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Servizio RemoteRegistry non disabilitato (Start=$startVal, Status=$statoSrv)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-DepAttivo {
+    <#
+    .SYNOPSIS
+        Verifica che la Protezione esecuzione programmi (DEP / Data Execution Prevention) sia attiva (HOME-SEC-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "DataExecutionPrevention_SupportPolicy >= 2 (OptIn / OptOut / AlwaysOn)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $osCim = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        $depPol = [int]$osCim.DataExecutionPrevention_SupportPolicy
+        $depAvail = [bool]$osCim.DataExecutionPrevention_Available
+
+        $risultato.Evidence = @{
+            DEP_Available     = $depAvail
+            DEP_SupportPolicy = $depPol
+        }
+
+        if ($depAvail -and $depPol -ge 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "DEP hardware attivo (Policy = $depPol)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "DEP disabilitato (Policy = $depPol, Available = $depAvail)"
+        }
+    }
+    catch {
+        if ([Environment]::Is64BitOperatingSystem) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "DEP hardware (NX) obbligatorio attivo su architettura Windows 11 x64"
+            $risultato.Evidence = @{ Is64BitOS = $true; Fonte = 'EnvironmentFallback' }
+        }
+        elseif ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Servizio CIM non disponibile per leggere la policy DEP"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-PowerShellV2Disabilitato {
+    <#
+    .SYNOPSIS
+        Verifica che il motore obsoleto PowerShell 2.0 non sia installato, prevenendo
+        attacchi di downgrade che aggirano AMSI e Script Block Logging (HOME-SEC-005).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Motore legacy PowerShell 2.0 assente o disabilitato"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveEngineV2 = 'HKLM:\SOFTWARE\Microsoft\PowerShell\1\PowerShellEngine'
+        $v2Presente = $false
+        $psVer = ''
+
+        if (Test-Path -LiteralPath $chiaveEngineV2) {
+            $propV2 = Get-ItemProperty -LiteralPath $chiaveEngineV2 -ErrorAction SilentlyContinue
+            if ($null -ne $propV2 -and $null -ne $propV2.PSObject.Properties['PowerShellVersion']) {
+                $psVer = [string]$propV2.PowerShellVersion
+                if ($psVer -like '2.*') {
+                    # Verifica anche se la DLL di PS v2 esiste su disco
+                    $dllV2 = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\System.Management.Automation.ni.dll'
+                    if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\PowerShell\3') {
+                        # Su Windows 10/11 la chiave \1\PowerShellEngine esiste solo con PSVersion=2.0 se la feature MicrosoftWindowsPowerShellV2 e' attiva
+                        $v2Presente = $true
+                    }
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            EngineV2KeyExists = $v2Presente
+            VersionFound      = $psVer
+        }
+
+        if (-not $v2Presente) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Motore obsoleto PowerShell 2.0 non installato"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Motore obsoleto PowerShell 2.0 presente ($psVer - rischio downgrade attack)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
 # =============================================================================
 # MODULO: src\ui\ViewModel.ps1
 # =============================================================================
@@ -6503,6 +7833,86 @@ $script:RimediStaticiFetta = @{
         command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Name "EnableMulticast" -Value 0 -Type DWord'
         risk    = "Basso: le reti moderne utilizzano DNS standard anziche' LLMNR."
     }
+    'HOME-AV-009' = [PSCustomObject]@{
+        text    = "Attiva l'Accesso alle cartelle controllato in Sicurezza di Windows -> Protezione da virus e minacce -> Gestisci protezione ransomware."
+        command = 'Set-MpPreference -EnableControlledFolderAccess Enabled'
+        risk    = "Basso: protegge Documenti e Immagini da ransomware; eventuali programmi di terze parti legittimi possono essere autorizzati con un clic."
+    }
+    'HOME-AV-010' = [PSCustomObject]@{
+        text    = "Attiva la Protezione di rete (Exploit Guard) di Microsoft Defender in modalita' blocco contro phishing e domini C2."
+        command = 'Set-MpPreference -EnableNetworkProtection Enabled'
+        risk    = "Molto basso: blocca le connessioni verso domini malevoli noti in tutti i programmi."
+    }
+    'HOME-FIL-004' = [PSCustomObject]@{
+        text    = "Apri l'Utilitia' di pianificazione (taskschd.msc), controlla le attivita' segnalate e rimuovi o disabilita quelle sconosciute o che lanciano script da Temp."
+        command = 'Get-ScheduledTask | Where-Object { $_.State -ne "Disabled" -and $_.TaskPath -notlike "\Microsoft\*" } | Select-Object TaskName, TaskPath, State'
+        risk    = "Basso: elimina la persistenza automatica di task sospetti."
+    }
+    'HOME-FIL-005' = [PSCustomObject]@{
+        text    = "Rimuovi immediatamente qualsiasi valore Debugger non autorizzato dalle sottochiavi di Image File Execution Options nel registro."
+        command = 'Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options" | Get-ItemProperty -Name Debugger -ErrorAction SilentlyContinue'
+        risk    = "Nessuno: ripristina il normale funzionamento degli eseguibili di sistema."
+    }
+    'HOME-FIL-006' = [PSCustomObject]@{
+        text    = "Apri la cartella Esecuzione automatica (shell:startup e shell:common startup) ed elimina eventuali script (.vbs, .js, .bat, .ps1) non riconosciuti."
+        command = 'Get-ChildItem -Path ([Environment]::GetFolderPath("Startup")), ([Environment]::GetFolderPath("CommonStartup")) -File'
+        risk    = "Nessuno: impedisce l'esecuzione automatica di script sospetti al login."
+    }
+    'HOME-ACC-004' = [PSCustomObject]@{
+        text    = "Imposta una soglia di blocco account (es. 5 tentativi falliti) per bloccare gli attacchi di forza bruta sulle password locali."
+        command = 'net accounts /lockoutthreshold:5 /lockoutduration:15 /lockoutwindow:15'
+        risk    = "Basso: dopo 5 password errate consecutive l'account viene temporaneamente bloccato per 15 minuti."
+    }
+    'HOME-ACC-005' = [PSCustomObject]@{
+        text    = "Verifica i membri del gruppo Amministratori locali e converti gli account secondari di uso quotidiano in account Utente standard."
+        command = 'Get-LocalGroupMember -SID "S-1-5-32-544"'
+        risk    = "Medio: assicurati di mantenere almeno un account amministratore attivo e accessibile."
+    }
+    'HOME-NET-004' = [PSCustomObject]@{
+        text    = "Controlla le cartelle condivise sulla rete locale e rimuovi le condivisioni SMB non necessarie."
+        command = 'Get-SmbShare | Where-Object { $_.Name -notmatch "^(ADMIN\$|IPC\$|print\$|[A-Za-z]\$)$" }'
+        risk    = "Basso: chiude l'accesso di rete alle cartelle locali condivise."
+    }
+    'HOME-NET-005' = [PSCustomObject]@{
+        text    = "Abilita la firma digitale obbligatoria SMB (RequireSecuritySignature = 1) su Server e Client SMB contro attacchi NTLM Relay."
+        command = 'Set-SmbServerConfiguration -RequireSecuritySignature $true -Force; Set-SmbClientConfiguration -RequireSecuritySignature $true -Force'
+        risk    = "Basso: tutte le versioni moderne di Windows e NAS supportano SMB Signing."
+    }
+    'HOME-NET-006' = [PSCustomObject]@{
+        text    = "Ferma e disabilita il servizio Gestione remota Windows (WinRM) se non utilizzi PowerShell Remoting verso questo PC."
+        command = 'Stop-Service -Name "WinRM" -Force; Set-Service -Name "WinRM" -StartupType Disabled'
+        risk    = "Basso su PC desktop/portatili: chiude la porta remota 5985."
+    }
+    'HOME-NET-007' = [PSCustomObject]@{
+        text    = "Disabilita la scoperta automatica proxy WPAD nel registro per prevenire dirottamenti del traffico web su reti locali."
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad" -Force | Out-Null; Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad" -Name "DisableWpad" -Value 1 -Type DWord'
+        risk    = "Molto basso: evita il rilevamento automatico di proxy WPAD non richiesti."
+    }
+    'HOME-SYS-006' = [PSCustomObject]@{
+        text    = "Assicurati che UseLogonCredential in WDigest sia impostato a 0 per impedire il salvataggio delle password in chiaro in memoria RAM."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest" -Name "UseLogonCredential" -Value 0 -Type DWord'
+        risk    = "Nessuno: protegge le credenziali utente da furti in memoria (Mimikatz)."
+    }
+    'HOME-SYS-007' = [PSCustomObject]@{
+        text    = "Disabilita l'Assistenza remota di Windows impostando fAllowToGetHelp a 0."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" -Value 0 -Type DWord'
+        risk    = "Molto basso: disattiva le connessioni di Assistenza remota legacy di Windows."
+    }
+    'HOME-SYS-008' = [PSCustomObject]@{
+        text    = "Ferma e disabilita il servizio Registro di sistema remoto (RemoteRegistry) per impedire accessi al registro dalla rete."
+        command = 'Stop-Service -Name "RemoteRegistry" -Force -ErrorAction SilentlyContinue; Set-Service -Name "RemoteRegistry" -StartupType Disabled'
+        risk    = "Nessuno su PC domestici o workstation singole."
+    }
+    'HOME-SEC-004' = [PSCustomObject]@{
+        text    = "Abilita la Protezione esecuzione programmi (DEP) per i programmi e servizi di Windows tramite bcdedit."
+        command = 'bcdedit.exe /set "{current}" nx OptIn'
+        risk    = "Molto basso: OptIn e' la configurazione predefinita sicura di Windows 11."
+    }
+    'HOME-SEC-005' = [PSCustomObject]@{
+        text    = "Disabilita la funzionalita' opzionale obsoleta Windows PowerShell 2.0 per impedire attacchi di downgrade."
+        command = 'Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2Root -NoRestart'
+        risk    = "Molto basso: tutti gli script moderni usano PowerShell 5.1 o PowerShell 7."
+    }
 }
 
 # Traduzioni complete in Inglese (EN) per tutti i 34 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
@@ -6541,9 +7951,25 @@ $script:TraduzioniControlliEN = @{
     'HOME-SEC-001' = @{ cat = 'Advanced Security'; title = 'UEFI Secure Boot enabled';                                   rat = 'Secure Boot blocks unsigned bootloaders, protecting the PC against rootkits and bootkits.'; rem = 'Enable Secure Boot in your motherboard UEFI/BIOS firmware settings (cannot be changed from PowerShell).'; risk = 'Medium: ensure your system drive uses GPT partitioning before enabling Secure Boot in BIOS.' }
     'HOME-SEC-002' = @{ cat = 'Advanced Security'; title = 'Local Security Authority (LSA) protection (RunAsPPL) active'; rat = 'LSA protection prevents credential-dumping tools (such as Mimikatz) from reading LSASS memory.'; rem = 'Enable Local Security Authority protection in Windows Security -> Device security -> Core isolation.'; risk = 'Low: requires a system restart.' }
     'HOME-SEC-003' = @{ cat = 'Advanced Security'; title = 'PowerShell Script Block Logging enabled';                    rat = 'Script Block Logging records executed PowerShell commands in Event Viewer to aid security auditing.'; rem = 'Enable PowerShell Script Block Logging (EnableScriptBlockLogging = 1) in Group Policy or Registry.'; risk = 'Very low: slightly increases PowerShell operational event log size.' }
+    'HOME-AV-009'  = @{ cat = 'Antivirus';         title = 'Ransomware protection (Controlled Folder Access) enabled';   rat = 'Controlled Folder Access blocks untrusted apps and ransomware from encrypting or modifying your personal files.'; rem = 'Enable Controlled Folder Access in Windows Security -> Virus & threat protection -> Ransomware protection.'; risk = 'Low: protects Documents and Pictures; legitimate apps can be allowed with one click.' }
+    'HOME-AV-010'  = @{ cat = 'Antivirus';         title = 'Microsoft Defender Network Protection (Exploit Guard) active'; rat = 'Network Protection blocks outbound connections to known phishing sites, malware C2 servers, and exploit domains.'; rem = 'Enable Network Protection via Set-MpPreference -EnableNetworkProtection Enabled.'; risk = 'Very low: blocks malicious domains system-wide across all apps.' }
+    'HOME-FIL-004' = @{ cat = 'File Security';     title = 'No suspicious or obfuscated Windows Scheduled Tasks';        rat = 'Malware frequently creates Scheduled Tasks launching scripts from Temp/Public folders or using encoded PowerShell.'; rem = 'Open Task Scheduler (taskschd.msc), inspect any flagged tasks, and delete or disable unrecognized tasks.'; risk = 'Low: removes automatic background persistence of suspicious tasks.' }
+    'HOME-FIL-005' = @{ cat = 'File Security';     title = 'No system executable hijacking (IFEO Debugger backdoors)';   rat = 'Attackers use Image File Execution Options (IFEO) Debugger keys to hijack Sticky Keys (sethc.exe), Task Manager, or Defender.'; rem = 'Remove unauthorized Debugger values under HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options.'; risk = 'None: restores normal execution of system utilities.' }
+    'HOME-FIL-006' = @{ cat = 'File Security';     title = 'No suspicious scripts or executables in Startup folders';    rat = 'Every script or executable placed in the user or system Startup folder runs automatically whenever you sign in.'; rem = 'Open shell:startup and shell:common startup and delete any unrecognized scripts (.vbs, .js, .bat, .ps1).'; risk = 'None: prevents automatic execution of unauthorized startup scripts.' }
+    'HOME-ACC-004' = @{ cat = 'Accounts';          title = 'Account lockout policy active against brute-force attacks';  rat = 'Without an account lockout threshold, attackers can attempt thousands of password guesses per minute without being locked out.'; rem = 'Configure an Account Lockout Threshold (e.g. 5 invalid logon attempts) via net accounts /lockoutthreshold:5.'; risk = 'Low: temporarily locks the account for 15 minutes after 5 consecutive wrong passwords.' }
+    'HOME-ACC-005' = @{ cat = 'Accounts';          title = 'Local Administrators group members minimized (<= 2)';        rat = 'Limiting the number of administrator accounts reduces the attack surface and adheres to the principle of least privilege.'; rem = 'Review members of the local Administrators group and convert secondary daily-use accounts to standard users.'; risk = 'Medium: ensure at least one active administrator account remains accessible.' }
+    'HOME-NET-004' = @{ cat = 'Network';           title = 'No non-standard user SMB network shares exposed';            rat = 'Open network folder shares can be abused by ransomware or users on the same LAN/Wi-Fi to read or encrypt files.'; rem = 'Review active SMB shares (Get-SmbShare) and remove unnecessary user folder shares.'; risk = 'Low: closes network access to shared local folders.' }
+    'HOME-NET-005' = @{ cat = 'Network';           title = 'Mandatory SMB digital packet signing enabled (anti-Relay)';  rat = 'Mandatory SMB signing prevents man-in-the-middle attackers on the local network from intercepting and relaying credentials.'; rem = 'Enable RequireSecuritySignature on both SMB Server and SMB Client.'; risk = 'Low: all modern Windows systems and NAS devices support SMB Signing.' }
+    'HOME-NET-006' = @{ cat = 'Network';           title = 'Windows Remote Management (WinRM) service disabled';         rat = 'On desktop/laptop PCs, WinRM exposes remote PowerShell management ports (5985/5986) often targeted for lateral movement.'; rem = 'Stop and disable the WinRM service if remote PowerShell administration is not required.'; risk = 'Low on desktop PCs: closes remote management port 5985.' }
+    'HOME-NET-007' = @{ cat = 'Network';           title = 'WPAD automatic web proxy discovery disabled (anti-MITM)';    rat = 'Attackers on local networks can reply to WPAD requests to route all your web traffic through a malicious proxy.'; rem = 'Set DisableWpad = 1 under HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad.'; risk = 'Very low: disables automatic rogue proxy discovery.' }
+    'HOME-SYS-006' = @{ cat = 'Windows Settings';  title = 'WDigest cleartext credential caching in memory disabled';    rat = 'If WDigest UseLogonCredential is enabled, Windows stores user passwords in cleartext inside LSASS memory.'; rem = 'Set UseLogonCredential = 0 under HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.'; risk = 'None: protects user passwords against memory dumping.' }
+    'HOME-SYS-007' = @{ cat = 'Windows Settings';  title = 'Windows Remote Assistance disabled';                         rat = 'Disabling Solicited Remote Assistance prevents unauthorized remote assistance invitations and inbound connections.'; rem = 'Set fAllowToGetHelp = 0 under HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance.'; risk = 'Very low: disables legacy Windows Remote Assistance.' }
+    'HOME-SYS-008' = @{ cat = 'Windows Settings';  title = 'Remote Registry service disabled and stopped';               rat = 'The Remote Registry service allows remote network users to read and modify your Windows Registry.'; rem = 'Stop and disable the RemoteRegistry service (StartupType = Disabled).'; risk = 'None on home PCs and standalone workstations.' }
+    'HOME-SEC-004' = @{ cat = 'Advanced Security'; title = 'Hardware Data Execution Prevention (DEP) enabled';           rat = 'DEP prevents malicious code execution (buffer overflows/shellcode) from memory pages marked as data-only.'; rem = 'Enable DEP via bcdedit.exe /set "{current}" nx OptIn.'; risk = 'Very low: OptIn is the secure default on Windows 11.' }
+    'HOME-SEC-005' = @{ cat = 'Advanced Security'; title = 'Legacy PowerShell v2.0 engine disabled (anti-downgrade)';    rat = 'Attackers run powershell.exe -Version 2 to completely bypass AMSI antivirus inspection and Script Block Logging.'; rem = 'Disable the legacy MicrosoftWindowsPowerShellV2Root optional feature.'; risk = 'Very low: modern scripts run on PowerShell 5.1 or PowerShell 7.' }
 }
 
-# Traduzioni complete in Tedesco (DE) per tutti i 34 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
+# Traduzioni complete in Tedesco (DE) per tutti i 50 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
 $script:TraduzioniControlliDE = @{
     'HOME-FW-001'  = @{ cat = 'Firewall';            title = 'Windows-Firewall auf allen Profilen aktiviert';                  rat = 'Die Firewall ist die erste Verteidigungslinie gegen unbefugte Netzwerkverbindungen.'; rem = 'Aktivieren Sie die Windows Defender Firewall fuer Domaenen-, Privat- und Oeffentliche Profile ueber Windows-Sicherheit oder PowerShell als Administrator.'; risk = 'Gering: Blockiert unerwuenschte eingehende Verbindungen bei normalem ausgehendem Datenverkehr.' }
     'HOME-UAC-001' = @{ cat = 'UAC';                 title = 'Benutzerkontensteuerung (UAC) aktiviert';                        rat = 'UAC schuetzt das System, indem vor Vorgaengen mit Administratorrechten eine Bestaetigung angefordert wird.'; rem = 'Aktivieren Sie UAC (EnableLUA = 1) in den Windows-Einstellungen oder per PowerShell als Administrator. Neustart erforderlich.'; risk = 'Gering: Windows fragt vor administrativen Aenderungen nach.' }
@@ -6579,6 +8005,22 @@ $script:TraduzioniControlliDE = @{
     'HOME-SEC-001' = @{ cat = 'Erweiterte Sicherheit'; title = 'Sicherer UEFI-Start (Secure Boot) aktiviert';                  rat = 'Secure Boot blockiert unsignierte Bootloader und schuetzt den PC vor Rootkits und Bootkits.'; rem = 'Aktivieren Sie Secure Boot in den UEFI/BIOS-Einstellungen Ihres Mainboards (nicht per PowerShell aenderbar).'; risk = 'Mittel: Stellen Sie sicher, dass das Systemlaufwerk GPT verwendet, bevor Sie Secure Boot im BIOS aktivieren.' }
     'HOME-SEC-002' = @{ cat = 'Erweiterte Sicherheit'; title = 'Schutz der lokalen Sicherheitsautoritaet (LSA / RunAsPPL) aktiv'; rat = 'Der LSA-Schutz verhindert, dass Tools zum Auslesen von Anmeldedaten (wie Mimikatz) auf den LSASS-Speicher zugreifen.'; rem = 'Aktivieren Sie den Schutz der lokalen Sicherheitsautoritaet unter Windows-Sicherheit -> Geraetesicherheit -> Kernisolierung.'; risk = 'Gering: Erfordert einen Systemneustart.' }
     'HOME-SEC-003' = @{ cat = 'Erweiterte Sicherheit'; title = 'PowerShell Script Block Logging aktiviert';                    rat = 'Die Skriptblockprotokollierung zeichnet ausgefuehrte PowerShell-Befehle in der Ereignisanzeige fuer Sicherheitsanalysen auf.'; rem = 'Aktivieren Sie PowerShell Script Block Logging (EnableScriptBlockLogging = 1) per Gruppenrichtlinie oder Registrierung.'; risk = 'Sehr gering: Erhoeht die Groesse des PowerShell-Ereignisprotokolls geringfuegig.' }
+    'HOME-AV-009'  = @{ cat = 'Antivirus';           title = 'Ransomware-Schutz (Ueberwachter Ordnerzugriff) aktiviert';       rat = 'Der ueberwachte Ordnerzugriff hindert Ransomware und nicht vertrauenswuerdige Apps daran, persoenliche Dateien zu verschluesseln.'; rem = 'Aktivieren Sie den Ueberwachten Ordnerzugriff unter Windows-Sicherheit -> Viren- & Bedrohungsschutz -> Ransomware-Schutz.'; risk = 'Gering: Schuetzt Dokumente und Bilder; vertrauenswuerdige Programme koennen zugelassen werden.' }
+    'HOME-AV-010'  = @{ cat = 'Antivirus';           title = 'Microsoft Defender Netzwerkschutz (Exploit Guard) aktiv';        rat = 'Der Netzwerkschutz blockiert ausgehende Verbindungen zu bekannten Phishing-Websites, C2-Servern und Exploit-Domains.'; rem = 'Aktivieren Sie den Netzwerkschutz ueber Set-MpPreference -EnableNetworkProtection Enabled.'; risk = 'Sehr gering: Blockiert boesartige Domains systemweit in allen Anwendungen.' }
+    'HOME-FIL-004' = @{ cat = 'Dateisicherheit';     title = 'Keine verdaechtigen oder verschleierten Geplanten Aufgaben';     rat = 'Malware erstellt haeufig Geplante Aufgaben (Scheduled Tasks), die Skripte aus Temp/Public oder verschleierte PowerShell starten.'; rem = 'Oeffnen Sie die Aufgabenplanung (taskschd.msc), pruefen Sie gemeldete Aufgaben und deaktivieren oder loeschen Sie unbekannte Tasks.'; risk = 'Gering: Entfernt automatische Hintergrund-Persistenz verdaechtiger Aufgaben.' }
+    'HOME-FIL-005' = @{ cat = 'Dateisicherheit';     title = 'Keine Manipulation von Systemprogrammen (IFEO Debugger)';        rat = 'Angreifer nutzen Image File Execution Options (IFEO), um Eingabehilfen (sethc.exe), Task-Manager oder Defender umzuleiten.'; rem = 'Entfernen Sie unbefugte Debugger-Werte unter HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options.'; risk = 'Keines: Stellt die normale Ausfuehrung der Systemprogramme wieder her.' }
+    'HOME-FIL-006' = @{ cat = 'Dateisicherheit';     title = 'Keine verdaechtigen Skripte im Autostart-Ordner (Startup)';      rat = 'Jedes Skript oder Programm im Benutzer- oder System-Autostart-Ordner wird bei jeder Anmeldung automatisch gestartet.'; rem = 'Oeffnen Sie shell:startup und shell:common startup und loeschen Sie unbekannte Skripte (.vbs, .js, .bat, .ps1).'; risk = 'Keines: Verhindert das automatische Starten unbekannter Skripte.' }
+    'HOME-ACC-004' = @{ cat = 'Konten';              title = 'Kontosperrungsrichtlinie gegen Brute-Force-Angriffe aktiv';      rat = 'Ohne Kontosperrungsschwelle koennen Angreifer tausende Passwoerter pro Minute ausprobieren, ohne gesperrt zu werden.'; rem = 'Konfigurieren Sie eine Kontosperrungsschwelle (z. B. 5 Fehlversuche) ueber net accounts /lockoutthreshold:5.'; risk = 'Gering: Sperrt das Konto nach 5 falschen Passwoertern voruebergehend fuer 15 Minuten.' }
+    'HOME-ACC-005' = @{ cat = 'Konten';              title = 'Anzahl lokaler Administratorkonten auf Minimum reduziert (<= 2)'; rat = 'Die Begrenzung der Administratorkonten verringert die Angriffsflaeche nach dem Prinzip der geringsten Rechte.'; rem = 'Pruefen Sie die Mitglieder der Gruppe Administratoren und wandeln Sie Zweitkonten in Standardbenutzer um.'; risk = 'Mittel: Stellen Sie sicher, dass mindestens ein aktives Administratorkonto erhalten bleibt.' }
+    'HOME-NET-004' = @{ cat = 'Netzwerk';            title = 'Keine ungeschuetzten SMB-Netzwerkfreigaben exponiert';           rat = 'Offene Ordnerfreigaben im lokalen Netzwerk koennen von Ransomware oder im selben WLAN missbraucht werden.'; rem = 'Pruefen Sie aktive SMB-Freigaben (Get-SmbShare) und entfernen Sie nicht benoetigte Ordnerfreigaben.'; risk = 'Gering: Schliesst den Netzwerkzugriff auf freigegebene lokale Ordner.' }
+    'HOME-NET-005' = @{ cat = 'Netzwerk';            title = 'Obligatorische digitale SMB-Signierung aktiv (Anti-Relay)';      rat = 'Erzwungene SMB-Signierung verhindert Man-in-the-Middle- und NTLM-Relay-Angriffe im lokalen Netzwerk.'; rem = 'Aktivieren Sie RequireSecuritySignature fuer SMB-Server und SMB-Client.'; risk = 'Gering: Alle modernen Windows-Systeme und NAS-Geraete unterstuetzen SMB-Signierung.' }
+    'HOME-NET-006' = @{ cat = 'Netzwerk';            title = 'Windows-Remoteverwaltungsdienst (WinRM) deaktiviert';            rat = 'Auf Desktop-PCs und Laptops oeffnet WinRM Ports fuer PowerShell-Fernzugriff (5985/5986), die fuer Seitwaertsbewegungen genutzt werden.'; rem = 'Beenden und deaktivieren Sie den Dienst WinRM, wenn keine PowerShell-Fernverwaltung benoetigt wird.'; risk = 'Gering auf Desktop-PCs: Schliesst den Fernverwaltungsport 5985.' }
+    'HOME-NET-007' = @{ cat = 'Netzwerk';            title = 'Automatische WPAD-Proxyerkennung deaktiviert (Anti-MITM)';       rat = 'Angreifer im lokalen Netzwerk koennen auf WPAD-Anfragen antworten, um den gesamten Webverkehr ueber einen fremden Proxy umzuleiten.'; rem = 'Setzen Sie DisableWpad = 1 unter HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad.'; risk = 'Sehr gering: Deaktiviert die automatische Suche nach nicht angeforderten WPAD-Proxys.' }
+    'HOME-SYS-006' = @{ cat = 'Windows-Einstellungen'; title = 'WDigest-Klartext-Passwortspeicherung im RAM deaktiviert';      rat = 'Wenn WDigest UseLogonCredential aktiviert ist, speichert Windows Benutzerpasswoerter im Klartext im LSASS-Speicher.'; rem = 'Setzen Sie UseLogonCredential = 0 unter HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.'; risk = 'Keines: Schuetzt Passwoerter vor dem Auslesen aus dem Arbeitsspeicher.' }
+    'HOME-SYS-007' = @{ cat = 'Windows-Einstellungen'; title = 'Windows-Remoteunterstuetzung deaktiviert';                     rat = 'Das Deaktivieren der Remoteunterstuetzung verhindert unbefugte Fernwartungseinladungen.'; rem = 'Setzen Sie fAllowToGetHelp = 0 unter HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance.'; risk = 'Sehr gering: Deaktiviert die veraltete Windows-Remoteunterstuetzung.' }
+    'HOME-SYS-008' = @{ cat = 'Windows-Einstellungen'; title = 'Dienst Remoteregistrierung (Remote Registry) deaktiviert';     rat = 'Der Dienst Remote Registry ermoeglicht Benutzern im Netzwerk das Lesen und Aendern Ihrer Windows-Registrierung aus der Ferne.'; rem = 'Beenden und deaktivieren Sie den Dienst RemoteRegistry (StartupType = Disabled).'; risk = 'Keines auf Heim-PCs und Einzelplatzrechnern.' }
+    'HOME-SEC-004' = @{ cat = 'Erweiterte Sicherheit'; title = 'Datenausfuehrungsverhinderung (DEP) aktiviert';                rat = 'DEP verhindert die Ausfuehrung von Schadcode (Buffer Overflows) in Speicherbereichen, die nur fuer Daten vorgesehen sind.'; rem = 'Aktivieren Sie DEP ueber bcdedit.exe /set "{current}" nx OptIn.'; risk = 'Sehr gering: OptIn ist die sichere Standardeinstellung von Windows 11.' }
+    'HOME-SEC-005' = @{ cat = 'Erweiterte Sicherheit'; title = 'Veraltete PowerShell v2.0-Engine deaktiviert (Anti-Downgrade)'; rat = 'Angreifer starten powershell.exe -Version 2, um AMSI-Virenpruefung und Script Block Logging komplett zu umgehen.'; rem = 'Deaktivieren Sie das optionale Feature MicrosoftWindowsPowerShellV2Root.'; risk = 'Sehr gering: Moderne Skripte nutzen PowerShell 5.1 oder PowerShell 7.' }
 }
 
 function Get-ValoreProprietaSicuro {
@@ -8011,19 +9453,19 @@ function Start-ScannerUI {
                 $ctrl.TxtMessaggioGuida.Text = "Click 'Start Scan' to audit all $totaleControlli Windows 11 security controls."
                 $ctrl.TxtProgresso.Text      = "Ready (0/$totaleControlli)"
                 $ctrl.TxtStatoLLM.Text       = "Status: Ready (auto-connects or auto-installs Ollama on demand)"
-                $ctrl.TxtRispostaLLM.Text    = "1. Run the PC scan using the 'Start Scan (34 controls)' button at the top.`r`n2. Click 'Generate Full PC Security Report' on the left to get an executive summary, prioritized remediation plan, and hardening recommendations.`r`n3. On a VM without Ollama installed, leave the auto-install checkbox enabled: the tool will silently configure Ollama or provide an instant built-in expert analysis."
+                $ctrl.TxtRispostaLLM.Text    = "1. Run the PC scan using the 'Start Scan ($totaleControlli controls)' button at the top.`r`n2. Click 'Generate Full PC Security Report' on the left to get an executive summary, prioritized remediation plan, and hardening recommendations.`r`n3. On a VM without Ollama installed, leave the auto-install checkbox enabled: the tool will silently configure Ollama or provide an instant built-in expert analysis."
             }
             elseif ($lang -eq 'DE') {
                 $ctrl.TxtMessaggioGuida.Text = "Klicken Sie auf 'Scan starten', um alle $totaleControlli Windows 11-Sicherheitspruefungen durchzufuehren."
                 $ctrl.TxtProgresso.Text      = "Bereit (0/$totaleControlli)"
                 $ctrl.TxtStatoLLM.Text       = "Status: Bereit (verbindet oder installiert Ollama bei Bedarf automatisch)"
-                $ctrl.TxtRispostaLLM.Text    = "1. Starten Sie zuerst den PC-Scan ueber die Schaltflaeche 'Scan starten (34 Pruefungen)' oben.`r`n2. Klicken Sie links auf 'Vollstaendigen PC-Bericht erstellen', um eine Zusammenfassung und einen priorisierten Massnahmenplan zu erhalten.`r`n3. Auf einer VM ohne Ollama lassen Sie das Kontrollkaestchen aktiviert: Das Tool richtet Ollama automatisch ein oder liefert sofort eine integrierte Expertenanalyse."
+                $ctrl.TxtRispostaLLM.Text    = "1. Starten Sie zuerst den PC-Scan ueber die Schaltflaeche 'Scan starten ($totaleControlli Pruefungen)' oben.`r`n2. Klicken Sie links auf 'Vollstaendigen PC-Bericht erstellen', um eine Zusammenfassung und einen priorisierten Massnahmenplan zu erhalten.`r`n3. Auf einer VM ohne Ollama lassen Sie das Kontrollkaestchen aktiviert: Das Tool richtet Ollama automatisch ein oder liefert sofort eine integrierte Expertenanalyse."
             }
             else {
                 $ctrl.TxtMessaggioGuida.Text = "Premi 'Avvia scansione' per analizzare i $totaleControlli controlli di sicurezza del PC."
                 $ctrl.TxtProgresso.Text      = "Pronto (0/$totaleControlli)"
                 $ctrl.TxtStatoLLM.Text       = "Stato: Pronto (connessione o auto-installazione automatica al primo avvio)"
-                $ctrl.TxtRispostaLLM.Text    = "1. Esegui prima la scansione del PC col pulsante 'Avvia scansione (34 controlli)' in alto.`r`n2. Premi 'Genera Resoconto Completo PC' qui a sinistra per ricevere l'analisi di tutte le vulnerabilita' trovate e i consigli pratici di messa in sicurezza.`r`n3. Se sei su una Macchina Virtuale senza Ollama, lascia attiva la spunta a sinistra: il tool pensera' a tutto in automatico (oppure fornira' l'analisi immediata tramite il motore esperto integrato)."
+                $ctrl.TxtRispostaLLM.Text    = "1. Esegui prima la scansione del PC col pulsante 'Avvia scansione ($totaleControlli controlli)' in alto.`r`n2. Premi 'Genera Resoconto Completo PC' qui a sinistra per ricevere l'analisi di tutte le vulnerabilita' trovate e i consigli pratici di messa in sicurezza.`r`n3. Se sei su una Macchina Virtuale senza Ollama, lascia attiva la spunta a sinistra: il tool pensera' a tutto in automatico (oppure fornira' l'analisi immediata tramite il motore esperto integrato)."
             }
         }
         else {

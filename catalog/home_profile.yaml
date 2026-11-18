@@ -445,3 +445,196 @@ controls:
       command_ref: "SystemSecurity.ps1#Test-PsScriptBlockLogging"
     references:
       - "CIS Benchmark Windows 11 - 18.9.100.1"
+
+  # === NUOVI CONTROLLI AVANZATI (ANTIVIRUS, FILE, PERSISTENZA, ACCOUNT, RETE, CREDENZIALI) ===
+  - id: "HOME-AV-009"
+    title: "Protezione ransomware (Accesso alle cartelle controllato) attiva"
+    category: "Antivirus"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che l'Accesso alle cartelle controllato (EnableControlledFolderAccess = 1) di Windows Defender sia attivo."
+    rationale: "L'accesso alle cartelle controllato impedisce a ransomware e applicazioni non autorizzate di cifrare o modificare i tuoi file personali (Documenti, Immagini, Desktop)."
+    check:
+      command_ref: "Defender.ps1#Test-DefenderRansomwareCartelle"
+    references:
+      - "Microsoft Defender Exploit Guard - Controlled Folder Access"
+
+  - id: "HOME-AV-010"
+    title: "Protezione di rete di Microsoft Defender (Exploit Guard) attiva"
+    category: "Antivirus"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che la Protezione di rete di Defender (EnableNetworkProtection = 1) sia attiva in modalita' blocco."
+    rationale: "La protezione di rete blocca a livello di sistema le connessioni verso domini di phishing, server C2 malware ed exploit noti in qualsiasi applicazione o browser."
+    check:
+      command_ref: "Defender.ps1#Test-DefenderNetworkProtection"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.47.11.1"
+
+  - id: "HOME-FIL-004"
+    title: "Nessuna attivita' pianificata (Scheduled Task) sospetta o offuscata"
+    category: "Controllo File"
+    severity: "critico"
+    editions: ["Home", "Pro"]
+    description: "Analizza le Attivita' pianificate non-Microsoft alla ricerca di esecuzioni da cartelle Temp/Public o comandi PowerShell/LOLBin offuscati."
+    rationale: "I malware utilizzano frequentemente le Attivita' pianificate di Windows per rieseguirsi automaticamente in background ad ogni accesso o ad orari prestabiliti."
+    check:
+      command_ref: "FileSecurity.ps1#Test-TaskPianificatiSospetti"
+    references:
+      - "MITRE ATT&CK T1053.005 - Scheduled Task/Job"
+
+  - id: "HOME-FIL-005"
+    title: "Nessun dirottamento di eseguibili di sistema (IFEO Debugger Hijacking)"
+    category: "Controllo File"
+    severity: "critico"
+    editions: ["Home", "Pro"]
+    description: "Verifica che nessun eseguibile di sistema o di accessibilita' (sethc.exe, utilman.exe, taskmgr.exe, MsMpEng.exe) abbia un valore Debugger in Image File Execution Options."
+    rationale: "Gli attaccanti usano il dirottamento IFEO per creare backdoor nella schermata di login (Sticky Keys) o per impedire l'avvio di Task Manager e Windows Defender."
+    check:
+      command_ref: "FileSecurity.ps1#Test-HijackingIFEO"
+    references:
+      - "MITRE ATT&CK T1546.012 - Image File Execution Options Injection"
+
+  - id: "HOME-FIL-006"
+    title: "Nessuno script o eseguibile sospetto nella cartella Esecuzione automatica"
+    category: "Controllo File"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Scansiona le cartelle Startup dell'utente e di sistema alla ricerca di script o eseguibili sospetti (.vbs, .js, .bat, .cmd, .ps1, .hta, .scr)."
+    rationale: "Qualsiasi file o script inserito nella cartella Esecuzione automatica (Startup) viene lanciato automaticamente ad ogni accesso dell'utente."
+    check:
+      command_ref: "FileSecurity.ps1#Test-CartellaStartupUtente"
+    references:
+      - "MITRE ATT&CK T1547.001 - Registry Run Keys / Startup Folder"
+
+  - id: "HOME-ACC-004"
+    title: "Politica di blocco account contro attacchi brute-force attiva"
+    category: "Account"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che la soglia di blocco account (Account Lockout Threshold) sia impostata tra 1 e 10 tentativi di accesso falliti."
+    rationale: "Senza una soglia di blocco account, un attaccante o un malware sulla rete locale puo' tentare migliaia di password al minuto senza essere bloccato."
+    check:
+      command_ref: "Accounts.ps1#Test-PoliticaBloccoAccount"
+    references:
+      - "CIS Benchmark Windows 11 - 1.2.2"
+
+  - id: "HOME-ACC-005"
+    title: "Numero di account nel gruppo Amministratori locali ridotto al minimo (<= 2)"
+    category: "Account"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che il gruppo locale Amministratori (SID S-1-5-32-544) non contenga piu' di 2 account abilitati."
+    rationale: "Limitare il numero di account con privilegi di amministratore riduce la superficie d'attacco e il rischio di compromissione totale del sistema."
+    check:
+      command_ref: "Accounts.ps1#Test-LimiteAmministratoriLocali"
+    references:
+      - "Principio del Privilegio Minimo (Least Privilege)"
+
+  - id: "HOME-NET-004"
+    title: "Nessuna cartella condivisa di rete (SMB Share) non standard esposta"
+    category: "Rete"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che non vi siano condivisioni SMB utente esposte sulla rete locale oltre a quelle amministrative predefinite."
+    rationale: "Le cartelle condivise sulla rete locale possono essere sfruttate da ransomware o utenti sulla stessa rete Wi-Fi per leggere o cifrare file."
+    check:
+      command_ref: "Network.ps1#Test-CondivisioniSmbPericolose"
+    references:
+      - "MITRE ATT&CK T1135 - Network Share Discovery"
+
+  - id: "HOME-NET-005"
+    title: "Firma digitale SMB (SMB Signing) obbligatoria contro attacchi NTLM Relay"
+    category: "Rete"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che RequireSecuritySignature = 1 sia attivo sia per il Server che per il Client SMB."
+    rationale: "La firma digitale obbligatoria dei pacchetti SMB impedisce agli attaccanti sulla rete locale di intercettare e inoltrare le tue credenziali (attacchi SMB/NTLM Relay)."
+    check:
+      command_ref: "Network.ps1#Test-FirmaSmbObbligatoria"
+    references:
+      - "CIS Benchmark Windows 11 - 2.3.8.1 / 2.3.9.2"
+
+  - id: "HOME-NET-006"
+    title: "Servizio Gestione remota Windows (WinRM / PowerShell Remoting) disabilitato"
+    category: "Rete"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che il servizio WinRM sia fermo (Stopped) per non esporre le porte di amministrazione remota 5985/5986."
+    rationale: "Su un PC desktop o portatile, WinRM espone un endpoint di esecuzione remota di comandi PowerShell utilizzato per movimenti laterali."
+    check:
+      command_ref: "Network.ps1#Test-WinRmDisabilitatoOSicuro"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.102.2"
+
+  - id: "HOME-NET-007"
+    title: "Risoluzione automatica proxy WPAD disabilitata (anti-MITM)"
+    category: "Rete"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che il protocollo WPAD (Web Proxy Auto-Discovery) sia disabilitato nel registro o tramite il servizio WinHttpAutoProxySvc."
+    rationale: "Un attaccante sulla stessa rete locale/Wi-Fi puo' rispondere alle richieste WPAD per dirottare tutto il traffico web del PC attraverso un proxy malevolo."
+    check:
+      command_ref: "Network.ps1#Test-WpadDisabilitato"
+    references:
+      - "MITRE ATT&CK T1557.001 - LLMNR/NBT-NS/WPAD Poisoning"
+
+  - id: "HOME-SYS-006"
+    title: "Protezione credenziali WDigest (nessuna password in chiaro in memoria)"
+    category: "Impostazioni Windows"
+    severity: "critico"
+    editions: ["Home", "Pro"]
+    description: "Verifica che UseLogonCredential in WDigest sia 0 (o assente) per impedire la memorizzazione di password in chiaro in LSASS."
+    rationale: "Se WDigest UseLogonCredential viene impostato a 1 da un attaccante, Windows conserva le password utente in chiaro nella memoria RAM."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-WDigestDisabilitato"
+    references:
+      - "CIS Benchmark Windows 11 - 18.4.8"
+
+  - id: "HOME-SYS-007"
+    title: "Assistenza remota di Windows (Remote Assistance) disabilitata"
+    category: "Impostazioni Windows"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che fAllowToGetHelp sia impostato a 0 nella chiave Remote Assistance."
+    rationale: "Disabilitare l'Assistenza remota riduce il rischio di connessioni remote non autorizzate verso il PC."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-AssistenzaRemotaDisabilitata"
+    references:
+      - "CIS Benchmark Windows 11 - 18.9.65.2"
+
+  - id: "HOME-SYS-008"
+    title: "Servizio Registro di sistema remoto (Remote Registry) disabilitato"
+    category: "Impostazioni Windows"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che il servizio RemoteRegistry sia disabilitato (Start = 4) e non in esecuzione."
+    rationale: "Il servizio Remote Registry permette la lettura e modifica del registro di sistema da remoto attraverso la rete."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-RegistroRemotoDisabilitato"
+    references:
+      - "CIS Benchmark Windows 11 - 5.27"
+
+  - id: "HOME-SEC-004"
+    title: "Protezione esecuzione programmi (DEP / Data Execution Prevention) attiva"
+    category: "Sicurezza Avanzata"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica tramite WMI/CIM che la protezione hardware DEP sia disponibile e attiva per i processi di sistema."
+    rationale: "DEP impedisce l'esecuzione di codice malevolo (buffer overflow / shellcode) nelle aree di memoria riservate ai dati."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-DepAttivo"
+    references:
+      - "Microsoft Windows Exploit Protection - DEP"
+
+  - id: "HOME-SEC-005"
+    title: "Motore obsoleto PowerShell v2.0 disabilitato (anti-downgrade attack)"
+    category: "Sicurezza Avanzata"
+    severity: "critico"
+    editions: ["Home", "Pro"]
+    description: "Verifica che il vecchio motore PowerShell 2.0 non sia installato o abilitato sul sistema."
+    rationale: "Gli attaccanti avviano 'powershell.exe -Version 2' per aggirare completamente AMSI (scansione antivirus degli script) e lo Script Block Logging di PowerShell 5.1."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-PowerShellV2Disabilitato"
+    references:
+      - "MITRE ATT&CK T1059.001 - PowerShell Downgrade Attack"

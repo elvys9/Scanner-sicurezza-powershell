@@ -727,19 +727,19 @@ function Start-ScannerUI {
                 $ctrl.TxtMessaggioGuida.Text = "Click 'Start Scan' to audit all $totaleControlli Windows 11 security controls."
                 $ctrl.TxtProgresso.Text      = "Ready (0/$totaleControlli)"
                 $ctrl.TxtStatoLLM.Text       = "Status: Ready (auto-connects or auto-installs Ollama on demand)"
-                $ctrl.TxtRispostaLLM.Text    = "1. Run the PC scan using the 'Start Scan (34 controls)' button at the top.`r`n2. Click 'Generate Full PC Security Report' on the left to get an executive summary, prioritized remediation plan, and hardening recommendations.`r`n3. On a VM without Ollama installed, leave the auto-install checkbox enabled: the tool will silently configure Ollama or provide an instant built-in expert analysis."
+                $ctrl.TxtRispostaLLM.Text    = "1. Run the PC scan using the 'Start Scan ($totaleControlli controls)' button at the top.`r`n2. Click 'Generate Full PC Security Report' on the left to get an executive summary, prioritized remediation plan, and hardening recommendations.`r`n3. On a VM without Ollama installed, leave the auto-install checkbox enabled: the tool will silently configure Ollama or provide an instant built-in expert analysis."
             }
             elseif ($lang -eq 'DE') {
                 $ctrl.TxtMessaggioGuida.Text = "Klicken Sie auf 'Scan starten', um alle $totaleControlli Windows 11-Sicherheitspruefungen durchzufuehren."
                 $ctrl.TxtProgresso.Text      = "Bereit (0/$totaleControlli)"
                 $ctrl.TxtStatoLLM.Text       = "Status: Bereit (verbindet oder installiert Ollama bei Bedarf automatisch)"
-                $ctrl.TxtRispostaLLM.Text    = "1. Starten Sie zuerst den PC-Scan ueber die Schaltflaeche 'Scan starten (34 Pruefungen)' oben.`r`n2. Klicken Sie links auf 'Vollstaendigen PC-Bericht erstellen', um eine Zusammenfassung und einen priorisierten Massnahmenplan zu erhalten.`r`n3. Auf einer VM ohne Ollama lassen Sie das Kontrollkaestchen aktiviert: Das Tool richtet Ollama automatisch ein oder liefert sofort eine integrierte Expertenanalyse."
+                $ctrl.TxtRispostaLLM.Text    = "1. Starten Sie zuerst den PC-Scan ueber die Schaltflaeche 'Scan starten ($totaleControlli Pruefungen)' oben.`r`n2. Klicken Sie links auf 'Vollstaendigen PC-Bericht erstellen', um eine Zusammenfassung und einen priorisierten Massnahmenplan zu erhalten.`r`n3. Auf einer VM ohne Ollama lassen Sie das Kontrollkaestchen aktiviert: Das Tool richtet Ollama automatisch ein oder liefert sofort eine integrierte Expertenanalyse."
             }
             else {
                 $ctrl.TxtMessaggioGuida.Text = "Premi 'Avvia scansione' per analizzare i $totaleControlli controlli di sicurezza del PC."
                 $ctrl.TxtProgresso.Text      = "Pronto (0/$totaleControlli)"
                 $ctrl.TxtStatoLLM.Text       = "Stato: Pronto (connessione o auto-installazione automatica al primo avvio)"
-                $ctrl.TxtRispostaLLM.Text    = "1. Esegui prima la scansione del PC col pulsante 'Avvia scansione (34 controlli)' in alto.`r`n2. Premi 'Genera Resoconto Completo PC' qui a sinistra per ricevere l'analisi di tutte le vulnerabilita' trovate e i consigli pratici di messa in sicurezza.`r`n3. Se sei su una Macchina Virtuale senza Ollama, lascia attiva la spunta a sinistra: il tool pensera' a tutto in automatico (oppure fornira' l'analisi immediata tramite il motore esperto integrato)."
+                $ctrl.TxtRispostaLLM.Text    = "1. Esegui prima la scansione del PC col pulsante 'Avvia scansione ($totaleControlli controlli)' in alto.`r`n2. Premi 'Genera Resoconto Completo PC' qui a sinistra per ricevere l'analisi di tutte le vulnerabilita' trovate e i consigli pratici di messa in sicurezza.`r`n3. Se sei su una Macchina Virtuale senza Ollama, lascia attiva la spunta a sinistra: il tool pensera' a tutto in automatico (oppure fornira' l'analisi immediata tramite il motore esperto integrato)."
             }
         }
         else {

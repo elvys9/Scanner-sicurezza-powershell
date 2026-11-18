@@ -270,3 +270,148 @@ function Test-AccountsPasswordRequired {
 
     return $risultato
 }
+
+function Test-PoliticaBloccoAccount {
+    <#
+    .SYNOPSIS
+        Verifica che sia attiva una soglia di blocco account (Account Lockout Threshold 1..10 tentativi)
+        contro attacchi di forza bruta locali/rete (HOME-ACC-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Soglia blocco account (Lockout threshold) tra 1 e 10 tentativi falliti"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $outNet = @(net.exe accounts 2>$null)
+        $soglia = -1
+
+        foreach ($line in $outNet) {
+            if ($line -match '(?i)(Lockout threshold|Soglia di blocco|Kontosperrungsschwelle)\s*:\s*(.+)$') {
+                $valTxt = $Matches[2].Trim()
+                if ($valTxt -match '^\d+$') {
+                    $soglia = [int]$valTxt
+                }
+                else {
+                    $soglia = 0
+                }
+                break
+            }
+        }
+
+        $risultato.Evidence = @{
+            LockoutThreshold = $soglia
+        }
+
+        if ($soglia -ge 1 -and $soglia -le 10) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Blocco account attivo dopo $soglia tentativi falliti"
+        }
+        elseif ($soglia -gt 10) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Soglia blocco account troppo permissiva ($soglia tentativi; consigliato <= 10)"
+        }
+        elseif ($soglia -eq 0) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Blocco account disabilitato (Mai / 0 tentativi)"
+        }
+        else {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Impossibile determinare la soglia di blocco account"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-LimiteAmministratoriLocali {
+    <#
+    .SYNOPSIS
+        Verifica che il gruppo Amministratori locali (SID S-1-5-32-544) non contenga un numero
+        eccessivo di account abilitati (consigliato <= 2 amministratori attivi) (HOME-ACC-005).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Massimo 2 account amministratori locali attivi (principio del privilegio minimo)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $membri = @(Get-LocalGroupMember -SID 'S-1-5-32-544' -ErrorAction Stop)
+        $utentiLocali = @(Get-LocalUser -ErrorAction SilentlyContinue)
+        $mappaDisabilitati = @{}
+        foreach ($u in $utentiLocali) {
+            if (-not $u.Enabled) {
+                $mappaDisabilitati[$u.SID.Value] = $true
+            }
+        }
+
+        $adminAttivi = @()
+        foreach ($m in $membri) {
+            $sidVal = if ($null -ne $m.PSObject.Properties['SID'] -and $null -ne $m.SID) { $m.SID.Value } else { '' }
+            if ($sidVal -and $mappaDisabilitati.ContainsKey($sidVal)) {
+                continue
+            }
+            $adminAttivi += $m.Name
+        }
+
+        $risultato.Evidence = @{
+            TotaleMembriGruppo = $membri.Count
+            AdminAttivi        = $adminAttivi
+        }
+
+        if ($adminAttivi.Count -le 2) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "$($adminAttivi.Count) amministratori attivi: $($adminAttivi -join ', ')"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevati $($adminAttivi.Count) account nel gruppo Amministratori: $($adminAttivi -join ', ')"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Cmdlet Get-LocalGroupMember non disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege|Object reference|CIM resource') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti o account Microsoft/Cloud presente nel gruppo Amministratori"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}

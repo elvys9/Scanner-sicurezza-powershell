@@ -263,3 +263,274 @@ function Test-LlmnrDisabled {
 
     return $risultato
 }
+
+function Test-CondivisioniSmbPericolose {
+    <#
+    .SYNOPSIS
+        Verifica che non vi siano condivisioni di rete (SMB Shares) utente non standard esposte
+        (escludendo le condivisioni di sistema ADMIN$, C$, IPC$, print$) (HOME-NET-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 condivisioni SMB utente non protette o non necessarie"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $shares = @(Get-SmbShare -ErrorAction Stop)
+        $nonStandard = @()
+        foreach ($s in $shares) {
+            $nome = [string]$s.Name
+            if ($nome -notmatch '^(ADMIN\$|IPC\$|print\$|[A-Za-z]\$)$') {
+                $nonStandard += "$nome ($($s.Path))"
+            }
+        }
+
+        $risultato.Evidence = @{
+            TotaleShares      = $shares.Count
+            SharesNonStandard = $nonStandard
+        }
+
+        if ($nonStandard.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna cartella condivisa non standard esposta in rete"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Cartelle condivise in rete rilevate ($($nonStandard.Count)): $($nonStandard -join '; ')"
+        }
+    }
+    catch {
+        # Fallback su registro (HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Shares)
+        try {
+            $chiaveShares = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Shares'
+            if (Test-Path -LiteralPath $chiaveShares -ErrorAction SilentlyContinue) {
+                $propShares = Get-ItemProperty -LiteralPath $chiaveShares -ErrorAction Stop
+                $nonStdReg = @()
+                foreach ($p in $propShares.PSObject.Properties) {
+                    if ($p.Name -in @('PSPath', 'PSParentPath', 'PSChildName', 'PSDrive', 'PSProvider')) { continue }
+                    if ($p.Name -notmatch '^(ADMIN\$|IPC\$|print\$|[A-Za-z]\$)$') {
+                        $nonStdReg += $p.Name
+                    }
+                }
+                $risultato.Evidence = @{ SharesNonStandard = $nonStdReg; Fonte = 'Registry' }
+                if ($nonStdReg.Count -eq 0) {
+                    $risultato.Status   = 'superato'
+                    $risultato.Observed = "Nessuna cartella condivisa non standard rilevata nel registro LanmanServer"
+                }
+                else {
+                    $risultato.Status   = 'fallito'
+                    $risultato.Observed = "Cartelle condivise rilevate ($($nonStdReg.Count)): $($nonStdReg -join ', ')"
+                }
+                return $risultato
+            }
+        }
+        catch { }
+
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare le condivisioni SMB"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-FirmaSmbObbligatoria {
+    <#
+    .SYNOPSIS
+        Verifica che la firma digitale dei pacchetti SMB (RequireSecuritySignature = 1) sia attiva
+        per prevenire attacchi Man-in-the-Middle e NTLM Relay sulla rete locale (HOME-NET-005).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "RequireSecuritySignature = 1 su Server e Client SMB"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveSrv = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
+        $chiaveWrk = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+
+        $reqSrv = 0
+        $reqWrk = 0
+
+        if (Test-Path -LiteralPath $chiaveSrv) {
+            $pSrv = Get-ItemProperty -LiteralPath $chiaveSrv -ErrorAction SilentlyContinue
+            if ($null -ne $pSrv -and $null -ne $pSrv.PSObject.Properties['RequireSecuritySignature']) {
+                $reqSrv = [int]$pSrv.RequireSecuritySignature
+            }
+        }
+        if (Test-Path -LiteralPath $chiaveWrk) {
+            $pWrk = Get-ItemProperty -LiteralPath $chiaveWrk -ErrorAction SilentlyContinue
+            if ($null -ne $pWrk -and $null -ne $pWrk.PSObject.Properties['RequireSecuritySignature']) {
+                $reqWrk = [int]$pWrk.RequireSecuritySignature
+            }
+        }
+
+        $risultato.Evidence = @{
+            ServerRequireSecuritySignature      = $reqSrv
+            WorkstationRequireSecuritySignature = $reqWrk
+        }
+
+        if ($reqSrv -eq 1 -and $reqWrk -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Firma SMB obbligatoria attiva su Server e Client (1)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Firma SMB non obbligatoria (Server=$reqSrv, Client=$reqWrk)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-WinRmDisabilitatoOSicuro {
+    <#
+    .SYNOPSIS
+        Verifica che il servizio Windows Remote Management (WinRM / PowerShell Remoting) sia fermo
+        per non esporre le porte 5985/5986 sulla rete (HOME-NET-006).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Servizio WinRM fermo (Stopped)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $srv = Get-Service -Name 'WinRM' -ErrorAction SilentlyContinue
+        if ($null -eq $srv) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Servizio WinRM non presente"
+            return $risultato
+        }
+
+        $statoSrv = [string]$srv.Status
+        $risultato.Evidence = @{
+            ServiceName = 'WinRM'
+            Status      = $statoSrv
+        }
+
+        if ($statoSrv -ne 'Running') {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Servizio WinRM fermo ($statoSrv)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Servizio WinRM in esecuzione (Running - porta remota 5985 attiva)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-WpadDisabilitato {
+    <#
+    .SYNOPSIS
+        Verifica che il protocollo WPAD (Web Proxy Auto-Discovery) sia disabilitato per prevenire
+        attacchi di intercettazione del traffico web su reti locali/Wi-Fi (HOME-NET-007).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "DisableWpad = 1 oppure servizio WinHttpAutoProxySvc disabilitato"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveWpad = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad'
+        $disableWpad = 0
+        if (Test-Path -LiteralPath $chiaveWpad) {
+            $propWpad = Get-ItemProperty -LiteralPath $chiaveWpad -ErrorAction SilentlyContinue
+            if ($null -ne $propWpad -and $null -ne $propWpad.PSObject.Properties['DisableWpad']) {
+                $disableWpad = [int]$propWpad.DisableWpad
+            }
+        }
+
+        $chiaveSvc = 'HKLM:\SYSTEM\CurrentControlSet\Services\WinHttpAutoProxySvc'
+        $startSvc = 3
+        if (Test-Path -LiteralPath $chiaveSvc) {
+            $propSvc = Get-ItemProperty -LiteralPath $chiaveSvc -ErrorAction SilentlyContinue
+            if ($null -ne $propSvc -and $null -ne $propSvc.PSObject.Properties['Start']) {
+                $startSvc = [int]$propSvc.Start
+            }
+        }
+
+        $risultato.Evidence = @{
+            DisableWpad            = $disableWpad
+            WinHttpAutoProxyStart  = $startSvc
+        }
+
+        if ($disableWpad -eq 1 -or $startSvc -eq 4) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "WPAD disabilitato (DisableWpad=$disableWpad, ServiceStart=$startSvc)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "WPAD attivo (DisableWpad=$disableWpad, ServiceStart=$startSvc)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}

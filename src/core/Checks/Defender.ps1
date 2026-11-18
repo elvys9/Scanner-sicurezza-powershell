@@ -627,3 +627,129 @@ function Test-DefenderSafeExclusions {
 
     return $risultato
 }
+
+function Test-DefenderRansomwareCartelle {
+    <#
+    .SYNOPSIS
+        Verifica che l'Accesso alle cartelle controllato (Controlled Folder Access anti-ransomware) sia attivo (HOME-AV-009).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "EnableControlledFolderAccess = 1 (Blocco anti-ransomware attivo)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $cfa  = [int]$pref.EnableControlledFolderAccess
+
+        $risultato.Evidence = @{
+            EnableControlledFolderAccess = $cfa
+        }
+
+        if ($cfa -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Protezione ransomware (Accesso alle cartelle controllato) attiva (1)"
+        }
+        elseif ($cfa -eq 2) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Accesso alle cartelle controllato solo in modalita' audit (2)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Accesso alle cartelle controllato disattivato ($cfa)"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per leggere EnableControlledFolderAccess"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderNetworkProtection {
+    <#
+    .SYNOPSIS
+        Verifica che la Protezione di rete di Microsoft Defender Exploit Guard (EnableNetworkProtection = 1) sia attiva (HOME-AV-010).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "EnableNetworkProtection = 1 (Blocco domini malevoli attivo)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $netP = [int]$pref.EnableNetworkProtection
+
+        $risultato.Evidence = @{
+            EnableNetworkProtection = $netP
+        }
+
+        if ($netP -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Protezione di rete Defender Exploit Guard attiva in modalita' blocco (1)"
+        }
+        elseif ($netP -eq 2) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Protezione di rete solo in modalita' audit (2)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Protezione di rete disattivata ($netP)"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per leggere EnableNetworkProtection"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}

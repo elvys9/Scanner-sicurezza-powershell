@@ -191,6 +191,86 @@ $script:RimediStaticiFetta = @{
         command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Name "EnableMulticast" -Value 0 -Type DWord'
         risk    = "Basso: le reti moderne utilizzano DNS standard anziche' LLMNR."
     }
+    'HOME-AV-009' = [PSCustomObject]@{
+        text    = "Attiva l'Accesso alle cartelle controllato in Sicurezza di Windows -> Protezione da virus e minacce -> Gestisci protezione ransomware."
+        command = 'Set-MpPreference -EnableControlledFolderAccess Enabled'
+        risk    = "Basso: protegge Documenti e Immagini da ransomware; eventuali programmi di terze parti legittimi possono essere autorizzati con un clic."
+    }
+    'HOME-AV-010' = [PSCustomObject]@{
+        text    = "Attiva la Protezione di rete (Exploit Guard) di Microsoft Defender in modalita' blocco contro phishing e domini C2."
+        command = 'Set-MpPreference -EnableNetworkProtection Enabled'
+        risk    = "Molto basso: blocca le connessioni verso domini malevoli noti in tutti i programmi."
+    }
+    'HOME-FIL-004' = [PSCustomObject]@{
+        text    = "Apri l'Utilitia' di pianificazione (taskschd.msc), controlla le attivita' segnalate e rimuovi o disabilita quelle sconosciute o che lanciano script da Temp."
+        command = 'Get-ScheduledTask | Where-Object { $_.State -ne "Disabled" -and $_.TaskPath -notlike "\Microsoft\*" } | Select-Object TaskName, TaskPath, State'
+        risk    = "Basso: elimina la persistenza automatica di task sospetti."
+    }
+    'HOME-FIL-005' = [PSCustomObject]@{
+        text    = "Rimuovi immediatamente qualsiasi valore Debugger non autorizzato dalle sottochiavi di Image File Execution Options nel registro."
+        command = 'Get-ChildItem "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options" | Get-ItemProperty -Name Debugger -ErrorAction SilentlyContinue'
+        risk    = "Nessuno: ripristina il normale funzionamento degli eseguibili di sistema."
+    }
+    'HOME-FIL-006' = [PSCustomObject]@{
+        text    = "Apri la cartella Esecuzione automatica (shell:startup e shell:common startup) ed elimina eventuali script (.vbs, .js, .bat, .ps1) non riconosciuti."
+        command = 'Get-ChildItem -Path ([Environment]::GetFolderPath("Startup")), ([Environment]::GetFolderPath("CommonStartup")) -File'
+        risk    = "Nessuno: impedisce l'esecuzione automatica di script sospetti al login."
+    }
+    'HOME-ACC-004' = [PSCustomObject]@{
+        text    = "Imposta una soglia di blocco account (es. 5 tentativi falliti) per bloccare gli attacchi di forza bruta sulle password locali."
+        command = 'net accounts /lockoutthreshold:5 /lockoutduration:15 /lockoutwindow:15'
+        risk    = "Basso: dopo 5 password errate consecutive l'account viene temporaneamente bloccato per 15 minuti."
+    }
+    'HOME-ACC-005' = [PSCustomObject]@{
+        text    = "Verifica i membri del gruppo Amministratori locali e converti gli account secondari di uso quotidiano in account Utente standard."
+        command = 'Get-LocalGroupMember -SID "S-1-5-32-544"'
+        risk    = "Medio: assicurati di mantenere almeno un account amministratore attivo e accessibile."
+    }
+    'HOME-NET-004' = [PSCustomObject]@{
+        text    = "Controlla le cartelle condivise sulla rete locale e rimuovi le condivisioni SMB non necessarie."
+        command = 'Get-SmbShare | Where-Object { $_.Name -notmatch "^(ADMIN\$|IPC\$|print\$|[A-Za-z]\$)$" }'
+        risk    = "Basso: chiude l'accesso di rete alle cartelle locali condivise."
+    }
+    'HOME-NET-005' = [PSCustomObject]@{
+        text    = "Abilita la firma digitale obbligatoria SMB (RequireSecuritySignature = 1) su Server e Client SMB contro attacchi NTLM Relay."
+        command = 'Set-SmbServerConfiguration -RequireSecuritySignature $true -Force; Set-SmbClientConfiguration -RequireSecuritySignature $true -Force'
+        risk    = "Basso: tutte le versioni moderne di Windows e NAS supportano SMB Signing."
+    }
+    'HOME-NET-006' = [PSCustomObject]@{
+        text    = "Ferma e disabilita il servizio Gestione remota Windows (WinRM) se non utilizzi PowerShell Remoting verso questo PC."
+        command = 'Stop-Service -Name "WinRM" -Force; Set-Service -Name "WinRM" -StartupType Disabled'
+        risk    = "Basso su PC desktop/portatili: chiude la porta remota 5985."
+    }
+    'HOME-NET-007' = [PSCustomObject]@{
+        text    = "Disabilita la scoperta automatica proxy WPAD nel registro per prevenire dirottamenti del traffico web su reti locali."
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad" -Force | Out-Null; Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad" -Name "DisableWpad" -Value 1 -Type DWord'
+        risk    = "Molto basso: evita il rilevamento automatico di proxy WPAD non richiesti."
+    }
+    'HOME-SYS-006' = [PSCustomObject]@{
+        text    = "Assicurati che UseLogonCredential in WDigest sia impostato a 0 per impedire il salvataggio delle password in chiaro in memoria RAM."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest" -Name "UseLogonCredential" -Value 0 -Type DWord'
+        risk    = "Nessuno: protegge le credenziali utente da furti in memoria (Mimikatz)."
+    }
+    'HOME-SYS-007' = [PSCustomObject]@{
+        text    = "Disabilita l'Assistenza remota di Windows impostando fAllowToGetHelp a 0."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance" -Name "fAllowToGetHelp" -Value 0 -Type DWord'
+        risk    = "Molto basso: disattiva le connessioni di Assistenza remota legacy di Windows."
+    }
+    'HOME-SYS-008' = [PSCustomObject]@{
+        text    = "Ferma e disabilita il servizio Registro di sistema remoto (RemoteRegistry) per impedire accessi al registro dalla rete."
+        command = 'Stop-Service -Name "RemoteRegistry" -Force -ErrorAction SilentlyContinue; Set-Service -Name "RemoteRegistry" -StartupType Disabled'
+        risk    = "Nessuno su PC domestici o workstation singole."
+    }
+    'HOME-SEC-004' = [PSCustomObject]@{
+        text    = "Abilita la Protezione esecuzione programmi (DEP) per i programmi e servizi di Windows tramite bcdedit."
+        command = 'bcdedit.exe /set "{current}" nx OptIn'
+        risk    = "Molto basso: OptIn e' la configurazione predefinita sicura di Windows 11."
+    }
+    'HOME-SEC-005' = [PSCustomObject]@{
+        text    = "Disabilita la funzionalita' opzionale obsoleta Windows PowerShell 2.0 per impedire attacchi di downgrade."
+        command = 'Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2Root -NoRestart'
+        risk    = "Molto basso: tutti gli script moderni usano PowerShell 5.1 o PowerShell 7."
+    }
 }
 
 # Traduzioni complete in Inglese (EN) per tutti i 34 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
@@ -229,9 +309,25 @@ $script:TraduzioniControlliEN = @{
     'HOME-SEC-001' = @{ cat = 'Advanced Security'; title = 'UEFI Secure Boot enabled';                                   rat = 'Secure Boot blocks unsigned bootloaders, protecting the PC against rootkits and bootkits.'; rem = 'Enable Secure Boot in your motherboard UEFI/BIOS firmware settings (cannot be changed from PowerShell).'; risk = 'Medium: ensure your system drive uses GPT partitioning before enabling Secure Boot in BIOS.' }
     'HOME-SEC-002' = @{ cat = 'Advanced Security'; title = 'Local Security Authority (LSA) protection (RunAsPPL) active'; rat = 'LSA protection prevents credential-dumping tools (such as Mimikatz) from reading LSASS memory.'; rem = 'Enable Local Security Authority protection in Windows Security -> Device security -> Core isolation.'; risk = 'Low: requires a system restart.' }
     'HOME-SEC-003' = @{ cat = 'Advanced Security'; title = 'PowerShell Script Block Logging enabled';                    rat = 'Script Block Logging records executed PowerShell commands in Event Viewer to aid security auditing.'; rem = 'Enable PowerShell Script Block Logging (EnableScriptBlockLogging = 1) in Group Policy or Registry.'; risk = 'Very low: slightly increases PowerShell operational event log size.' }
+    'HOME-AV-009'  = @{ cat = 'Antivirus';         title = 'Ransomware protection (Controlled Folder Access) enabled';   rat = 'Controlled Folder Access blocks untrusted apps and ransomware from encrypting or modifying your personal files.'; rem = 'Enable Controlled Folder Access in Windows Security -> Virus & threat protection -> Ransomware protection.'; risk = 'Low: protects Documents and Pictures; legitimate apps can be allowed with one click.' }
+    'HOME-AV-010'  = @{ cat = 'Antivirus';         title = 'Microsoft Defender Network Protection (Exploit Guard) active'; rat = 'Network Protection blocks outbound connections to known phishing sites, malware C2 servers, and exploit domains.'; rem = 'Enable Network Protection via Set-MpPreference -EnableNetworkProtection Enabled.'; risk = 'Very low: blocks malicious domains system-wide across all apps.' }
+    'HOME-FIL-004' = @{ cat = 'File Security';     title = 'No suspicious or obfuscated Windows Scheduled Tasks';        rat = 'Malware frequently creates Scheduled Tasks launching scripts from Temp/Public folders or using encoded PowerShell.'; rem = 'Open Task Scheduler (taskschd.msc), inspect any flagged tasks, and delete or disable unrecognized tasks.'; risk = 'Low: removes automatic background persistence of suspicious tasks.' }
+    'HOME-FIL-005' = @{ cat = 'File Security';     title = 'No system executable hijacking (IFEO Debugger backdoors)';   rat = 'Attackers use Image File Execution Options (IFEO) Debugger keys to hijack Sticky Keys (sethc.exe), Task Manager, or Defender.'; rem = 'Remove unauthorized Debugger values under HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options.'; risk = 'None: restores normal execution of system utilities.' }
+    'HOME-FIL-006' = @{ cat = 'File Security';     title = 'No suspicious scripts or executables in Startup folders';    rat = 'Every script or executable placed in the user or system Startup folder runs automatically whenever you sign in.'; rem = 'Open shell:startup and shell:common startup and delete any unrecognized scripts (.vbs, .js, .bat, .ps1).'; risk = 'None: prevents automatic execution of unauthorized startup scripts.' }
+    'HOME-ACC-004' = @{ cat = 'Accounts';          title = 'Account lockout policy active against brute-force attacks';  rat = 'Without an account lockout threshold, attackers can attempt thousands of password guesses per minute without being locked out.'; rem = 'Configure an Account Lockout Threshold (e.g. 5 invalid logon attempts) via net accounts /lockoutthreshold:5.'; risk = 'Low: temporarily locks the account for 15 minutes after 5 consecutive wrong passwords.' }
+    'HOME-ACC-005' = @{ cat = 'Accounts';          title = 'Local Administrators group members minimized (<= 2)';        rat = 'Limiting the number of administrator accounts reduces the attack surface and adheres to the principle of least privilege.'; rem = 'Review members of the local Administrators group and convert secondary daily-use accounts to standard users.'; risk = 'Medium: ensure at least one active administrator account remains accessible.' }
+    'HOME-NET-004' = @{ cat = 'Network';           title = 'No non-standard user SMB network shares exposed';            rat = 'Open network folder shares can be abused by ransomware or users on the same LAN/Wi-Fi to read or encrypt files.'; rem = 'Review active SMB shares (Get-SmbShare) and remove unnecessary user folder shares.'; risk = 'Low: closes network access to shared local folders.' }
+    'HOME-NET-005' = @{ cat = 'Network';           title = 'Mandatory SMB digital packet signing enabled (anti-Relay)';  rat = 'Mandatory SMB signing prevents man-in-the-middle attackers on the local network from intercepting and relaying credentials.'; rem = 'Enable RequireSecuritySignature on both SMB Server and SMB Client.'; risk = 'Low: all modern Windows systems and NAS devices support SMB Signing.' }
+    'HOME-NET-006' = @{ cat = 'Network';           title = 'Windows Remote Management (WinRM) service disabled';         rat = 'On desktop/laptop PCs, WinRM exposes remote PowerShell management ports (5985/5986) often targeted for lateral movement.'; rem = 'Stop and disable the WinRM service if remote PowerShell administration is not required.'; risk = 'Low on desktop PCs: closes remote management port 5985.' }
+    'HOME-NET-007' = @{ cat = 'Network';           title = 'WPAD automatic web proxy discovery disabled (anti-MITM)';    rat = 'Attackers on local networks can reply to WPAD requests to route all your web traffic through a malicious proxy.'; rem = 'Set DisableWpad = 1 under HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad.'; risk = 'Very low: disables automatic rogue proxy discovery.' }
+    'HOME-SYS-006' = @{ cat = 'Windows Settings';  title = 'WDigest cleartext credential caching in memory disabled';    rat = 'If WDigest UseLogonCredential is enabled, Windows stores user passwords in cleartext inside LSASS memory.'; rem = 'Set UseLogonCredential = 0 under HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.'; risk = 'None: protects user passwords against memory dumping.' }
+    'HOME-SYS-007' = @{ cat = 'Windows Settings';  title = 'Windows Remote Assistance disabled';                         rat = 'Disabling Solicited Remote Assistance prevents unauthorized remote assistance invitations and inbound connections.'; rem = 'Set fAllowToGetHelp = 0 under HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance.'; risk = 'Very low: disables legacy Windows Remote Assistance.' }
+    'HOME-SYS-008' = @{ cat = 'Windows Settings';  title = 'Remote Registry service disabled and stopped';               rat = 'The Remote Registry service allows remote network users to read and modify your Windows Registry.'; rem = 'Stop and disable the RemoteRegistry service (StartupType = Disabled).'; risk = 'None on home PCs and standalone workstations.' }
+    'HOME-SEC-004' = @{ cat = 'Advanced Security'; title = 'Hardware Data Execution Prevention (DEP) enabled';           rat = 'DEP prevents malicious code execution (buffer overflows/shellcode) from memory pages marked as data-only.'; rem = 'Enable DEP via bcdedit.exe /set "{current}" nx OptIn.'; risk = 'Very low: OptIn is the secure default on Windows 11.' }
+    'HOME-SEC-005' = @{ cat = 'Advanced Security'; title = 'Legacy PowerShell v2.0 engine disabled (anti-downgrade)';    rat = 'Attackers run powershell.exe -Version 2 to completely bypass AMSI antivirus inspection and Script Block Logging.'; rem = 'Disable the legacy MicrosoftWindowsPowerShellV2Root optional feature.'; risk = 'Very low: modern scripts run on PowerShell 5.1 or PowerShell 7.' }
 }
 
-# Traduzioni complete in Tedesco (DE) per tutti i 34 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
+# Traduzioni complete in Tedesco (DE) per tutti i 50 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
 $script:TraduzioniControlliDE = @{
     'HOME-FW-001'  = @{ cat = 'Firewall';            title = 'Windows-Firewall auf allen Profilen aktiviert';                  rat = 'Die Firewall ist die erste Verteidigungslinie gegen unbefugte Netzwerkverbindungen.'; rem = 'Aktivieren Sie die Windows Defender Firewall fuer Domaenen-, Privat- und Oeffentliche Profile ueber Windows-Sicherheit oder PowerShell als Administrator.'; risk = 'Gering: Blockiert unerwuenschte eingehende Verbindungen bei normalem ausgehendem Datenverkehr.' }
     'HOME-UAC-001' = @{ cat = 'UAC';                 title = 'Benutzerkontensteuerung (UAC) aktiviert';                        rat = 'UAC schuetzt das System, indem vor Vorgaengen mit Administratorrechten eine Bestaetigung angefordert wird.'; rem = 'Aktivieren Sie UAC (EnableLUA = 1) in den Windows-Einstellungen oder per PowerShell als Administrator. Neustart erforderlich.'; risk = 'Gering: Windows fragt vor administrativen Aenderungen nach.' }
@@ -267,6 +363,22 @@ $script:TraduzioniControlliDE = @{
     'HOME-SEC-001' = @{ cat = 'Erweiterte Sicherheit'; title = 'Sicherer UEFI-Start (Secure Boot) aktiviert';                  rat = 'Secure Boot blockiert unsignierte Bootloader und schuetzt den PC vor Rootkits und Bootkits.'; rem = 'Aktivieren Sie Secure Boot in den UEFI/BIOS-Einstellungen Ihres Mainboards (nicht per PowerShell aenderbar).'; risk = 'Mittel: Stellen Sie sicher, dass das Systemlaufwerk GPT verwendet, bevor Sie Secure Boot im BIOS aktivieren.' }
     'HOME-SEC-002' = @{ cat = 'Erweiterte Sicherheit'; title = 'Schutz der lokalen Sicherheitsautoritaet (LSA / RunAsPPL) aktiv'; rat = 'Der LSA-Schutz verhindert, dass Tools zum Auslesen von Anmeldedaten (wie Mimikatz) auf den LSASS-Speicher zugreifen.'; rem = 'Aktivieren Sie den Schutz der lokalen Sicherheitsautoritaet unter Windows-Sicherheit -> Geraetesicherheit -> Kernisolierung.'; risk = 'Gering: Erfordert einen Systemneustart.' }
     'HOME-SEC-003' = @{ cat = 'Erweiterte Sicherheit'; title = 'PowerShell Script Block Logging aktiviert';                    rat = 'Die Skriptblockprotokollierung zeichnet ausgefuehrte PowerShell-Befehle in der Ereignisanzeige fuer Sicherheitsanalysen auf.'; rem = 'Aktivieren Sie PowerShell Script Block Logging (EnableScriptBlockLogging = 1) per Gruppenrichtlinie oder Registrierung.'; risk = 'Sehr gering: Erhoeht die Groesse des PowerShell-Ereignisprotokolls geringfuegig.' }
+    'HOME-AV-009'  = @{ cat = 'Antivirus';           title = 'Ransomware-Schutz (Ueberwachter Ordnerzugriff) aktiviert';       rat = 'Der ueberwachte Ordnerzugriff hindert Ransomware und nicht vertrauenswuerdige Apps daran, persoenliche Dateien zu verschluesseln.'; rem = 'Aktivieren Sie den Ueberwachten Ordnerzugriff unter Windows-Sicherheit -> Viren- & Bedrohungsschutz -> Ransomware-Schutz.'; risk = 'Gering: Schuetzt Dokumente und Bilder; vertrauenswuerdige Programme koennen zugelassen werden.' }
+    'HOME-AV-010'  = @{ cat = 'Antivirus';           title = 'Microsoft Defender Netzwerkschutz (Exploit Guard) aktiv';        rat = 'Der Netzwerkschutz blockiert ausgehende Verbindungen zu bekannten Phishing-Websites, C2-Servern und Exploit-Domains.'; rem = 'Aktivieren Sie den Netzwerkschutz ueber Set-MpPreference -EnableNetworkProtection Enabled.'; risk = 'Sehr gering: Blockiert boesartige Domains systemweit in allen Anwendungen.' }
+    'HOME-FIL-004' = @{ cat = 'Dateisicherheit';     title = 'Keine verdaechtigen oder verschleierten Geplanten Aufgaben';     rat = 'Malware erstellt haeufig Geplante Aufgaben (Scheduled Tasks), die Skripte aus Temp/Public oder verschleierte PowerShell starten.'; rem = 'Oeffnen Sie die Aufgabenplanung (taskschd.msc), pruefen Sie gemeldete Aufgaben und deaktivieren oder loeschen Sie unbekannte Tasks.'; risk = 'Gering: Entfernt automatische Hintergrund-Persistenz verdaechtiger Aufgaben.' }
+    'HOME-FIL-005' = @{ cat = 'Dateisicherheit';     title = 'Keine Manipulation von Systemprogrammen (IFEO Debugger)';        rat = 'Angreifer nutzen Image File Execution Options (IFEO), um Eingabehilfen (sethc.exe), Task-Manager oder Defender umzuleiten.'; rem = 'Entfernen Sie unbefugte Debugger-Werte unter HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options.'; risk = 'Keines: Stellt die normale Ausfuehrung der Systemprogramme wieder her.' }
+    'HOME-FIL-006' = @{ cat = 'Dateisicherheit';     title = 'Keine verdaechtigen Skripte im Autostart-Ordner (Startup)';      rat = 'Jedes Skript oder Programm im Benutzer- oder System-Autostart-Ordner wird bei jeder Anmeldung automatisch gestartet.'; rem = 'Oeffnen Sie shell:startup und shell:common startup und loeschen Sie unbekannte Skripte (.vbs, .js, .bat, .ps1).'; risk = 'Keines: Verhindert das automatische Starten unbekannter Skripte.' }
+    'HOME-ACC-004' = @{ cat = 'Konten';              title = 'Kontosperrungsrichtlinie gegen Brute-Force-Angriffe aktiv';      rat = 'Ohne Kontosperrungsschwelle koennen Angreifer tausende Passwoerter pro Minute ausprobieren, ohne gesperrt zu werden.'; rem = 'Konfigurieren Sie eine Kontosperrungsschwelle (z. B. 5 Fehlversuche) ueber net accounts /lockoutthreshold:5.'; risk = 'Gering: Sperrt das Konto nach 5 falschen Passwoertern voruebergehend fuer 15 Minuten.' }
+    'HOME-ACC-005' = @{ cat = 'Konten';              title = 'Anzahl lokaler Administratorkonten auf Minimum reduziert (<= 2)'; rat = 'Die Begrenzung der Administratorkonten verringert die Angriffsflaeche nach dem Prinzip der geringsten Rechte.'; rem = 'Pruefen Sie die Mitglieder der Gruppe Administratoren und wandeln Sie Zweitkonten in Standardbenutzer um.'; risk = 'Mittel: Stellen Sie sicher, dass mindestens ein aktives Administratorkonto erhalten bleibt.' }
+    'HOME-NET-004' = @{ cat = 'Netzwerk';            title = 'Keine ungeschuetzten SMB-Netzwerkfreigaben exponiert';           rat = 'Offene Ordnerfreigaben im lokalen Netzwerk koennen von Ransomware oder im selben WLAN missbraucht werden.'; rem = 'Pruefen Sie aktive SMB-Freigaben (Get-SmbShare) und entfernen Sie nicht benoetigte Ordnerfreigaben.'; risk = 'Gering: Schliesst den Netzwerkzugriff auf freigegebene lokale Ordner.' }
+    'HOME-NET-005' = @{ cat = 'Netzwerk';            title = 'Obligatorische digitale SMB-Signierung aktiv (Anti-Relay)';      rat = 'Erzwungene SMB-Signierung verhindert Man-in-the-Middle- und NTLM-Relay-Angriffe im lokalen Netzwerk.'; rem = 'Aktivieren Sie RequireSecuritySignature fuer SMB-Server und SMB-Client.'; risk = 'Gering: Alle modernen Windows-Systeme und NAS-Geraete unterstuetzen SMB-Signierung.' }
+    'HOME-NET-006' = @{ cat = 'Netzwerk';            title = 'Windows-Remoteverwaltungsdienst (WinRM) deaktiviert';            rat = 'Auf Desktop-PCs und Laptops oeffnet WinRM Ports fuer PowerShell-Fernzugriff (5985/5986), die fuer Seitwaertsbewegungen genutzt werden.'; rem = 'Beenden und deaktivieren Sie den Dienst WinRM, wenn keine PowerShell-Fernverwaltung benoetigt wird.'; risk = 'Gering auf Desktop-PCs: Schliesst den Fernverwaltungsport 5985.' }
+    'HOME-NET-007' = @{ cat = 'Netzwerk';            title = 'Automatische WPAD-Proxyerkennung deaktiviert (Anti-MITM)';       rat = 'Angreifer im lokalen Netzwerk koennen auf WPAD-Anfragen antworten, um den gesamten Webverkehr ueber einen fremden Proxy umzuleiten.'; rem = 'Setzen Sie DisableWpad = 1 unter HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Wpad.'; risk = 'Sehr gering: Deaktiviert die automatische Suche nach nicht angeforderten WPAD-Proxys.' }
+    'HOME-SYS-006' = @{ cat = 'Windows-Einstellungen'; title = 'WDigest-Klartext-Passwortspeicherung im RAM deaktiviert';      rat = 'Wenn WDigest UseLogonCredential aktiviert ist, speichert Windows Benutzerpasswoerter im Klartext im LSASS-Speicher.'; rem = 'Setzen Sie UseLogonCredential = 0 unter HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.'; risk = 'Keines: Schuetzt Passwoerter vor dem Auslesen aus dem Arbeitsspeicher.' }
+    'HOME-SYS-007' = @{ cat = 'Windows-Einstellungen'; title = 'Windows-Remoteunterstuetzung deaktiviert';                     rat = 'Das Deaktivieren der Remoteunterstuetzung verhindert unbefugte Fernwartungseinladungen.'; rem = 'Setzen Sie fAllowToGetHelp = 0 unter HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance.'; risk = 'Sehr gering: Deaktiviert die veraltete Windows-Remoteunterstuetzung.' }
+    'HOME-SYS-008' = @{ cat = 'Windows-Einstellungen'; title = 'Dienst Remoteregistrierung (Remote Registry) deaktiviert';     rat = 'Der Dienst Remote Registry ermoeglicht Benutzern im Netzwerk das Lesen und Aendern Ihrer Windows-Registrierung aus der Ferne.'; rem = 'Beenden und deaktivieren Sie den Dienst RemoteRegistry (StartupType = Disabled).'; risk = 'Keines auf Heim-PCs und Einzelplatzrechnern.' }
+    'HOME-SEC-004' = @{ cat = 'Erweiterte Sicherheit'; title = 'Datenausfuehrungsverhinderung (DEP) aktiviert';                rat = 'DEP verhindert die Ausfuehrung von Schadcode (Buffer Overflows) in Speicherbereichen, die nur fuer Daten vorgesehen sind.'; rem = 'Aktivieren Sie DEP ueber bcdedit.exe /set "{current}" nx OptIn.'; risk = 'Sehr gering: OptIn ist die sichere Standardeinstellung von Windows 11.' }
+    'HOME-SEC-005' = @{ cat = 'Erweiterte Sicherheit'; title = 'Veraltete PowerShell v2.0-Engine deaktiviert (Anti-Downgrade)'; rat = 'Angreifer starten powershell.exe -Version 2, um AMSI-Virenpruefung und Script Block Logging komplett zu umgehen.'; rem = 'Deaktivieren Sie das optionale Feature MicrosoftWindowsPowerShellV2Root.'; risk = 'Sehr gering: Moderne Skripte nutzen PowerShell 5.1 oder PowerShell 7.' }
 }
 
 function Get-ValoreProprietaSicuro {

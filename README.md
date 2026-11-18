@@ -42,7 +42,7 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 
 ---
 
-## 🛡️ All 34 Implemented Security Controls
+## 🛡️ All 50 Implemented Security Controls
 
 | ID             | Category          | Security Check Description                                                  | Type     |
 |----------------|-------------------|-----------------------------------------------------------------------------|----------|
@@ -53,6 +53,8 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 | `HOME-ACC-001` | Accounts          | Built-in Guest account disabled (`SID -501`)                                | Function |
 | `HOME-ACC-002` | Accounts          | Built-in local Administrator account disabled (`SID -500`)                  | Function |
 | `HOME-ACC-003` | Accounts          | No active local user accounts without a password (`PasswordRequired = True`) | Function |
+| `HOME-ACC-004` | Accounts          | Account lockout policy active against brute-force attacks (`1..10` attempts) | Function |
+| `HOME-ACC-005` | Accounts          | Local Administrators group members minimized (`<= 2` active admins)         | Function |
 | `HOME-UPD-001` | Updates           | Windows Update automatic updates enabled (`wuauserv` not disabled)          | Function |
 | `HOME-UPD-002` | Updates           | Authentic Windows Update server (no unauthorized WSUS redirection)          | Function |
 | `HOME-AV-001`  | Antivirus         | Windows Defender Real-Time Protection enabled                               | Function |
@@ -63,23 +65,37 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 | `HOME-AV-006`  | Antivirus         | Defender Tamper Protection and Cloud `MAPS` protection enabled              | Function |
 | `HOME-AV-007`  | Antivirus         | Periodic antivirus scan completed within the last 14 days                   | Function |
 | `HOME-AV-008`  | Antivirus         | No dangerous folder (`C:\`, `Downloads`, `Temp`) or `.exe`/`.ps1` exclusions in Defender | Function |
+| `HOME-AV-009`  | Antivirus         | Ransomware protection (Controlled Folder Access) enabled                    | Function |
+| `HOME-AV-010`  | Antivirus         | Microsoft Defender Network Protection (Exploit Guard) active                | Function |
 | `HOME-FIL-001` | File Security     | No disguised double-extension executables (`.pdf.exe`, `.jpg.scr`) in `Downloads`, `Desktop`, or `Temp` | Function |
 | `HOME-FIL-002` | File Security     | No suspicious or obfuscated commands (`-enc`, `Temp`, `mshta`) in Startup `Run`/`RunOnce` keys | Function |
 | `HOME-FIL-003` | File Security     | Windows `hosts` file integrity (no hijacking of Microsoft Update or antivirus domains) | Function |
+| `HOME-FIL-004` | File Security     | No suspicious or obfuscated Windows Scheduled Tasks                         | Function |
+| `HOME-FIL-005` | File Security     | No system executable hijacking (`IFEO` Debugger backdoors on `sethc.exe`, `taskmgr.exe`, `MsMpEng.exe`) | Function |
+| `HOME-FIL-006` | File Security     | No suspicious scripts or executables (`.vbs`, `.js`, `.bat`, `.ps1`) in Startup folders | Function |
 | `HOME-SYS-001` | Windows Settings  | File extensions visible for known file types in File Explorer (`HideFileExt = 0`) | Function |
 | `HOME-SYS-002` | Windows Settings  | AutoRun and AutoPlay disabled for removable USB drives                      | Function |
 | `HOME-SYS-003` | Windows Settings  | Microsoft Defender SmartScreen enabled for apps and downloaded files        | Function |
 | `HOME-SYS-004` | Windows Settings  | Core Isolation / Memory Integrity (`HVCI`) enabled                          | Function |
 | `HOME-SYS-005` | Windows Settings  | Anonymous enumeration of SAM accounts and shares restricted (`RestrictAnonymousSAM = 1`) | Function |
+| `HOME-SYS-006` | Windows Settings  | WDigest cleartext credential caching in memory disabled (`UseLogonCredential = 0`) | Function |
+| `HOME-SYS-007` | Windows Settings  | Windows Solicited Remote Assistance disabled (`fAllowToGetHelp = 0`)        | Function |
+| `HOME-SYS-008` | Windows Settings  | Remote Registry service (`RemoteRegistry`) disabled and stopped             | Function |
 | `HOME-RDP-001` | Remote Desktop    | Remote Desktop Protocol (RDP) disabled (`fDenyTSConnections = 1`)           | Registry |
 | `HOME-NET-001` | Network           | Legacy SMBv1 protocol disabled                                              | Function |
 | `HOME-NET-002` | Network           | NetBIOS over TCP/IP disabled (`NetbiosOptions = 2`) across network adapters | Function |
 | `HOME-NET-003` | Network           | Link-Local Multicast Name Resolution (`LLMNR`) disabled (`EnableMulticast = 0`) | Function |
+| `HOME-NET-004` | Network           | No non-standard user SMB network folder shares exposed                      | Function |
+| `HOME-NET-005` | Network           | Mandatory SMB digital packet signing enabled (`RequireSecuritySignature = 1`) | Function |
+| `HOME-NET-006` | Network           | Windows Remote Management (`WinRM` / PowerShell Remoting) service stopped   | Function |
+| `HOME-NET-007` | Network           | WPAD automatic web proxy discovery disabled (anti-MITM)                     | Function |
 | `HOME-ENC-001` | Encryption        | BitLocker drive encryption active on the system drive (`C:`)                | Function |
 | `HOME-PRV-001` | Privacy           | Windows diagnostic telemetry set to minimum required level (`AllowTelemetry <= 1`) | Function |
 | `HOME-SEC-001` | Advanced Security | UEFI Secure Boot enabled                                                    | Function |
 | `HOME-SEC-002` | Advanced Security | Local Security Authority (`LSA`) protection (`RunAsPPL`) enabled            | Function |
 | `HOME-SEC-003` | Advanced Security | PowerShell Script Block Logging enabled (`EnableScriptBlockLogging = 1`)    | Function |
+| `HOME-SEC-004` | Advanced Security | Hardware Data Execution Prevention (`DEP`) active                           | Function |
+| `HOME-SEC-005` | Advanced Security | Legacy PowerShell v2.0 engine disabled (anti-downgrade attack)              | Function |
 
 ---
 

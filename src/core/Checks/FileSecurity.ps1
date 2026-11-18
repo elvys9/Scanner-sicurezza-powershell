@@ -1,12 +1,15 @@
 ﻿<#
 .SYNOPSIS
-    Controlli di sicurezza sui file locali, avvio automatico (persistenza) e file hosts.
+    Controlli di sicurezza sui file locali, avvio automatico (persistenza), task pianificati, IFEO e file hosts.
 
 .DESCRIPTION
     Contiene i controlli in sola lettura per:
     - HOME-FIL-001: Scansione file sospetti con doppia estensione in Download, Desktop e Temp (Test-SuspiciousDoubleExtensionFiles)
     - HOME-FIL-002: Verifica voci di avvio automatico (Run/RunOnce) contro persistenza malware (Test-StartupPersistenceEntries)
     - HOME-FIL-003: Integrita' del file hosts di Windows contro dirottamenti DNS (Test-HostsFileIntegrity)
+    - HOME-FIL-004: Verifica Attivita' pianificate (Scheduled Tasks) contro comandi offuscati (Test-TaskPianificatiSospetti)
+    - HOME-FIL-005: Verifica assenza dirottamenti IFEO Debugger (Sticky Keys / TaskMgr / Defender) (Test-HijackingIFEO)
+    - HOME-FIL-006: Scansione cartelle Esecuzione automatica (Startup) contro script sospetti (Test-CartellaStartupUtente)
     Non modifica mai lo stato del sistema.
 #>
 
@@ -48,15 +51,14 @@ function Test-SuspiciousDoubleExtensionFiles {
             )
         }
 
-        # Pattern doppia estensione: (estensione documento/media/archivio) seguita da (estensione eseguibile/script)
         $patternDoppiaEstensione = '(?i)\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|rtf|jpg|jpeg|png|gif|bmp|mp3|mp4|avi|zip|rar|7z)\.(exe|scr|bat|cmd|vbs|vbe|js|jse|wsf|wsh|ps1|hta|com|pif)$'
 
-        $fileSospetti   = @()
+        $fileSospetti     = @()
         $totaleAnalizzati = 0
 
         foreach ($cartella in $CartelleDaControllare) {
             if ([string]::IsNullOrWhiteSpace($cartella)) { continue }
-            if (-not (Test-Path -LiteralPath $cartella)) { continue }
+            if (-not (Test-Path -LiteralPath $cartella -ErrorAction SilentlyContinue)) { continue }
 
             $elementi = @(Get-ChildItem -LiteralPath $cartella -File -ErrorAction SilentlyContinue | Select-Object -First 1000)
             foreach ($file in $elementi) {
@@ -208,7 +210,7 @@ function Test-HostsFileIntegrity {
         }
 
         $righe = @(Get-Content -LiteralPath $PercorsoHosts -Encoding UTF8 -ErrorAction Stop)
-        $righeAttive = @()
+        $righeAttive   = @()
         $righeSospette = @()
 
         $patternDominiSensibili = '(?i)(windowsupdate\.com|update\.microsoft\.com|microsoft\.com|defender|virustotal\.com|malwarebytes\.com|kaspersky|bitdefender|avast|Norton|mcafee)'
@@ -218,7 +220,6 @@ function Test-HostsFileIntegrity {
             if ($trimmed -eq '' -or $trimmed.StartsWith('#')) {
                 continue
             }
-            # Ignora le voci standard di localhost
             if ($trimmed -match '^(127\.0\.0\.1|::1)\s+localhost(\s|$)') {
                 continue
             }
@@ -229,9 +230,9 @@ function Test-HostsFileIntegrity {
         }
 
         $risultato.Evidence = @{
-            Percorso            = $PercorsoHosts
-            VociPersonalizzate  = $righeAttive.Count
-            DirottamentiSospetti= $righeSospette
+            Percorso             = $PercorsoHosts
+            VociPersonalizzate   = $righeAttive.Count
+            DirottamentiSospetti = $righeSospette
         }
 
         if ($righeSospette.Count -eq 0) {
@@ -247,6 +248,211 @@ function Test-HostsFileIntegrity {
         $risultato.Status   = 'sconosciuto'
         $risultato.Observed = "Accesso negato in lettura al file hosts"
         $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-TaskPianificatiSospetti {
+    <#
+    .SYNOPSIS
+        Analizza le Attivita' pianificate (Scheduled Tasks) alla ricerca di persistenza malware
+        (esecuzione da Temp/Users\Public, PowerShell offuscato -enc, mshta, regsvr32, certutil) (HOME-FIL-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 attivita' pianificate sospette o offuscate"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $tasks = @(Get-ScheduledTask -ErrorAction Stop | Where-Object { $_.State -ne 'Disabled' -and $_.TaskPath -notlike '\Microsoft\*' })
+        $patternCmdSospetto = '(?i)(-enc\b|-EncodedCommand|FromBase64String|DownloadString|mshta\.exe|certutil\.exe.*-urlcache|regsvr32\.exe.*scrobj|\\AppData\\Local\\Temp\\|\\Users\\Public\\)'
+
+        $sospetti = @()
+        foreach ($t in $tasks) {
+            foreach ($act in $t.Actions) {
+                $exe = if ($null -ne $act.PSObject.Properties['Execute']) { [string]$act.Execute } else { '' }
+                $arg = if ($null -ne $act.PSObject.Properties['Arguments']) { [string]$act.Arguments } else { '' }
+                $combinato = "$exe $arg".Trim()
+                if ($combinato -match $patternCmdSospetto) {
+                    $sospetti += "$($t.TaskName) ($combinato)"
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            TaskAnalizzati = $tasks.Count
+            TaskSospetti   = $sospetti
+        }
+
+        if ($sospetti.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna attivita' pianificata sospetta rilevata ($($tasks.Count) task non-Microsoft verificati)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevate $($sospetti.Count) attivita' pianificate sospette: $($sospetti -join '; ')"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Cmdlet Get-ScheduledTask non disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi di amministratore richiesti per ispezionare tutte le Attivita' pianificate"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-HijackingIFEO {
+    <#
+    .SYNOPSIS
+        Verifica che non vi siano dirottamenti di eseguibili di sistema o accessibilita'
+        (Sticky Keys sethc.exe, utilman.exe, taskmgr.exe, MsMpEng.exe) tramite IFEO Debugger (HOME-FIL-005).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessun Debugger IFEO malevolo su eseguibili di sistema o accessibilita'"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $baseIfeo = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options'
+        $eseguibiliCritici = @(
+            'sethc.exe', 'utilman.exe', 'osk.exe', 'narrator.exe', 'magnify.exe',
+            'displayswitch.exe', 'atbroker.exe', 'taskmgr.exe', 'MsMpEng.exe',
+            'MpCmdRun.exe', 'SecHealthUI.exe', 'regedit.exe', 'powershell.exe'
+        )
+
+        $dirottati = @()
+        foreach ($exeName in $eseguibiliCritici) {
+            $chiaveExe = Join-Path $baseIfeo $exeName
+            if (Test-Path -LiteralPath $chiaveExe -ErrorAction SilentlyContinue) {
+                $prop = Get-ItemProperty -LiteralPath $chiaveExe -Name 'Debugger' -ErrorAction SilentlyContinue
+                if ($null -ne $prop -and $null -ne $prop.PSObject.Properties['Debugger'] -and (-not [string]::IsNullOrWhiteSpace([string]$prop.Debugger))) {
+                    $dirottati += "$exeName -> $($prop.Debugger)"
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            EseguibiliControllati = $eseguibiliCritici.Count
+            DirottamentiIFEO      = $dirottati
+        }
+
+        if ($dirottati.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessun dirottamento IFEO rilevato sugli eseguibili critici di sistema ($($eseguibiliCritici.Count) controllati)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevati dirottamenti IFEO sospetti: $($dirottati -join '; ')"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-CartellaStartupUtente {
+    <#
+    .SYNOPSIS
+        Scansiona le cartelle di Esecuzione automatica (Startup utente e comune) alla ricerca di
+        script o eseguibili sospetti (.vbs, .js, .bat, .cmd, .ps1, .hta, .scr) (HOME-FIL-006).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 script o eseguibili sospetti nelle cartelle Startup"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $cartelleStartup = @(
+            [Environment]::GetFolderPath('Startup'),
+            [Environment]::GetFolderPath('CommonStartup')
+        )
+
+        $patternScriptSospetto = '(?i)\.(vbs|vbe|js|jse|wsf|wsh|hta|bat|cmd|ps1|scr|pif)$'
+        $trovati = @()
+        $totFile = 0
+
+        foreach ($dir in $cartelleStartup) {
+            if ([string]::IsNullOrWhiteSpace($dir) -or (-not (Test-Path -LiteralPath $dir -ErrorAction SilentlyContinue))) { continue }
+            $files = @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue)
+            foreach ($f in $files) {
+                if ($f.Name -eq 'desktop.ini') { continue }
+                $totFile++
+                if ($f.Name -match $patternScriptSospetto) {
+                    $trovati += $f.FullName
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            FileTotaliStartup = $totFile
+            ScriptSospetti    = $trovati
+        }
+
+        if ($trovati.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuno script sospetto nelle cartelle Esecuzione automatica ($totFile elementi presenti)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $nomi = @($trovati | ForEach-Object { Split-Path -Leaf $_ })
+            $risultato.Observed = "Rilevati script/eseguibili sospetti in Startup: $($nomi -join ', ')"
+        }
     }
     catch {
         $risultato.Status = 'errore'
