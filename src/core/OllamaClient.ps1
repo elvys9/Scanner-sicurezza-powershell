@@ -52,57 +52,60 @@ function Format-PromptControlloOllama {
         if ($Lingua -eq 'EN') { "No terminal command (manual Windows/BIOS setting)" } else { "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)" }
     }
 
+    $statoRawDett = if ($null -ne $Dettaglio.PSObject.Properties['Status'] -and $Dettaglio.Status) {
+        [string]$Dettaglio.Status
+    } else {
+        [string]$Dettaglio.StatusLabel
+    }
+
     if ($Lingua -eq 'EN') {
+        $verdettoEn = if ($statoRawDett -match 'fallito|failed') {
+            "IMPORTANT FACT: This security control FAILED on this PC (it is currently NOT configured securely)."
+        } elseif ($statoRawDett -match 'superato|passed') {
+            "IMPORTANT FACT: This security control PASSED on this PC (it is already configured securely)."
+        } else {
+            "IMPORTANT FACT: This security control status is UNKNOWN (requires administrator privileges to verify)."
+        }
         $promptEn = @"
-You are a cybersecurity expert for Windows 11 home users.
-Reply ONLY in clear, concise, practical English.
-Do not invent data and do not change the control status (which was already deterministically verified by the scanner).
+[LANGUAGE: ENGLISH ONLY]
+$verdettoEn
+Control: $($Dettaglio.Title) ($($Dettaglio.ControlId))
+Observed on this PC: $($Dettaglio.ValoreOsservato)
+Expected secure setting: $($Dettaglio.ValoreAtteso)
+Why it matters: $($Dettaglio.SpiegazioneSemplice)
+How to fix it: $($Dettaglio.TestoRimedio)
+Command: $cmdRif
 
-SYSTEM CONTEXT: $infoOs
-ANALYZED CONTROL:
-- ID: $($Dettaglio.ControlId)
-- Title: $($Dettaglio.Title)
-- Category: $($Dettaglio.Category)
-- Severity: $($Dettaglio.SeverityLabel)
-- Detected Status: $($Dettaglio.StatusLabel)
-- Expected Value: $($Dettaglio.ValoreAtteso)
-- Observed Value on PC: $($Dettaglio.ValoreOsservato)
-- Rationale: $($Dettaglio.SpiegazioneSemplice)
-- Recommended Remediation: $($Dettaglio.TestoRimedio)
-- Reference Command: $cmdRif
-- Risk Notes: $($Dettaglio.NoteRischi)
-
-Provide a response structured in 3 short points:
-1. WHAT IT MEANS: explain in simple English what was found on the PC.
-2. WHY IT MATTERS: explain the concrete security risk for the user.
-3. HOW TO FIX SAFELY: explain step-by-step what to do (if Failed or Unknown) or confirm that the setting is already optimal (if Passed), noting any precautions.
+Write 3 short bullet points in ENGLISH:
+1. WHAT WAS FOUND: state clearly that '$($Dettaglio.Title)' is currently '$($Dettaglio.ValoreOsservato)'.
+2. SECURITY RISK: explain why '$($Dettaglio.SpiegazioneSemplice)' matters for a home PC.
+3. HOW TO FIX SAFELY: explain how to apply '$($Dettaglio.TestoRimedio)'.
 "@
         return $promptEn.Trim()
     }
 
+    $verdettoIt = if ($statoRawDett -match 'fallito|failed') {
+        "FATTO ACCERTATO: Questo controllo di sicurezza e' FALLITO sul PC (NON e' configurato in modo sicuro)."
+    } elseif ($statoRawDett -match 'superato|passed') {
+        "FATTO ACCERTATO: Questo controllo di sicurezza e' SUPERATO sul PC (e' gia' attivo e sicuro)."
+    } else {
+        "FATTO ACCERTATO: Lo stato del controllo e' SCONOSCIUTO (servono privilegi di amministratore)."
+    }
+
     $prompt = @"
-Sei un assistente esperto di sicurezza informatica per utenti domestici Windows 11.
-Rispondi SOLO in lingua italiana, in modo chiaro, conciso e pratico.
-Non inventare dati e non cambiare lo stato del controllo (che e' gia' stato verificato in modo deterministico dallo scanner).
+[LINGUA OBBLIGATORIA: SOLO ITALIANO - NON SCRIVERE IN INGLESE]
+$verdettoIt
+Controllo: $($Dettaglio.Title) ($($Dettaglio.ControlId))
+Valore trovato sul PC: $($Dettaglio.ValoreOsservato)
+Valore sicuro atteso: $($Dettaglio.ValoreAtteso)
+Perche' conta: $($Dettaglio.SpiegazioneSemplice)
+Come correggere: $($Dettaglio.TestoRimedio)
+Comando: $cmdRif
 
-CONTESTO SISTEMA: $infoOs
-CONTROLLO ANALIZZATO:
-- ID: $($Dettaglio.ControlId)
-- Titolo: $($Dettaglio.Title)
-- Categoria: $($Dettaglio.Category)
-- Gravita': $($Dettaglio.SeverityLabel)
-- Stato rilevato: $($Dettaglio.StatusLabel)
-- Valore atteso: $($Dettaglio.ValoreAtteso)
-- Valore trovato sul PC: $($Dettaglio.ValoreOsservato)
-- Spiegazione base: $($Dettaglio.SpiegazioneSemplice)
-- Rimedio consigliato: $($Dettaglio.TestoRimedio)
-- Comando di riferimento: $cmdRif
-- Note sui rischi: $($Dettaglio.NoteRischi)
-
-Fornisci una risposta strutturata in 3 brevi punti:
-1. COSA SIGNIFICA: spiega in parole semplici cosa e' stato trovato sul PC.
-2. PERCHE' E' IMPORTANTE: spiega il rischio concreto per l'utente domestico.
-3. COME MIGLIORARE IN SICUREZZA: spiega passo dopo passo cosa fare (se lo stato e' Fallito o Sconosciuto) o conferma che l'impostazione e' gia' ottimale (se Superato), ricordando eventuali precauzioni.
+Scrivi in LINGUA ITALIANA 3 brevi punti:
+1. COSA SIGNIFICA: spiega che sul PC il controllo '$($Dettaglio.Title)' risulta '$($Dettaglio.ValoreOsservato)'.
+2. RISCHIO PER IL PC: spiega in italiano perche' '$($Dettaglio.SpiegazioneSemplice)' e' importante.
+3. COME MIGLIORARE IN SICUREZZA: spiega in italiano come applicare '$($Dettaglio.TestoRimedio)'.
 "@
 
     return $prompt.Trim()
@@ -717,13 +720,22 @@ function Invoke-RichiestaOllama {
     $uriGen = "$urlPulito/api/generate"
 
     try {
+        $isPromptEn = ($Prompt -match '\[LANGUAGE: ENGLISH ONLY\]|Write a structured report in 4 sections')
+        $sysMsg = if ($isPromptEn) {
+            "You are a Windows 11 cybersecurity assistant. Reply strictly in ENGLISH. Never contradict the scanner facts provided in the prompt."
+        }
+        else {
+            "Sei un assistente di sicurezza informatica per Windows 11. Rispondi ESCLUSIVAMENTE in lingua ITALIANA (non scrivere mai in inglese). Attieniti rigorosamente ai fatti indicati nel prompt."
+        }
+
         $corpoObj = @{
             model   = $Modello
+            system  = $sysMsg
             prompt  = $Prompt
             stream  = $false
             options = @{
-                temperature = 0.2
-                num_predict = 750
+                temperature = 0.1
+                num_predict = 650
             }
         }
         $corpoJson = $corpoObj | ConvertTo-Json -Depth 5
@@ -751,10 +763,24 @@ function Invoke-RichiestaOllama {
             }
         }
 
+        # Se abbiamo i dati strutturati deterministici (TestoFallbackLocale), li affianchiamo
+        # alla risposta di Ollama, verificando anche la coerenza della lingua per i modelli molto piccoli (0.5b)
+        $rispostaFinale = $testoRisposta
+        if (-not [string]::IsNullOrWhiteSpace($TestoFallbackLocale)) {
+            $rispostaInIngleseIndesiderato = ((-not $isPromptEn) -and ($testoRisposta -match '(?i)\b(WHAT IT MEANS|WHY IT MATTERS|HOW TO FIX|The user should|The system disk is)\b'))
+            if ($rispostaInIngleseIndesiderato) {
+                $rispostaFinale = $TestoFallbackLocale
+            }
+            else {
+                $titoloIa = if ($isPromptEn) { "=== AI COMMENTARY ($Modello) ===" } else { "=== COMMENTO GENERATO DALL'IA ($Modello) ===" }
+                $rispostaFinale = "$TestoFallbackLocale`n`n$titoloIa`n$testoRisposta"
+            }
+        }
+
         return [PSCustomObject]@{
             Successo = $true
             Sorgente = "Ollama ($Modello su $urlPulito)"
-            Risposta = $testoRisposta
+            Risposta = $rispostaFinale
             Modello  = $Modello
             DurataMs = [int]$cronometro.ElapsedMilliseconds
             Errore   = $null

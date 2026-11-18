@@ -664,8 +664,8 @@ $script:XamlIncorporato = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Scanner sicurezza Windows"
-        Width="1240" Height="800"
-        MinWidth="920" MinHeight="620"
+        Width="1260" Height="820"
+        MinWidth="960" MinHeight="640"
         WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
         UseLayoutRounding="True"
@@ -678,10 +678,10 @@ $script:XamlIncorporato = @'
 
     <Window.Resources>
         <ResourceDictionary>
-            <!-- Palette Tema Chiaro (aggiornabile a runtime per Tema Scuro) -->
-            <SolidColorBrush x:Key="BgPrimary" Color="#F1F5F9"/>
+            <!-- Palette Moderna (Tema Chiaro predefinito, aggiornabile a Tema Scuro) -->
+            <SolidColorBrush x:Key="BgPrimary" Color="#EEF2F6"/>
             <SolidColorBrush x:Key="BgSurface" Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="BgHeader" Color="#0F172A"/>
+            <SolidColorBrush x:Key="BgHeader" Color="#0B1120"/>
             <SolidColorBrush x:Key="TextHeader" Color="#F8FAFC"/>
             <SolidColorBrush x:Key="BgSubtle" Color="#F8FAFC"/>
             <SolidColorBrush x:Key="TextPrimary" Color="#0F172A"/>
@@ -691,38 +691,38 @@ $script:XamlIncorporato = @'
             <SolidColorBrush x:Key="AccentText" Color="#FFFFFF"/>
             <SolidColorBrush x:Key="AiAccentBrush" Color="#7C3AED"/>
 
-            <!-- Colori semantici per stato -->
-            <SolidColorBrush x:Key="PassBg" Color="#DCFCE7"/>
-            <SolidColorBrush x:Key="PassFg" Color="#166534"/>
-            <SolidColorBrush x:Key="PassBorder" Color="#86EFAC"/>
+            <!-- Colori semantici -->
+            <SolidColorBrush x:Key="PassBg" Color="#ECFDF5"/>
+            <SolidColorBrush x:Key="PassFg" Color="#065F46"/>
+            <SolidColorBrush x:Key="PassBorder" Color="#10B981"/>
 
-            <SolidColorBrush x:Key="FailBg" Color="#FEE2E2"/>
+            <SolidColorBrush x:Key="FailBg" Color="#FEF2F2"/>
             <SolidColorBrush x:Key="FailFg" Color="#991B1B"/>
-            <SolidColorBrush x:Key="FailBorder" Color="#FCA5A5"/>
+            <SolidColorBrush x:Key="FailBorder" Color="#EF4444"/>
 
-            <SolidColorBrush x:Key="UnknownBg" Color="#E2E8F0"/>
+            <SolidColorBrush x:Key="UnknownBg" Color="#F1F5F9"/>
             <SolidColorBrush x:Key="UnknownFg" Color="#334155"/>
-            <SolidColorBrush x:Key="UnknownBorder" Color="#94A3B8"/>
+            <SolidColorBrush x:Key="UnknownBorder" Color="#64748B"/>
 
-            <SolidColorBrush x:Key="NaBg" Color="#F1F5F9"/>
-            <SolidColorBrush x:Key="NaFg" Color="#475569"/>
-            <SolidColorBrush x:Key="NaBorder" Color="#CBD5E1"/>
+            <SolidColorBrush x:Key="NaBg" Color="#F8FAFC"/>
+            <SolidColorBrush x:Key="NaFg" Color="#64748B"/>
+            <SolidColorBrush x:Key="NaBorder" Color="#94A3B8"/>
 
-            <SolidColorBrush x:Key="ErrorBg" Color="#FFEDD5"/>
+            <SolidColorBrush x:Key="ErrorBg" Color="#FFF7ED"/>
             <SolidColorBrush x:Key="ErrorFg" Color="#9A3412"/>
-            <SolidColorBrush x:Key="ErrorBorder" Color="#FDBA74"/>
+            <SolidColorBrush x:Key="ErrorBorder" Color="#F97316"/>
 
-            <SolidColorBrush x:Key="WarnBannerBg" Color="#FEF3C7"/>
+            <SolidColorBrush x:Key="WarnBannerBg" Color="#FFFBEB"/>
             <SolidColorBrush x:Key="WarnBannerFg" Color="#92400E"/>
             <SolidColorBrush x:Key="WarnBannerBorder" Color="#F59E0B"/>
 
-            <!-- Stile Pulsante Secondario Moderno -->
+            <!-- Stile Pulsante Moderno Fluent -->
             <Style x:Key="ModernButton" TargetType="Button">
                 <Setter Property="Background" Value="{DynamicResource BgSurface}"/>
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtle}"/>
                 <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="Padding" Value="14,7"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Template">
@@ -732,16 +732,18 @@ $script:XamlIncorporato = @'
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="6"
+                                    CornerRadius="7"
                                     Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.45"/>
+                                    <Setter Property="Opacity" Value="0.42"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -762,29 +764,30 @@ $script:XamlIncorporato = @'
                 <Setter Property="Foreground" Value="#FFFFFF"/>
                 <Setter Property="BorderBrush" Value="{DynamicResource AiAccentBrush}"/>
             </Style>
+
+            <!-- Stile Pulsante Barra Intestazione Scuro -->
+            <Style x:Key="HeaderButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+                <Setter Property="Background" Value="#1E293B"/>
+                <Setter Property="Foreground" Value="#F8FAFC"/>
+                <Setter Property="BorderBrush" Value="#334155"/>
+                <Setter Property="Padding" Value="12,6"/>
+            </Style>
         </ResourceDictionary>
     </Window.Resources>
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- 0: Intestazione + Navigazione tra Pagina 1 (Scansione) e Pagina 2 (Resoconto IA) -->
             <RowDefinition Height="Auto"/>
-            <!-- 1: Banner Non-Admin -->
             <RowDefinition Height="Auto"/>
-            <!-- 2: Banner Errore -->
             <RowDefinition Height="Auto"/>
-            <!-- 3: Barra comandi principale + Progresso -->
             <RowDefinition Height="Auto"/>
-            <!-- 4: Schede KPI Riepilogo -->
             <RowDefinition Height="Auto"/>
-            <!-- 5: Area Centrale Multischermo (Pagina 1 Scansione OPPURE Pagina 2 Assistente IA) -->
             <RowDefinition Height="*"/>
-            <!-- 6: Barra Inferiore (Export + Disclaimer) -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- 0. INTESTAZIONE + SELETTORE PAGINA -->
-        <Border Grid.Row="0" Background="{DynamicResource BgHeader}" Padding="18,10">
+        <!-- 0. INTESTAZIONE PREMIUM -->
+        <Border Grid.Row="0" Background="{DynamicResource BgHeader}" Padding="20,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -795,53 +798,58 @@ $script:XamlIncorporato = @'
 
                 <!-- Logo e Titolo -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="#1E3A8A" CornerRadius="6" Padding="7,5" Margin="0,0,12,0">
-                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="16"
-                                   Foreground="#60A5FA" VerticalAlignment="Center"/>
+                    <Border Background="#1D4ED8" CornerRadius="8" Padding="9,7" Margin="0,0,12,0">
+                        <TextBlock Text="&#xE72E;" FontFamily="Segoe MDL2 Assets" FontSize="17"
+                                   Foreground="#FFFFFF" VerticalAlignment="Center"/>
                     </Border>
                     <StackPanel VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Scanner Sicurezza Windows 11" FontSize="16" FontWeight="Bold"
+                            <TextBlock x:Name="TxtTitoloApp" Text="Scanner Sicurezza Windows 11"
+                                       FontSize="16.5" FontWeight="Bold"
                                        Foreground="{DynamicResource TextHeader}" VerticalAlignment="Center"/>
-                            <Border Background="#065F46" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="SOLA LETTURA" FontSize="10" FontWeight="Bold" Foreground="#A7F3D0"/>
+                            <Border Background="#065F46" BorderBrush="#10B981" BorderThickness="1"
+                                    CornerRadius="5" Padding="7,1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="TxtBadgeSolaLettura" Text="SOLA LETTURA"
+                                           FontSize="10" FontWeight="Bold" Foreground="#A7F3D0"/>
                             </Border>
                         </StackPanel>
-                        <TextBlock Text="34 Controlli Deterministici + Assistente IA Locale (Ollama)"
-                                   FontSize="11" Foreground="#94A3B8"/>
+                        <TextBlock x:Name="TxtSottotitoloApp"
+                                   Text="34 Controlli Deterministici + Assistente IA Locale (Ollama)"
+                                   FontSize="11.5" Foreground="#94A3B8" Margin="0,1,0,0"/>
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Barra Navigazione Pagine al Centro -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Button x:Name="BtnNavScansione"
-                            Content="1. Tabella Controlli &amp; Dettagli"
-                            Style="{StaticResource PrimaryButton}"
-                            Padding="16,6" Margin="0,0,8,0"
-                            ToolTip="Mostra la pagina principale con la tabella dei 34 controlli e i dettagli tecnici"/>
-                    <Button x:Name="BtnNavIA"
-                            Content="2. &#x2728; Pagina Resoconto IA (Ollama)"
-                            Style="{StaticResource AiButton}"
-                            Padding="16,6"
-                            ToolTip="Apre la pagina dedicata a tutto schermo per l'analisi IA con Ollama e il piano di sicurezza"/>
-                </StackPanel>
+                <!-- Navigazione Pagine al Centro -->
+                <Border Grid.Column="1" Background="#1E293B" BorderBrush="#334155" BorderThickness="1"
+                        CornerRadius="9" Padding="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="BtnNavScansione"
+                                Content="1. Tabella Controlli &amp; Dettagli"
+                                Style="{StaticResource PrimaryButton}"
+                                Padding="16,6" Margin="0,0,4,0"/>
+                        <Button x:Name="BtnNavIA"
+                                Content="2. Pagina Resoconto IA (Ollama)"
+                                Style="{StaticResource AiButton}"
+                                Padding="16,6"/>
+                    </StackPanel>
+                </Border>
 
-                <!-- Info Ambiente -->
-                <Border Grid.Column="2" Background="#1E293B" CornerRadius="6" Padding="12,6" Margin="0,0,10,0"
+                <!-- Badge Ambiente -->
+                <Border Grid.Column="2" Background="#1E293B" CornerRadius="7" Padding="12,6" Margin="0,0,10,0"
                         VerticalAlignment="Center" BorderBrush="#334155" BorderThickness="1">
                     <TextBlock x:Name="TxtAmbienteInfo"
                                Text="Windows 11 | Admin: --"
                                Foreground="#E2E8F0" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 </Border>
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                <!-- Selettori Lingua e Tema -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="BtnLingua" Content="Lang: EN"
-                            Style="{StaticResource ModernButton}"
-                            MinWidth="82" Margin="0,0,8,0"
-                            ToolTip="Switch interface and AI language between Italian (IT) and English (EN)"/>
+                            Style="{StaticResource HeaderButton}"
+                            MinWidth="84" Margin="0,0,8,0"/>
                     <Button x:Name="BtnTema" Content="Tema: Scuro"
-                            Style="{StaticResource ModernButton}"
-                            MinWidth="105" TabIndex="1"/>
+                            Style="{StaticResource HeaderButton}"
+                            MinWidth="106" TabIndex="1"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -850,7 +858,7 @@ $script:XamlIncorporato = @'
         <Border x:Name="BannerNonAdmin" Grid.Row="1"
                 Background="{DynamicResource WarnBannerBg}"
                 BorderBrush="{DynamicResource WarnBannerBorder}"
-                BorderThickness="0,0,0,1" Padding="18,8" Visibility="Collapsed">
+                BorderThickness="0,0,0,1" Padding="20,9" Visibility="Collapsed">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -858,7 +866,8 @@ $script:XamlIncorporato = @'
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="[!]" FontWeight="Bold" Foreground="{DynamicResource WarnBannerFg}" Margin="0,0,8,0"/>
-                    <TextBlock Foreground="{DynamicResource WarnBannerFg}" TextWrapping="Wrap" VerticalAlignment="Center"
+                    <TextBlock x:Name="TxtBannerNonAdmin"
+                               Foreground="{DynamicResource WarnBannerFg}" TextWrapping="Wrap" VerticalAlignment="Center" FontWeight="SemiBold"
                                Text="Sessione non amministrativa: alcuni controlli risulteranno 'Sconosciuto'. Riavvia come Amministratore per l'analisi completa."/>
                 </StackPanel>
                 <Button x:Name="BtnRiavviaAdmin" Grid.Column="1" Content="Riavvia come amministratore"
@@ -870,7 +879,7 @@ $script:XamlIncorporato = @'
         <Border x:Name="BannerErrore" Grid.Row="2"
                 Background="{DynamicResource ErrorBg}"
                 BorderBrush="{DynamicResource ErrorBorder}"
-                BorderThickness="0,0,0,1" Padding="18,8" Visibility="Collapsed">
+                BorderThickness="0,0,0,1" Padding="20,8" Visibility="Collapsed">
             <TextBlock x:Name="TxtBannerErrore"
                        Foreground="{DynamicResource ErrorFg}"
                        TextWrapping="Wrap" FontWeight="SemiBold"
@@ -879,7 +888,7 @@ $script:XamlIncorporato = @'
 
         <!-- 3. BARRA AZIONI PRINCIPALE E AVANZAMENTO -->
         <Border Grid.Row="3" Background="{DynamicResource BgSurface}"
-                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="18,10">
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Padding="20,11">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
@@ -889,62 +898,64 @@ $script:XamlIncorporato = @'
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Button x:Name="BtnAvvia" Grid.Column="0" Content="_Avvia scansione (34 controlli)"
-                        Style="{StaticResource PrimaryButton}" Padding="16,7" TabIndex="3"/>
+                <Button x:Name="BtnAvvia" Grid.Column="0" Content="Avvia scansione (34 controlli)"
+                        Style="{StaticResource PrimaryButton}" Padding="18,8" TabIndex="3"/>
 
-                <Button x:Name="BtnAnnulla" Grid.Column="1" Content="A_nnulla"
-                        Style="{StaticResource ModernButton}" Padding="14,7" Margin="8,0,0,0"
+                <Button x:Name="BtnAnnulla" Grid.Column="1" Content="Annulla"
+                        Style="{StaticResource ModernButton}" Padding="16,8" Margin="8,0,0,0"
                         IsEnabled="False" TabIndex="4"/>
 
-                <Button x:Name="BtnResocontoLLM" Grid.Column="2" Content="&#x2728; Apri Resoconto IA &amp; Consigli"
-                        Style="{StaticResource AiButton}" Padding="14,7" Margin="12,0,0,0"
-                        IsEnabled="False" TabIndex="5"
-                        ToolTip="Passa alla Pagina 2 e genera con Ollama il resoconto completo e i consigli per il PC"/>
+                <Button x:Name="BtnResocontoLLM" Grid.Column="2" Content="Apri Resoconto IA &amp; Consigli"
+                        Style="{StaticResource AiButton}" Padding="16,8" Margin="12,0,0,0"
+                        IsEnabled="False" TabIndex="5"/>
 
-                <ProgressBar x:Name="ProgressScansione" Grid.Column="3"
-                             Height="14" Margin="20,0,14,0" Minimum="0" Maximum="34" Value="0"
-                             Foreground="#10B981" VerticalAlignment="Center"/>
+                <Border Grid.Column="3" Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1" CornerRadius="6" Height="16" Margin="22,0,16,0" VerticalAlignment="Center" ClipToBounds="True">
+                    <ProgressBar x:Name="ProgressScansione"
+                                 Minimum="0" Maximum="34" Value="0"
+                                 BorderThickness="0" Background="Transparent" Foreground="#10B981"/>
+                </Border>
 
                 <TextBlock x:Name="TxtProgresso" Grid.Column="4"
                            Text="Pronto (0/34)" FontWeight="Bold"
                            Foreground="{DynamicResource TextSecondary}"
-                           VerticalAlignment="Center" MinWidth="135" TextAlignment="Right"/>
+                           VerticalAlignment="Center" MinWidth="145" TextAlignment="Right"/>
             </Grid>
         </Border>
 
-        <!-- 4. SCHEDE KPI RIEPILOGO -->
-        <Border Grid.Row="4" Background="{DynamicResource BgPrimary}" Padding="18,10,18,6">
+        <!-- 4. SCHEDE KPI RIEPILOGO MODERNE (CON BORDO ACCENTO LATERALE) -->
+        <Border Grid.Row="4" Background="{DynamicResource BgPrimary}" Padding="20,12,20,6">
             <UniformGrid Rows="1" Columns="5">
                 <Border Background="{DynamicResource PassBg}" BorderBrush="{DynamicResource PassBorder}"
-                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,8,0">
+                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
                     <TextBlock x:Name="TxtCountSuperati" Text="[OK] 0 Superati" FontSize="14"
-                               Foreground="{DynamicResource PassFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                               Foreground="{DynamicResource PassFg}" FontWeight="Bold" VerticalAlignment="Center"/>
                 </Border>
                 <Border Background="{DynamicResource FailBg}" BorderBrush="{DynamicResource FailBorder}"
-                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,8,0">
+                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
                     <TextBlock x:Name="TxtCountFalliti" Text="[X] 0 Falliti" FontSize="14"
-                               Foreground="{DynamicResource FailFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                               Foreground="{DynamicResource FailFg}" FontWeight="Bold" VerticalAlignment="Center"/>
                 </Border>
                 <Border Background="{DynamicResource UnknownBg}" BorderBrush="{DynamicResource UnknownBorder}"
-                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,8,0">
+                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
                     <TextBlock x:Name="TxtCountSconosciuti" Text="[?] 0 Sconosciuti" FontSize="14"
-                               Foreground="{DynamicResource UnknownFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                               Foreground="{DynamicResource UnknownFg}" FontWeight="Bold" VerticalAlignment="Center"/>
                 </Border>
                 <Border Background="{DynamicResource NaBg}" BorderBrush="{DynamicResource NaBorder}"
-                        BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,8,0">
+                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10" Margin="0,0,10,0">
                     <TextBlock x:Name="TxtCountNonApplicabili" Text="[-] 0 Non applicabili" FontSize="14"
-                               Foreground="{DynamicResource NaFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                               Foreground="{DynamicResource NaFg}" FontWeight="Bold" VerticalAlignment="Center"/>
                 </Border>
                 <Border Background="{DynamicResource ErrorBg}" BorderBrush="{DynamicResource ErrorBorder}"
-                        BorderThickness="1" CornerRadius="8" Padding="12,8">
+                        BorderThickness="4,1,1,1" CornerRadius="8" Padding="14,10">
                     <TextBlock x:Name="TxtCountErrori" Text="[!] 0 Errori" FontSize="14"
-                               Foreground="{DynamicResource ErrorFg}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                               Foreground="{DynamicResource ErrorFg}" FontWeight="Bold" VerticalAlignment="Center"/>
                 </Border>
             </UniformGrid>
         </Border>
 
         <!-- ====================================================================== -->
-        <!-- 5A. PAGINA 1: TABELLA CONTROLLI E DETTAGLIO PULITO (SENZA AFFOLLAMENTO) -->
+        <!-- 5A. PAGINA 1: TABELLA CONTROLLI E DETTAGLIO PULITO                     -->
         <!-- ====================================================================== -->
         <Grid x:Name="GridPaginaScansione" Grid.Row="5" Visibility="Visible">
             <Grid.RowDefinitions>
@@ -954,10 +965,11 @@ $script:XamlIncorporato = @'
 
             <!-- Barra Filtri -->
             <Border Grid.Row="0" Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,1" Padding="18,8" Margin="0,2,0,0">
+                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="8"
+                    Padding="16,9" Margin="20,4,20,2">
                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Stato:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="CmbFiltroStato" Width="135" Padding="6,4" Margin="0,0,14,0" SelectedIndex="0" TabIndex="6">
+                    <TextBlock x:Name="LblFiltroStato" Text="Stato:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
+                    <ComboBox x:Name="CmbFiltroStato" Width="135" Padding="6,4" Margin="0,0,16,0" SelectedIndex="0" TabIndex="6">
                         <ComboBoxItem Content="Tutti"/>
                         <ComboBoxItem Content="fallito"/>
                         <ComboBoxItem Content="superato"/>
@@ -966,8 +978,8 @@ $script:XamlIncorporato = @'
                         <ComboBoxItem Content="errore"/>
                     </ComboBox>
 
-                    <TextBlock Text="Gravita':" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="CmbFiltroGravita" Width="120" Padding="6,4" Margin="0,0,14,0" SelectedIndex="0" TabIndex="7">
+                    <TextBlock x:Name="LblFiltroGravita" Text="Gravita':" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
+                    <ComboBox x:Name="CmbFiltroGravita" Width="125" Padding="6,4" Margin="0,0,16,0" SelectedIndex="0" TabIndex="7">
                         <ComboBoxItem Content="Tutte"/>
                         <ComboBoxItem Content="critico"/>
                         <ComboBoxItem Content="alto"/>
@@ -976,32 +988,31 @@ $script:XamlIncorporato = @'
                         <ComboBoxItem Content="informativo"/>
                     </ComboBox>
 
-                    <TextBlock Text="Categoria:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                    <ComboBox x:Name="CmbFiltroCategoria" Width="165" Padding="6,4" Margin="0,0,14,0" SelectedIndex="0" TabIndex="8">
+                    <TextBlock x:Name="LblFiltroCategoria" Text="Categoria:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
+                    <ComboBox x:Name="CmbFiltroCategoria" Width="165" Padding="6,4" Margin="0,0,16,0" SelectedIndex="0" TabIndex="8">
                         <ComboBoxItem Content="Tutte"/>
                     </ComboBox>
 
-                    <TextBlock Text="Cerca:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
-                    <TextBox x:Name="TxtRicerca" Width="210" Padding="6,4" Margin="0,0,10,0" TabIndex="9"
-                             VerticalContentAlignment="Center"
-                             ToolTip="Filtra per titolo o ID del controllo"/>
+                    <TextBlock x:Name="LblFiltroCerca" Text="Cerca:" VerticalAlignment="Center" Margin="0,0,6,0" FontWeight="SemiBold"/>
+                    <TextBox x:Name="TxtRicerca" Width="210" Padding="7,4" Margin="0,0,12,0" TabIndex="9"
+                             VerticalContentAlignment="Center"/>
 
                     <Button x:Name="BtnResetFiltri" Content="Reimposta filtri"
-                            Style="{StaticResource ModernButton}" Padding="10,4" TabIndex="10"/>
+                            Style="{StaticResource ModernButton}" Padding="12,5" TabIndex="10"/>
                 </WrapPanel>
             </Border>
 
-            <!-- Tabella a sinistra + Dettaglio controllo spazioso a destra -->
-            <Grid Grid.Row="1" Margin="18,10,18,10">
+            <!-- Tabella a sinistra + Dettaglio controllo a destra -->
+            <Grid Grid.Row="1" Margin="20,8,20,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="6*" MinWidth="460"/>
                     <ColumnDefinition Width="12"/>
-                    <ColumnDefinition Width="5*" MinWidth="380"/>
+                    <ColumnDefinition Width="5*" MinWidth="390"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Colonna sinistra: Tabella -->
                 <Border Grid.Column="0" Background="{DynamicResource BgSurface}"
-                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="10" ClipToBounds="True">
                     <Grid>
                         <DataGrid x:Name="GridRisultati"
                                   AutoGenerateColumns="False"
@@ -1016,34 +1027,35 @@ $script:XamlIncorporato = @'
                                   AlternatingRowBackground="{DynamicResource BgSubtle}"
                                   Foreground="{DynamicResource TextPrimary}"
                                   BorderThickness="0"
-                                  RowHeight="32"
+                                  RowHeight="34"
                                   RowHeaderWidth="0"
                                   CanUserAddRows="False"
                                   CanUserDeleteRows="False"
                                   CanUserReorderColumns="False"
                                   TabIndex="11">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Stato" Binding="{Binding StatusLabel}" Width="120"/>
-                                <DataGridTextColumn Header="Gravita'" Binding="{Binding SeverityLabel}" Width="80"/>
-                                <DataGridTextColumn Header="Categoria" Binding="{Binding Category}" Width="130"/>
-                                <DataGridTextColumn Header="ID" Binding="{Binding ControlId}" Width="115"/>
-                                <DataGridTextColumn Header="Controllo" Binding="{Binding Title}" Width="*"/>
+                                <DataGridTextColumn x:Name="ColStato" Header="Stato" Binding="{Binding StatusLabel}" Width="125"/>
+                                <DataGridTextColumn x:Name="ColGravita" Header="Gravita'" Binding="{Binding SeverityLabel}" Width="85"/>
+                                <DataGridTextColumn x:Name="ColCategoria" Header="Categoria" Binding="{Binding Category}" Width="135"/>
+                                <DataGridTextColumn x:Name="ColId" Header="ID" Binding="{Binding ControlId}" Width="115"/>
+                                <DataGridTextColumn x:Name="ColControllo" Header="Controllo" Binding="{Binding Title}" Width="*"/>
                             </DataGrid.Columns>
                         </DataGrid>
 
                         <Border x:Name="PanelGuidaVuota"
                                 Background="{DynamicResource BgSurface}"
-                                Padding="28" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                Padding="30" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="42"
-                                           Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,12"/>
+                                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="44"
+                                           Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" Margin="0,0,0,14"/>
                                 <TextBlock x:Name="TxtMessaggioGuida"
                                            Text="Premi 'Avvia scansione' per analizzare i 34 controlli di sicurezza del PC."
                                            FontSize="16" FontWeight="Bold"
                                            Foreground="{DynamicResource TextPrimary}"
                                            TextAlignment="Center" TextWrapping="Wrap"/>
-                                <TextBlock Text="Al termine potrai aprire la Pagina 2 (Resoconto IA Ollama) per avere l'analisi completa e i consigli."
-                                           FontSize="12" Foreground="{DynamicResource TextSecondary}"
+                                <TextBlock x:Name="TxtSottotitoloGuida"
+                                           Text="Al termine potrai aprire la Pagina 2 (Resoconto IA Ollama) per avere l'analisi completa e i consigli."
+                                           FontSize="12.5" Foreground="{DynamicResource TextSecondary}"
                                            TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
                             </StackPanel>
                         </Border>
@@ -1052,9 +1064,9 @@ $script:XamlIncorporato = @'
 
                 <GridSplitter Grid.Column="1" Width="12" HorizontalAlignment="Stretch" Background="Transparent"/>
 
-                <!-- Colonna destra Pagina 1: SOLO Dettaglio del Controllo (pulito e ordinato) -->
+                <!-- Colonna destra Pagina 1: Dettaglio del Controllo -->
                 <Border Grid.Column="2" Background="{DynamicResource BgSurface}"
-                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="16">
+                        BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="18">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -1064,7 +1076,7 @@ $script:XamlIncorporato = @'
                         <!-- Intestazione fissa del controllo -->
                         <Border Grid.Row="0" Background="{DynamicResource BgSubtle}"
                                 BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                                CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                                CornerRadius="8" Padding="14,10" Margin="0,0,0,14">
                             <StackPanel>
                                 <TextBlock x:Name="TxtDettaglioTitolo"
                                            Text="Seleziona un controllo dalla tabella"
@@ -1095,15 +1107,14 @@ $script:XamlIncorporato = @'
                                             Style="{StaticResource ModernButton}" Padding="10,5" Margin="6,0,0,0" TabIndex="13"/>
 
                                     <Button x:Name="BtnSpiegaLLM" Grid.Column="3"
-                                            Content="&#x2728; Spiega con IA (Pagina 2)"
-                                            Style="{StaticResource AiButton}" Padding="12,5"
-                                            ToolTip="Apre la Pagina 2 (Assistente IA) e analizza nel dettaglio questo controllo"/>
+                                            Content="Spiega con IA (Pagina 2)"
+                                            Style="{StaticResource AiButton}" Padding="12,5"/>
                                 </Grid>
 
                                 <TextBlock x:Name="TxtTitoloSpiegazione" Text="Perche' conta (spiegazione semplice)"
                                            FontWeight="Bold" Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
                                 <Border Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
-                                        BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                                        BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
                                     <TextBlock x:Name="TxtDettaglioSpiegazione"
                                                Text="Seleziona una riga nella tabella a sinistra per leggere la spiegazione del controllo."
                                                TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}"/>
@@ -1111,7 +1122,7 @@ $script:XamlIncorporato = @'
 
                                 <Border x:Name="BannerDettaglioErrore"
                                         Background="{DynamicResource ErrorBg}" BorderBrush="{DynamicResource ErrorBorder}"
-                                        BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12"
+                                        BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12"
                                         Visibility="Collapsed">
                                     <TextBlock x:Name="TxtDettaglioErrore"
                                                Foreground="{DynamicResource ErrorFg}" TextWrapping="Wrap"/>
@@ -1126,9 +1137,9 @@ $script:XamlIncorporato = @'
                                     </Grid.ColumnDefinitions>
                                     <Border Grid.Column="0" Background="{DynamicResource BgSubtle}"
                                             BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                                            CornerRadius="6" Padding="12,8">
+                                            CornerRadius="8" Padding="12,8">
                                         <StackPanel>
-                                            <TextBlock Text="VALORE ATTESO (SICURO)" FontSize="10" FontWeight="Bold"
+                                            <TextBlock x:Name="LblValoreAtteso" Text="VALORE ATTESO (SICURO)" FontSize="10" FontWeight="Bold"
                                                        Foreground="{DynamicResource TextSecondary}"/>
                                             <TextBlock x:Name="TxtDettaglioAtteso" Text="-" TextWrapping="Wrap"
                                                        Margin="0,4,0,0" FontWeight="SemiBold"/>
@@ -1136,9 +1147,9 @@ $script:XamlIncorporato = @'
                                     </Border>
                                     <Border Grid.Column="2" Background="{DynamicResource BgSubtle}"
                                             BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                                            CornerRadius="6" Padding="12,8">
+                                            CornerRadius="8" Padding="12,8">
                                         <StackPanel>
-                                            <TextBlock Text="VALORE RILEVATO SUL PC" FontSize="10" FontWeight="Bold"
+                                            <TextBlock x:Name="LblValoreOsservato" Text="VALORE RILEVATO SUL PC" FontSize="10" FontWeight="Bold"
                                                        Foreground="{DynamicResource TextSecondary}"/>
                                             <TextBlock x:Name="TxtDettaglioOsservato" Text="-" TextWrapping="Wrap"
                                                        Margin="0,4,0,0" FontWeight="SemiBold"/>
@@ -1146,17 +1157,17 @@ $script:XamlIncorporato = @'
                                     </Border>
                                 </Grid>
 
-                                <TextBlock Text="Come correggere (indicazione manuale)" FontWeight="Bold"
+                                <TextBlock x:Name="LblComeCorreggere" Text="Come correggere (indicazione manuale)" FontWeight="Bold"
                                            Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,4"/>
                                 <Border Background="{DynamicResource BgSubtle}" BorderBrush="{DynamicResource BorderSubtle}"
-                                        BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                                        BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
                                     <TextBlock x:Name="TxtDettaglioRimedio"
                                                Text="-" TextWrapping="Wrap"
                                                Foreground="{DynamicResource TextPrimary}"/>
                                 </Border>
 
                                 <StackPanel x:Name="PanelComandoRimedio" Visibility="Collapsed" Margin="0,0,0,12">
-                                    <TextBlock Text="Comando PowerShell di riferimento (sola copia, non eseguito):"
+                                    <TextBlock x:Name="LblComandoRif" Text="Comando PowerShell di riferimento (sola copia, non eseguito):"
                                                FontSize="11" FontWeight="SemiBold"
                                                Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,4"/>
                                     <TextBox x:Name="TxtComandoRimedio"
@@ -1167,15 +1178,15 @@ $script:XamlIncorporato = @'
                                              BorderBrush="{DynamicResource BorderSubtle}"
                                              Padding="10,8" TextWrapping="Wrap"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                        <Button x:Name="BtnCopiaComando" Content="_Copia comando negli appunti"
+                                        <Button x:Name="BtnCopiaComando" Content="Copia comando negli appunti"
                                                 Style="{StaticResource ModernButton}" Padding="12,5" TabIndex="14"/>
-                                        <TextBlock x:Name="TxtFeedbackCopia" Text="&#x2713; Copiato negli appunti!"
+                                        <TextBlock x:Name="TxtFeedbackCopia" Text="Copiato negli appunti!"
                                                    Foreground="{DynamicResource PassFg}" FontWeight="Bold"
                                                    VerticalAlignment="Center" Margin="10,0,0,0" Visibility="Collapsed"/>
                                     </StackPanel>
                                 </StackPanel>
 
-                                <TextBlock Text="Impatto e note sui rischi" FontWeight="Bold"
+                                <TextBlock x:Name="LblNoteRischi" Text="Impatto e note sui rischi" FontWeight="Bold"
                                            Foreground="{DynamicResource TextPrimary}" Margin="0,2,0,4"/>
                                 <TextBlock x:Name="TxtDettaglioRischi"
                                            Text="-" TextWrapping="Wrap" FontSize="12"
@@ -1190,18 +1201,16 @@ $script:XamlIncorporato = @'
         <!-- ====================================================================== -->
         <!-- 5B. PAGINA 2: PAGINA DEDICATA A TUTTO SCHERMO PER RESOCONTO IA OLLAMA  -->
         <!-- ====================================================================== -->
-        <Grid x:Name="GridPaginaIA" Grid.Row="5" Margin="18,10,18,10" Visibility="Collapsed">
+        <Grid x:Name="GridPaginaIA" Grid.Row="5" Margin="20,8,20,12" Visibility="Collapsed">
             <Grid.ColumnDefinitions>
-                <!-- Colonna Sinistra: Controlli IA, Auto-Installazione Ollama e Lista Falliti -->
-                <ColumnDefinition Width="360" MinWidth="320"/>
+                <ColumnDefinition Width="380" MinWidth="340"/>
                 <ColumnDefinition Width="14"/>
-                <!-- Colonna Destra: Grande Lettore Resoconto IA a Tutto Schermo -->
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- Barra Laterale Sinistra della Pagina IA -->
             <Border Grid.Column="0" Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="16">
+                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="18">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1209,20 +1218,19 @@ $script:XamlIncorporato = @'
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Card 1: Configurazione Automatica Ollama (Zero-Touch anche su VM!) -->
+                    <!-- Card 1: Configurazione Automatica Ollama -->
                     <Border Grid.Row="0" Background="{DynamicResource BgSubtle}"
                             BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1"
-                            CornerRadius="6" Padding="12,10" Margin="0,0,0,12">
+                            CornerRadius="8" Padding="14,12" Margin="0,0,0,14">
                         <StackPanel>
-                            <TextBlock Text="MOTORE IA LOCALE (OLLAMA)" FontSize="11" FontWeight="Bold"
+                            <TextBlock x:Name="LblMotoreIaTitle" Text="MOTORE IA LOCALE (OLLAMA)" FontSize="11" FontWeight="Bold"
                                        Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,8"/>
 
-                            <TextBlock Text="Indirizzo Server Ollama:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                            <TextBox x:Name="TxtEndpointOllama" Text="http://127.0.0.1:11434" Padding="6,4" Margin="0,0,0,8"
-                                     ToolTip="Indirizzo di Ollama (rileva in automatico anche l'Host della VM o installa Ollama in background)"/>
+                            <TextBlock x:Name="LblIndirizzoOllama" Text="Indirizzo Server Ollama:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                            <TextBox x:Name="TxtEndpointOllama" Text="http://127.0.0.1:11434" Padding="7,5" Margin="0,0,0,8"/>
 
-                            <TextBlock Text="Modello LLM leggero:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
-                            <ComboBox x:Name="CmbModelloOllama" IsEditable="True" SelectedIndex="0" Padding="6,4" Margin="0,0,0,8">
+                            <TextBlock x:Name="LblModelloOllama" Text="Modello LLM leggero:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                            <ComboBox x:Name="CmbModelloOllama" IsEditable="True" SelectedIndex="0" Padding="6,4" Margin="0,0,0,10">
                                 <ComboBoxItem Content="qwen2.5:0.5b"/>
                                 <ComboBoxItem Content="qwen2.5:1.5b"/>
                                 <ComboBoxItem Content="llama3.2:1b"/>
@@ -1230,55 +1238,66 @@ $script:XamlIncorporato = @'
                                 <ComboBoxItem Content="phi3:mini"/>
                             </ComboBox>
 
-                            <CheckBox x:Name="ChkAutoInstallaOllama"
-                                      Content="Se Ollama manca sulla VM, installalo e avvialo automaticamente in background"
-                                      IsChecked="True" FontSize="11.5" Margin="0,2,0,8"/>
+                            <CheckBox x:Name="ChkAutoInstallaOllama" IsChecked="True" Margin="0,0,0,10" VerticalContentAlignment="Top">
+                                <TextBlock x:Name="TxtChkAutoInstalla"
+                                           Text="Se Ollama manca sulla VM, installalo e avvialo automaticamente in background"
+                                           TextWrapping="Wrap" FontSize="11.5"/>
+                            </CheckBox>
 
                             <Button x:Name="BtnVerificaOllama" Content="Verifica / Auto-Configura Ollama"
-                                    Style="{StaticResource ModernButton}" Padding="10,6" HorizontalAlignment="Stretch"/>
+                                    Style="{StaticResource ModernButton}" Padding="10,7" HorizontalAlignment="Stretch"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Card 2: Pulsanti di Generazione Analisi -->
-                    <StackPanel Grid.Row="1" Margin="0,0,0,12">
-                        <TextBlock Text="GENERA ANALISI E CONSIGLI" FontSize="11" FontWeight="Bold"
+                    <StackPanel Grid.Row="1" Margin="0,0,0,14">
+                        <TextBlock x:Name="LblGeneraAnalisiTitle" Text="GENERA ANALISI E CONSIGLI" FontSize="11" FontWeight="Bold"
                                    Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
 
                         <Button x:Name="BtnResocontoTab"
-                                Content="&#x2728; Genera Resoconto Completo PC"
+                                Content="Genera Resoconto Completo PC"
                                 Style="{StaticResource AiButton}" Padding="12,9" Margin="0,0,0,8"
-                                HorizontalAlignment="Stretch"
-                                ToolTip="Analizza tutti i 34 controlli e scrive il piano completo di messa in sicurezza"/>
+                                HorizontalAlignment="Stretch"/>
 
                         <Button x:Name="BtnSpiegaControlloTab"
                                 Content="Spiega il Controllo Selezionato"
                                 Style="{StaticResource PrimaryButton}" Padding="12,8"
-                                HorizontalAlignment="Stretch"
-                                ToolTip="Chiede all'IA di spiegare nel dettaglio il controllo selezionato qui sotto"/>
+                                HorizontalAlignment="Stretch"/>
                     </StackPanel>
 
-                    <!-- Card 3: Elenco rapido dei Controlli Falliti selezionabili direttamente da qui -->
+                    <!-- Card 3: Elenco rapido dei Controlli Falliti (con TextWrapping senza scrollbar orizzontale) -->
                     <Grid Grid.Row="2">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Text="CRITICITA' RILEVATE (CLICCA PER ANALIZZARE):"
+                        <TextBlock x:Name="LblCriticitaRilevate" Grid.Row="0"
+                                   Text="CRITICITA' RILEVATE (CLICCA PER ANALIZZARE):"
                                    FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,6"/>
                         <ListBox x:Name="ListFallitiIA" Grid.Row="1"
                                  Background="{DynamicResource BgSubtle}"
                                  Foreground="{DynamicResource TextPrimary}"
                                  BorderBrush="{DynamicResource BorderSubtle}"
                                  BorderThickness="1"
-                                 DisplayMemberPath="Title"
-                                 ToolTip="Clicca su un controllo fallito e premi 'Spiega il Controllo Selezionato'"/>
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="6,5" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding ControlId}" FontSize="11" Foreground="{DynamicResource TextSecondary}"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </Grid>
                 </Grid>
             </Border>
 
             <!-- Area Principale Destra della Pagina IA: Grande Visualizzatore del Resoconto -->
             <Border Grid.Column="2" Background="{DynamicResource BgSurface}"
-                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="18">
+                    BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="20">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1286,8 +1305,7 @@ $script:XamlIncorporato = @'
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Intestazione del Visualizzatore IA -->
-                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                    <Grid Grid.Row="0" Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -1295,7 +1313,8 @@ $script:XamlIncorporato = @'
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="RESOCONTO DI SICUREZZA &amp; PIANO DI MIGLIORAMENTO IA"
+                            <TextBlock x:Name="LblTitoloResocontoIA"
+                                       Text="RESOCONTO DI SICUREZZA &amp; PIANO DI MIGLIORAMENTO IA"
                                        FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextPrimary}"/>
                             <TextBlock x:Name="TxtStatoLLM"
                                        Text="Pronto — Premi 'Genera Resoconto Completo PC' a sinistra per iniziare."
@@ -1304,35 +1323,34 @@ $script:XamlIncorporato = @'
 
                         <Button x:Name="BtnCopiaRispostaLLM" Grid.Column="1"
                                 Content="Copia Resoconto"
-                                Style="{StaticResource ModernButton}" Padding="12,6" Margin="0,0,8,0"/>
+                                Style="{StaticResource ModernButton}" Padding="14,7" Margin="0,0,8,0"/>
 
                         <Button x:Name="BtnTornaScansione" Grid.Column="2"
                                 Content="Torna alla Tabella Controlli"
-                                Style="{StaticResource ModernButton}" Padding="12,6"/>
+                                Style="{StaticResource ModernButton}" Padding="14,7"/>
                     </Grid>
 
-                    <Border Grid.Row="1" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Margin="0,0,0,10"/>
+                    <Border Grid.Row="1" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,0,0,1" Margin="0,0,0,12"/>
 
-                    <!-- Area di lettura a tutta pagina -->
                     <TextBox x:Name="TxtRispostaLLM" Grid.Row="2"
                              IsReadOnly="True"
                              TextWrapping="Wrap"
                              VerticalScrollBarVisibility="Auto"
-                             Padding="16,14"
+                             Padding="18,14"
                              FontSize="13.5"
                              FontFamily="Segoe UI"
                              Background="{DynamicResource BgSubtle}"
                              Foreground="{DynamicResource TextPrimary}"
                              BorderBrush="{DynamicResource BorderSubtle}"
                              BorderThickness="1"
-                             Text="Benvenuto nella Pagina Assistente IA &amp; Resoconto di Sicurezza.&#x0a;&#x0a;1. Premi 'Genera Resoconto Completo PC' a sinistra per ricevere un'analisi completa dei controlli falliti e i consigli passo-passo per mettere in sicurezza Windows 11.&#x0a;2. Se ti trovi su una Macchina Virtuale dove Ollama non e' ancora installato, lasciando attiva la spunta 'Installa automaticamente Ollama' lo scanner provvedera' da solo a scaricare e avviare Ollama e il modello leggero qwen2.5:0.5b in background senza che tu debba installare nulla manualmente."/>
+                             Text=""/>
                 </Grid>
             </Border>
         </Grid>
 
         <!-- 6. BARRA INFERIORE: EXPORT + RIEPILOGO + AVVISO PERMANENTE -->
         <Border Grid.Row="6" Background="{DynamicResource BgSurface}"
-                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="18,8">
+                BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0" Padding="20,9">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -1347,11 +1365,11 @@ $script:XamlIncorporato = @'
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Button x:Name="BtnEsportaJson" Grid.Column="0" Content="Esporta _JSON"
-                            Style="{StaticResource ModernButton}" Padding="12,5" IsEnabled="False" TabIndex="15"/>
+                    <Button x:Name="BtnEsportaJson" Grid.Column="0" Content="Esporta JSON"
+                            Style="{StaticResource ModernButton}" Padding="14,6" IsEnabled="False" TabIndex="15"/>
 
-                    <Button x:Name="BtnEsportaHtml" Grid.Column="1" Content="Esporta _HTML"
-                            Style="{StaticResource ModernButton}" Padding="12,5" Margin="8,0,0,0" IsEnabled="False" TabIndex="16"/>
+                    <Button x:Name="BtnEsportaHtml" Grid.Column="1" Content="Esporta HTML"
+                            Style="{StaticResource ModernButton}" Padding="14,6" Margin="8,0,0,0" IsEnabled="False" TabIndex="16"/>
 
                     <CheckBox x:Name="ChkSalvaLogTecnico" Grid.Column="2"
                               Content="Includi file di log tecnico accanto all'export"
@@ -2200,57 +2218,60 @@ function Format-PromptControlloOllama {
         if ($Lingua -eq 'EN') { "No terminal command (manual Windows/BIOS setting)" } else { "Nessun comando da terminale (configurazione manuale da interfaccia di Windows/BIOS)" }
     }
 
+    $statoRawDett = if ($null -ne $Dettaglio.PSObject.Properties['Status'] -and $Dettaglio.Status) {
+        [string]$Dettaglio.Status
+    } else {
+        [string]$Dettaglio.StatusLabel
+    }
+
     if ($Lingua -eq 'EN') {
+        $verdettoEn = if ($statoRawDett -match 'fallito|failed') {
+            "IMPORTANT FACT: This security control FAILED on this PC (it is currently NOT configured securely)."
+        } elseif ($statoRawDett -match 'superato|passed') {
+            "IMPORTANT FACT: This security control PASSED on this PC (it is already configured securely)."
+        } else {
+            "IMPORTANT FACT: This security control status is UNKNOWN (requires administrator privileges to verify)."
+        }
         $promptEn = @"
-You are a cybersecurity expert for Windows 11 home users.
-Reply ONLY in clear, concise, practical English.
-Do not invent data and do not change the control status (which was already deterministically verified by the scanner).
+[LANGUAGE: ENGLISH ONLY]
+$verdettoEn
+Control: $($Dettaglio.Title) ($($Dettaglio.ControlId))
+Observed on this PC: $($Dettaglio.ValoreOsservato)
+Expected secure setting: $($Dettaglio.ValoreAtteso)
+Why it matters: $($Dettaglio.SpiegazioneSemplice)
+How to fix it: $($Dettaglio.TestoRimedio)
+Command: $cmdRif
 
-SYSTEM CONTEXT: $infoOs
-ANALYZED CONTROL:
-- ID: $($Dettaglio.ControlId)
-- Title: $($Dettaglio.Title)
-- Category: $($Dettaglio.Category)
-- Severity: $($Dettaglio.SeverityLabel)
-- Detected Status: $($Dettaglio.StatusLabel)
-- Expected Value: $($Dettaglio.ValoreAtteso)
-- Observed Value on PC: $($Dettaglio.ValoreOsservato)
-- Rationale: $($Dettaglio.SpiegazioneSemplice)
-- Recommended Remediation: $($Dettaglio.TestoRimedio)
-- Reference Command: $cmdRif
-- Risk Notes: $($Dettaglio.NoteRischi)
-
-Provide a response structured in 3 short points:
-1. WHAT IT MEANS: explain in simple English what was found on the PC.
-2. WHY IT MATTERS: explain the concrete security risk for the user.
-3. HOW TO FIX SAFELY: explain step-by-step what to do (if Failed or Unknown) or confirm that the setting is already optimal (if Passed), noting any precautions.
+Write 3 short bullet points in ENGLISH:
+1. WHAT WAS FOUND: state clearly that '$($Dettaglio.Title)' is currently '$($Dettaglio.ValoreOsservato)'.
+2. SECURITY RISK: explain why '$($Dettaglio.SpiegazioneSemplice)' matters for a home PC.
+3. HOW TO FIX SAFELY: explain how to apply '$($Dettaglio.TestoRimedio)'.
 "@
         return $promptEn.Trim()
     }
 
+    $verdettoIt = if ($statoRawDett -match 'fallito|failed') {
+        "FATTO ACCERTATO: Questo controllo di sicurezza e' FALLITO sul PC (NON e' configurato in modo sicuro)."
+    } elseif ($statoRawDett -match 'superato|passed') {
+        "FATTO ACCERTATO: Questo controllo di sicurezza e' SUPERATO sul PC (e' gia' attivo e sicuro)."
+    } else {
+        "FATTO ACCERTATO: Lo stato del controllo e' SCONOSCIUTO (servono privilegi di amministratore)."
+    }
+
     $prompt = @"
-Sei un assistente esperto di sicurezza informatica per utenti domestici Windows 11.
-Rispondi SOLO in lingua italiana, in modo chiaro, conciso e pratico.
-Non inventare dati e non cambiare lo stato del controllo (che e' gia' stato verificato in modo deterministico dallo scanner).
+[LINGUA OBBLIGATORIA: SOLO ITALIANO - NON SCRIVERE IN INGLESE]
+$verdettoIt
+Controllo: $($Dettaglio.Title) ($($Dettaglio.ControlId))
+Valore trovato sul PC: $($Dettaglio.ValoreOsservato)
+Valore sicuro atteso: $($Dettaglio.ValoreAtteso)
+Perche' conta: $($Dettaglio.SpiegazioneSemplice)
+Come correggere: $($Dettaglio.TestoRimedio)
+Comando: $cmdRif
 
-CONTESTO SISTEMA: $infoOs
-CONTROLLO ANALIZZATO:
-- ID: $($Dettaglio.ControlId)
-- Titolo: $($Dettaglio.Title)
-- Categoria: $($Dettaglio.Category)
-- Gravita': $($Dettaglio.SeverityLabel)
-- Stato rilevato: $($Dettaglio.StatusLabel)
-- Valore atteso: $($Dettaglio.ValoreAtteso)
-- Valore trovato sul PC: $($Dettaglio.ValoreOsservato)
-- Spiegazione base: $($Dettaglio.SpiegazioneSemplice)
-- Rimedio consigliato: $($Dettaglio.TestoRimedio)
-- Comando di riferimento: $cmdRif
-- Note sui rischi: $($Dettaglio.NoteRischi)
-
-Fornisci una risposta strutturata in 3 brevi punti:
-1. COSA SIGNIFICA: spiega in parole semplici cosa e' stato trovato sul PC.
-2. PERCHE' E' IMPORTANTE: spiega il rischio concreto per l'utente domestico.
-3. COME MIGLIORARE IN SICUREZZA: spiega passo dopo passo cosa fare (se lo stato e' Fallito o Sconosciuto) o conferma che l'impostazione e' gia' ottimale (se Superato), ricordando eventuali precauzioni.
+Scrivi in LINGUA ITALIANA 3 brevi punti:
+1. COSA SIGNIFICA: spiega che sul PC il controllo '$($Dettaglio.Title)' risulta '$($Dettaglio.ValoreOsservato)'.
+2. RISCHIO PER IL PC: spiega in italiano perche' '$($Dettaglio.SpiegazioneSemplice)' e' importante.
+3. COME MIGLIORARE IN SICUREZZA: spiega in italiano come applicare '$($Dettaglio.TestoRimedio)'.
 "@
 
     return $prompt.Trim()
@@ -2865,13 +2886,22 @@ function Invoke-RichiestaOllama {
     $uriGen = "$urlPulito/api/generate"
 
     try {
+        $isPromptEn = ($Prompt -match '\[LANGUAGE: ENGLISH ONLY\]|Write a structured report in 4 sections')
+        $sysMsg = if ($isPromptEn) {
+            "You are a Windows 11 cybersecurity assistant. Reply strictly in ENGLISH. Never contradict the scanner facts provided in the prompt."
+        }
+        else {
+            "Sei un assistente di sicurezza informatica per Windows 11. Rispondi ESCLUSIVAMENTE in lingua ITALIANA (non scrivere mai in inglese). Attieniti rigorosamente ai fatti indicati nel prompt."
+        }
+
         $corpoObj = @{
             model   = $Modello
+            system  = $sysMsg
             prompt  = $Prompt
             stream  = $false
             options = @{
-                temperature = 0.2
-                num_predict = 750
+                temperature = 0.1
+                num_predict = 650
             }
         }
         $corpoJson = $corpoObj | ConvertTo-Json -Depth 5
@@ -2899,10 +2929,24 @@ function Invoke-RichiestaOllama {
             }
         }
 
+        # Se abbiamo i dati strutturati deterministici (TestoFallbackLocale), li affianchiamo
+        # alla risposta di Ollama, verificando anche la coerenza della lingua per i modelli molto piccoli (0.5b)
+        $rispostaFinale = $testoRisposta
+        if (-not [string]::IsNullOrWhiteSpace($TestoFallbackLocale)) {
+            $rispostaInIngleseIndesiderato = ((-not $isPromptEn) -and ($testoRisposta -match '(?i)\b(WHAT IT MEANS|WHY IT MATTERS|HOW TO FIX|The user should|The system disk is)\b'))
+            if ($rispostaInIngleseIndesiderato) {
+                $rispostaFinale = $TestoFallbackLocale
+            }
+            else {
+                $titoloIa = if ($isPromptEn) { "=== AI COMMENTARY ($Modello) ===" } else { "=== COMMENTO GENERATO DALL'IA ($Modello) ===" }
+                $rispostaFinale = "$TestoFallbackLocale`n`n$titoloIa`n$testoRisposta"
+            }
+        }
+
         return [PSCustomObject]@{
             Successo = $true
             Sorgente = "Ollama ($Modello su $urlPulito)"
-            Risposta = $testoRisposta
+            Risposta = $rispostaFinale
             Modello  = $Modello
             DurataMs = [int]$cronometro.ElapsedMilliseconds
             Errore   = $null
@@ -5705,6 +5749,44 @@ $script:RimediStaticiFetta = @{
     }
 }
 
+# Traduzioni complete in Inglese (EN) per tutti i 34 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
+$script:TraduzioniControlliEN = @{
+    'HOME-FW-001'  = @{ cat = 'Firewall';          title = 'Windows Firewall enabled on all profiles';                   rat = 'The firewall is the first line of defense against unauthorized network connections.'; rem = 'Enable Windows Defender Firewall for Domain, Private, and Public profiles via Windows Security or PowerShell as Administrator.'; risk = 'Low: blocks unsolicited inbound connections while allowing normal outbound traffic.' }
+    'HOME-UAC-001' = @{ cat = 'UAC';               title = 'User Account Control (UAC) enabled';                         rat = 'UAC protects the system by asking for confirmation before running elevated operations.'; rem = 'Enable UAC (EnableLUA = 1) via Windows Settings or PowerShell as Administrator. Requires a reboot.'; risk = 'Low: Windows will prompt before administrative changes.' }
+    'HOME-UAC-002' = @{ cat = 'UAC';               title = 'UAC requires confirmation for privilege elevation';          rat = 'If UAC elevates silently without prompting, malware can gain admin rights unnoticed.'; rem = 'Configure UAC to prompt for consent on the secure desktop (ConsentPromptBehaviorAdmin = 2 or 5).'; risk = 'Low: shows a confirmation prompt when an application requests admin rights.' }
+    'HOME-UAC-003' = @{ cat = 'UAC';               title = 'UAC detects application installations';                      rat = 'Installer detection prevents unauthorized software installations without elevation.'; rem = 'Enable application installer detection for UAC (EnableInstallerDetection = 1).'; risk = 'Very low: ensures setup packages run with administrator consent.' }
+    'HOME-ACC-001' = @{ cat = 'Accounts';          title = 'Built-in Guest account disabled';                            rat = 'The Guest account allows anonymous local access without credentials.'; rem = 'Disable the built-in Guest account (SID ending in -501) via PowerShell as Administrator.'; risk = 'Very low: prevents unauthenticated local logins.' }
+    'HOME-ACC-002' = @{ cat = 'Accounts';          title = 'Built-in local Administrator account disabled';              rat = 'The default Administrator account (-500) is a primary target for brute-force attacks.'; rem = 'Disable the built-in Administrator account (SID -500) after verifying another admin account exists.'; risk = 'Medium: ensure you have another active administrator account before disabling it.' }
+    'HOME-ACC-003' = @{ cat = 'Accounts';          title = 'No active local account without a password';                 rat = 'Accounts without a password allow anyone with physical or network access to log in.'; rem = 'Set a strong password for every active local account in Windows Settings -> Accounts -> Sign-in options.'; risk = 'Low: users will be required to enter a password or Windows Hello PIN at sign-in.' }
+    'HOME-UPD-001' = @{ cat = 'Updates';           title = 'Windows Update automatic updates enabled';                   rat = 'Security updates fix known vulnerabilities; disabling them leaves the PC exposed.'; rem = 'Ensure the Windows Update service (wuauserv) is not disabled and NoAutoUpdate policy is removed.'; risk = 'Low: Windows will regularly download and install security patches.' }
+    'HOME-UPD-002' = @{ cat = 'Updates';           title = 'Authentic Windows Update server (no unauthorized WSUS)';     rat = 'Malware can redirect Windows Update to a rogue server to block security patches.'; rem = 'Remove unauthorized WUServer registry policies so Windows updates directly from Microsoft.'; risk = 'Low on home PCs: restores official Microsoft Windows Update servers.' }
+    'HOME-AV-001'  = @{ cat = 'Antivirus';         title = 'Windows Defender Real-Time Protection enabled';              rat = 'Real-time protection scans files as they are accessed and blocks malware immediately.'; rem = 'Enable Real-Time Protection in Windows Security -> Virus & threat protection.'; risk = 'Very low: essential baseline protection against malware and ransomware.' }
+    'HOME-AV-002'  = @{ cat = 'Antivirus';         title = 'Antivirus signatures up to date (<= 7 days)';                rat = 'Outdated virus definitions cannot detect the latest malware threats.'; rem = 'Update Windows Defender virus definitions via Windows Security or Update-MpSignature.'; risk = 'None: only updates the antivirus signature database.' }
+    'HOME-AV-003'  = @{ cat = 'Antivirus';         title = 'No active virus or malware threats detected';                rat = 'Active threats indicate an ongoing infection or malicious file not yet quarantined.'; rem = 'Open Windows Security -> Protection history or run a scan to quarantine detected threats.'; risk = 'None: isolates and removes infected files.' }
+    'HOME-AV-004'  = @{ cat = 'Antivirus';         title = 'Downloaded files scanning (IOAV) & Behavior Monitoring active'; rat = 'IOAV scans all files downloaded from browsers/email, while behavior monitoring stops ransomware.'; rem = 'Enable Behavior Monitoring and IOAV Protection in Windows Defender preferences.'; risk = 'Very low: ensures downloaded files are inspected immediately.' }
+    'HOME-AV-005'  = @{ cat = 'Antivirus';         title = 'Potentially Unwanted Application (PUA) blocking enabled';    rat = 'PUA protection blocks adware, bundleware, cryptominers, and unwanted software.'; rem = 'Set PUAProtection to Enabled (1) in Windows Security -> App & browser control -> Reputation-based protection.'; risk = 'Low: may flag installers that bundle third-party adware.' }
+    'HOME-AV-006'  = @{ cat = 'Antivirus';         title = 'Tamper Protection and Cloud MAPS protection enabled';        rat = 'Tamper Protection prevents malware from disabling Defender, while Cloud MAPS blocks zero-day threats.'; rem = 'Turn on Tamper Protection in Windows Security and enable Cloud-delivered protection (MAPS).'; risk = 'Very low: strengthens defense against zero-day malware.' }
+    'HOME-AV-007'  = @{ cat = 'Antivirus';         title = 'Periodic antivirus scan completed within 14 days';           rat = 'Periodic scans detect dormant threats stored on disk before the latest signature updates.'; rem = 'Run a Quick or Full scan with Windows Defender.'; risk = 'None: a quick scan takes only a few minutes.' }
+    'HOME-AV-008'  = @{ cat = 'Antivirus';         title = 'No dangerous folder or extension exclusions in Defender';    rat = 'Malware often adds C:\, Downloads, Temp, or .exe/.ps1 to Defender exclusions to hide itself.'; rem = 'Review and remove broad exclusions in Windows Security -> Virus & threat protection -> Exclusions.'; risk = 'Low: restores full antivirus coverage across all folders.' }
+    'HOME-FIL-001' = @{ cat = 'File Security';     title = 'No disguised double-extension executables (Downloads/Temp)'; rat = 'Double extensions (e.g. invoice.pdf.exe, photo.jpg.scr) trick users into running malware.'; rem = 'Inspect any flagged double-extension files in Downloads, Desktop, or Temp and delete unrecognized executables.'; risk = 'None: lists suspicious files in read-only mode for inspection.' }
+    'HOME-FIL-002' = @{ cat = 'File Security';     title = 'No suspicious or obfuscated commands in Startup Run keys';   rat = 'Malware registers itself in Run/RunOnce keys pointing to Temp folders or using hidden PowerShell (-enc).'; rem = 'Check Task Manager -> Startup apps and Run registry keys to remove unknown or suspicious entries.'; risk = 'Low: prevents malicious persistence across reboots.' }
+    'HOME-FIL-003' = @{ cat = 'File Security';     title = 'Windows hosts file integrity (no security domain hijacking)'; rat = 'Malware can modify the hosts file to block access to Windows Update or antivirus websites.'; rem = 'Inspect C:\Windows\System32\drivers\etc\hosts and remove any lines redirecting Microsoft or security domains.'; risk = 'Low: the default Windows hosts file has no active domain redirects.' }
+    'HOME-SYS-001' = @{ cat = 'Windows Settings';  title = 'File extensions visible for known file types in Explorer';   rat = 'Showing file extensions lets you immediately spot executable programs (.exe, .bat, .scr) disguised as documents.'; rem = 'In File Explorer click View -> Show -> File name extensions (HideFileExt = 0).'; risk = 'None: makes the true extension of every file visible.' }
+    'HOME-SYS-002' = @{ cat = 'Windows Settings';  title = 'AutoRun and AutoPlay disabled for removable USB drives';     rat = 'Disabling AutoRun/AutoPlay prevents automatic execution of malware from infected USB drives.'; rem = 'Disable AutoPlay in Windows Settings -> Bluetooth & devices -> AutoPlay.'; risk = 'Very low: USB drives will simply be opened manually in File Explorer.' }
+    'HOME-SYS-003' = @{ cat = 'Windows Settings';  title = 'Microsoft Defender SmartScreen enabled for apps and files';  rat = 'SmartScreen warns you before running unrecognized or potentially malicious programs downloaded from the web.'; rem = 'Enable SmartScreen in Windows Security -> App & browser control -> Reputation-based protection.'; risk = 'Very low: protects against known phishing and malicious downloads.' }
+    'HOME-SYS-004' = @{ cat = 'Windows Settings';  title = 'Core Isolation / Memory Integrity (HVCI) enabled';           rat = 'Memory Integrity uses hardware virtualization to prevent malicious code injection into Windows kernel processes.'; rem = 'Enable Memory Integrity in Windows Security -> Device security -> Core isolation details and restart.'; risk = 'Medium: requires a reboot; very old uncertified hardware drivers might be incompatible.' }
+    'HOME-SYS-005' = @{ cat = 'Windows Settings';  title = 'Anonymous enumeration of local SAM accounts blocked';        rat = 'Prevents unauthenticated network users from listing local user account names on your PC.'; rem = 'Set RestrictAnonymousSAM to 1 in HKLM:\SYSTEM\CurrentControlSet\Control\Lsa.'; risk = 'Very low: recommended default on modern Windows systems.' }
+    'HOME-RDP-001' = @{ cat = 'Remote Desktop';    title = 'Remote Desktop Protocol (RDP) disabled';                     rat = 'RDP is one of the most common attack vectors; disable it if remote access is not required.'; rem = 'Disable Remote Desktop in Windows Settings -> System -> Remote Desktop (fDenyTSConnections = 1).'; risk = 'Low for home users: closes port 3389 remote access.' }
+    'HOME-NET-001' = @{ cat = 'Network';           title = 'Legacy SMBv1 protocol disabled';                             rat = 'SMBv1 has critical vulnerabilities (EternalBlue/WannaCry). Modern networks use SMBv2/SMBv3.'; rem = 'Disable SMBv1 via Set-SmbServerConfiguration -EnableSMB1Protocol $false.'; risk = 'Low: SMBv1 is only used by legacy devices from before 2010.' }
+    'HOME-NET-002' = @{ cat = 'Network';           title = 'NetBIOS over TCP/IP disabled on network adapters';           rat = 'NetBIOS can expose system information and enable local network spoofing attacks.'; rem = 'Disable NetBIOS over TCP/IP (NetbiosOptions = 2) on network interfaces.'; risk = 'Low: modern Windows 10/11 networks use DNS instead of NetBIOS.' }
+    'HOME-NET-003' = @{ cat = 'Network';           title = 'LLMNR multicast name resolution disabled';                   rat = 'LLMNR is vulnerable to local network poisoning attacks that can capture password hashes.'; rem = 'Disable LLMNR by setting EnableMulticast = 0 in HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient.'; risk = 'Low: standard DNS resolution is used instead.' }
+    'HOME-ENC-001' = @{ cat = 'Encryption';        title = 'BitLocker encryption active on system drive (C:)';           rat = 'Full disk encryption protects your personal files if the PC is lost or stolen.'; rem = 'Enable Device Encryption or BitLocker on C: in Windows Settings -> Privacy & security and back up your recovery key.'; risk = 'Medium: always save a copy of your BitLocker recovery key in a safe place.' }
+    'HOME-PRV-001' = @{ cat = 'Privacy';           title = 'Windows diagnostic telemetry set to minimum level';          rat = 'Minimizing telemetry limits the amount of diagnostic data collected and sent to Microsoft.'; rem = 'Set diagnostic data to Required only (AllowTelemetry = 1) in Windows Settings -> Privacy & security -> Diagnostics & feedback.'; risk = 'Very low: disables optional diagnostic telemetry.' }
+    'HOME-SEC-001' = @{ cat = 'Advanced Security'; title = 'UEFI Secure Boot enabled';                                   rat = 'Secure Boot blocks unsigned bootloaders, protecting the PC against rootkits and bootkits.'; rem = 'Enable Secure Boot in your motherboard UEFI/BIOS firmware settings (cannot be changed from PowerShell).'; risk = 'Medium: ensure your system drive uses GPT partitioning before enabling Secure Boot in BIOS.' }
+    'HOME-SEC-002' = @{ cat = 'Advanced Security'; title = 'Local Security Authority (LSA) protection (RunAsPPL) active'; rat = 'LSA protection prevents credential-dumping tools (such as Mimikatz) from reading LSASS memory.'; rem = 'Enable Local Security Authority protection in Windows Security -> Device security -> Core isolation.'; risk = 'Low: requires a system restart.' }
+    'HOME-SEC-003' = @{ cat = 'Advanced Security'; title = 'PowerShell Script Block Logging enabled';                    rat = 'Script Block Logging records executed PowerShell commands in Event Viewer to aid security auditing.'; rem = 'Enable PowerShell Script Block Logging (EnableScriptBlockLogging = 1) in Group Policy or Registry.'; risk = 'Very low: slightly increases PowerShell operational event log size.' }
+}
+
 function Get-ValoreProprietaSicuro {
     <#
     .SYNOPSIS
@@ -5745,76 +5827,46 @@ function Get-ValoreProprietaSicuro {
 function Get-InfoStatoVista {
     <#
     .SYNOPSIS
-        Restituisce icona testuale, etichetta e priorita' di ordinamento per uno stato.
+        Restituisce icona testuale, etichetta e priorita' di ordinamento per uno stato (IT o EN).
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [string]$Stato = 'sconosciuto'
+        [string]$Stato = 'sconosciuto',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
 
     $statoNorm = if ([string]::IsNullOrWhiteSpace($Stato)) { 'sconosciuto' } else { $Stato.Trim().ToLowerInvariant() }
+    $isEn = ($Lingua -eq 'EN')
 
-    # Ordinamento predefinito richiesto:
-    # 1. fallito
-    # 2. errore / sconosciuto
-    # 3. superato
-    # 4. non_applicabile
     switch ($statoNorm) {
         'fallito' {
-            return [PSCustomObject]@{
-                Status      = 'fallito'
-                Icon        = '[X]'
-                ShortLabel  = 'Fallito'
-                Label       = '[X] Fallito'
-                Rank        = 1
-            }
+            $short = if ($isEn) { 'Failed' } else { 'Fallito' }
+            return [PSCustomObject]@{ Status = 'fallito'; Icon = '[X]'; ShortLabel = $short; Label = "[X] $short"; Rank = 1 }
         }
         'errore' {
-            return [PSCustomObject]@{
-                Status      = 'errore'
-                Icon        = '[!]'
-                ShortLabel  = 'Errore'
-                Label       = '[!] Errore'
-                Rank        = 2
-            }
+            $short = if ($isEn) { 'Error' } else { 'Errore' }
+            return [PSCustomObject]@{ Status = 'errore'; Icon = '[!]'; ShortLabel = $short; Label = "[!] $short"; Rank = 2 }
         }
         'sconosciuto' {
-            return [PSCustomObject]@{
-                Status      = 'sconosciuto'
-                Icon        = '[?]'
-                ShortLabel  = 'Sconosciuto'
-                Label       = '[?] Sconosciuto'
-                Rank        = 3
-            }
+            $short = if ($isEn) { 'Unknown' } else { 'Sconosciuto' }
+            return [PSCustomObject]@{ Status = 'sconosciuto'; Icon = '[?]'; ShortLabel = $short; Label = "[?] $short"; Rank = 3 }
         }
         'superato' {
-            return [PSCustomObject]@{
-                Status      = 'superato'
-                Icon        = '[OK]'
-                ShortLabel  = 'Superato'
-                Label       = '[OK] Superato'
-                Rank        = 4
-            }
+            $short = if ($isEn) { 'Passed' } else { 'Superato' }
+            return [PSCustomObject]@{ Status = 'superato'; Icon = '[OK]'; ShortLabel = $short; Label = "[OK] $short"; Rank = 4 }
         }
         'non_applicabile' {
-            return [PSCustomObject]@{
-                Status      = 'non_applicabile'
-                Icon        = '[-]'
-                ShortLabel  = 'Non applicabile'
-                Label       = '[-] Non applicabile'
-                Rank        = 5
-            }
+            $short = if ($isEn) { 'N/A' } else { 'Non applicabile' }
+            return [PSCustomObject]@{ Status = 'non_applicabile'; Icon = '[-]'; ShortLabel = $short; Label = "[-] $short"; Rank = 5 }
         }
         default {
-            return [PSCustomObject]@{
-                Status      = $statoNorm
-                Icon        = '[?]'
-                ShortLabel  = 'Sconosciuto'
-                Label       = "[?] $statoNorm"
-                Rank        = 6
-            }
+            $short = if ($isEn) { 'Unknown' } else { 'Sconosciuto' }
+            return [PSCustomObject]@{ Status = $statoNorm; Icon = '[?]'; ShortLabel = $short; Label = "[?] $statoNorm"; Rank = 6 }
         }
     }
 }
@@ -5822,37 +5874,36 @@ function Get-InfoStatoVista {
 function Get-InfoGravitaVista {
     <#
     .SYNOPSIS
-        Restituisce etichetta e priorita' di ordinamento (1 = piu' grave) per la gravita'.
+        Restituisce etichetta e priorita' di ordinamento (1 = piu' grave) per la gravita' (IT o EN).
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [string]$Gravita = 'medio'
+        [string]$Gravita = 'medio',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
 
     $gravNorm = if ([string]::IsNullOrWhiteSpace($Gravita)) { 'non_specificata' } else { $Gravita.Trim().ToLowerInvariant() }
+    $isEn = ($Lingua -eq 'EN')
 
     switch ($gravNorm) {
-        'critico'     { return [PSCustomObject]@{ Severity = 'critico';     Label = 'Critico';     Rank = 1 } }
-        'alto'        { return [PSCustomObject]@{ Severity = 'alto';        Label = 'Alto';        Rank = 2 } }
-        'medio'       { return [PSCustomObject]@{ Severity = 'medio';       Label = 'Medio';       Rank = 3 } }
-        'basso'       { return [PSCustomObject]@{ Severity = 'basso';       Label = 'Basso';       Rank = 4 } }
-        'informativo' { return [PSCustomObject]@{ Severity = 'informativo'; Label = 'Informativo'; Rank = 5 } }
-        default       { return [PSCustomObject]@{ Severity = $gravNorm;     Label = 'N/D';         Rank = 99 } }
+        'critico'     { $lbl = if ($isEn) { 'Critical' } else { 'Critico' };     return [PSCustomObject]@{ Severity = 'critico';     Label = $lbl; Rank = 1 } }
+        'alto'        { $lbl = if ($isEn) { 'High' }     else { 'Alto' };        return [PSCustomObject]@{ Severity = 'alto';        Label = $lbl; Rank = 2 } }
+        'medio'       { $lbl = if ($isEn) { 'Medium' }   else { 'Medio' };       return [PSCustomObject]@{ Severity = 'medio';       Label = $lbl; Rank = 3 } }
+        'basso'       { $lbl = if ($isEn) { 'Low' }      else { 'Basso' };       return [PSCustomObject]@{ Severity = 'basso';       Label = $lbl; Rank = 4 } }
+        'informativo' { $lbl = if ($isEn) { 'Info' }     else { 'Informativo' }; return [PSCustomObject]@{ Severity = 'informativo'; Label = $lbl; Rank = 5 } }
+        default       { $lbl = if ($isEn) { 'N/A' }      else { 'N/D' };         return [PSCustomObject]@{ Severity = $gravNorm;     Label = $lbl; Rank = 99 } }
     }
 }
 
 function Merge-RisultatoConControllo {
     <#
     .SYNOPSIS
-        Unisce un singolo risultato del Runner con i metadati del controllo nel catalogo.
-    .PARAMETER Risultato
-        Oggetto risultato prodotto da Invoke-Controlli.
-    .PARAMETER ControlloCatalogo
-        Oggetto controllo corrispondente dal catalogo (opzionale).
-    .OUTPUTS
-        PSCustomObject pronto per la visualizzazione e il filtraggio.
+        Unisce un singolo risultato del Runner con i metadati del controllo nel catalogo (IT o EN).
     #>
     [CmdletBinding()]
     param(
@@ -5861,7 +5912,11 @@ function Merge-RisultatoConControllo {
 
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [PSCustomObject]$ControlloCatalogo = $null
+        [PSCustomObject]$ControlloCatalogo = $null,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
 
     $id = [string](Get-ValoreProprietaSicuro -Oggetto $Risultato -NomeProprieta 'control_id' -ValorePredefinito 'ID-SCONOSCIUTO')
@@ -5871,8 +5926,14 @@ function Merge-RisultatoConControllo {
     $categoria = [string](Get-ValoreProprietaSicuro -Oggetto $ControlloCatalogo -NomeProprieta 'category' -ValorePredefinito 'Generale')
     $gravitaRaw = [string](Get-ValoreProprietaSicuro -Oggetto $ControlloCatalogo -NomeProprieta 'severity' -ValorePredefinito '')
 
-    $infoStato = Get-InfoStatoVista -Stato $statoRaw
-    $infoGrav = Get-InfoGravitaVista -Gravita $gravitaRaw
+    if ($Lingua -eq 'EN' -and $script:TraduzioniControlliEN.ContainsKey($id)) {
+        $tr = $script:TraduzioniControlliEN[$id]
+        $titolo    = $tr.title
+        $categoria = $tr.cat
+    }
+
+    $infoStato = Get-InfoStatoVista -Stato $statoRaw -Lingua $Lingua
+    $infoGrav  = Get-InfoGravitaVista -Gravita $gravitaRaw -Lingua $Lingua
 
     $osservato = Get-ValoreProprietaSicuro -Oggetto $Risultato -NomeProprieta 'observed' -ValorePredefinito $null
     $atteso    = Get-ValoreProprietaSicuro -Oggetto $Risultato -NomeProprieta 'expected' -ValorePredefinito $null
@@ -5936,13 +5997,7 @@ function Sort-RisultatiVista {
 function ConvertTo-RisultatiVista {
     <#
     .SYNOPSIS
-        Converte i risultati del Runner e il catalogo nella lista ordinata per la UI.
-    .PARAMETER Risultati
-        Array di risultati (da Invoke-Controlli).
-    .PARAMETER Catalogo
-        Oggetto catalogo (da Import-Catalogo).
-    .OUTPUTS
-        Array ordinato di elementi vista.
+        Converte i risultati del Runner e il catalogo nella lista ordinata per la UI (IT o EN).
     #>
     [CmdletBinding()]
     param(
@@ -5953,7 +6008,11 @@ function ConvertTo-RisultatiVista {
 
         [Parameter(Mandatory = $false)]
         [AllowNull()]
-        [PSCustomObject]$Catalogo = $null
+        [PSCustomObject]$Catalogo = $null,
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
 
     if ($null -eq $Risultati -or $Risultati.Count -eq 0) {
@@ -5973,7 +6032,7 @@ function ConvertTo-RisultatiVista {
     foreach ($r in $Risultati) {
         $id = [string](Get-ValoreProprietaSicuro -Oggetto $r -NomeProprieta 'control_id' -ValorePredefinito '')
         $meta = if ($mappaControlli.ContainsKey($id)) { $mappaControlli[$id] } else { $null }
-        $elementi += (Merge-RisultatoConControllo -Risultato $r -ControlloCatalogo $meta)
+        $elementi += (Merge-RisultatoConControllo -Risultato $r -ControlloCatalogo $meta -Lingua $Lingua)
     }
 
     $ordinati = @(Sort-RisultatiVista -Elementi $elementi)
@@ -6034,16 +6093,18 @@ function Select-RisultatiVista {
     foreach ($el in $Elementi) {
         # 1. Filtro Stato
         if ($statoNorm -ne 'tutti' -and $statoNorm -ne 'all') {
-            $elStato = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Status' -ValorePredefinito '')
-            if ($elStato.ToLowerInvariant() -ne $statoNorm) {
+            $elStato      = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Status' -ValorePredefinito '')
+            $elStatoShort = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'StatusShort' -ValorePredefinito '')
+            if ($elStato.ToLowerInvariant() -ne $statoNorm -and $elStatoShort.ToLowerInvariant() -ne $statoNorm) {
                 continue
             }
         }
 
         # 2. Filtro Gravita
         if ($gravNorm -ne 'tutte' -and $gravNorm -ne 'tutti' -and $gravNorm -ne 'all') {
-            $elGrav = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Severity' -ValorePredefinito '')
-            if ($elGrav.ToLowerInvariant() -ne $gravNorm) {
+            $elGrav    = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Severity' -ValorePredefinito '')
+            $elGravLbl = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'SeverityLabel' -ValorePredefinito '')
+            if ($elGrav.ToLowerInvariant() -ne $gravNorm -and $elGravLbl.ToLowerInvariant() -ne $gravNorm) {
                 continue
             }
         }
@@ -6151,22 +6212,28 @@ function Format-DettaglioControllo {
 
         [Parameter(Mandatory = $false)]
         [ValidateSet('Semplice', 'Tecnico')]
-        [string]$Modalita = 'Semplice'
+        [string]$Modalita = 'Semplice',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN')]
+        [string]$Lingua = 'IT'
     )
+
+    $isEn = ($Lingua -eq 'EN')
 
     if ($null -eq $Elemento) {
         return [PSCustomObject]@{
             Selezionato          = $false
             ControlId            = ''
-            Title                = 'Nessun controllo selezionato'
+            Title                = if ($isEn) { 'No control selected' } else { 'Nessun controllo selezionato' }
             Category             = '-'
             SeverityLabel        = '-'
             Status               = 'sconosciuto'
             StatusLabel          = '-'
             Modalita             = $Modalita
-            SpiegazioneSemplice  = 'Seleziona un controllo dalla tabella per visualizzare i dettagli.'
-            SpiegazioneTecnica   = 'Seleziona un controllo dalla tabella per visualizzare i dettagli tecnici.'
-            TestoSpiegazione     = 'Seleziona un controllo dalla tabella per visualizzare i dettagli.'
+            SpiegazioneSemplice  = if ($isEn) { 'Select a control from the table on the left to view its details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli.' }
+            SpiegazioneTecnica   = if ($isEn) { 'Select a control from the table on the left to view technical details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli tecnici.' }
+            TestoSpiegazione     = if ($isEn) { 'Select a control from the table on the left to view its details.' } else { 'Seleziona un controllo dalla tabella per visualizzare i dettagli.' }
             ValoreAtteso         = '-'
             ValoreOsservato      = '-'
             TestoRimedio         = '-'
@@ -6198,12 +6265,12 @@ function Format-DettaglioControllo {
     $stato = [string](Get-ValoreProprietaSicuro -Oggetto $Elemento -NomeProprieta 'Status' -ValorePredefinito (
         Get-ValoreProprietaSicuro -Oggetto $raw -NomeProprieta 'status' -ValorePredefinito 'sconosciuto'
     ))
-    $infoStato = Get-InfoStatoVista -Stato $stato
+    $infoStato = Get-InfoStatoVista -Stato $stato -Lingua $Lingua
 
     $gravitaRaw = [string](Get-ValoreProprietaSicuro -Oggetto $Elemento -NomeProprieta 'Severity' -ValorePredefinito (
         Get-ValoreProprietaSicuro -Oggetto $meta -NomeProprieta 'severity' -ValorePredefinito ''
     ))
-    $infoGrav = Get-InfoGravitaVista -Gravita $gravitaRaw
+    $infoGrav = Get-InfoGravitaVista -Gravita $gravitaRaw -Lingua $Lingua
 
     # Spiegazione semplice (rationale / simple_explanation)
     $spiegazioneSemplice = Get-ValoreProprietaSicuro -Oggetto $meta -NomeProprieta 'simple_explanation' -ValorePredefinito $null
@@ -6211,7 +6278,14 @@ function Format-DettaglioControllo {
         $spiegazioneSemplice = Get-ValoreProprietaSicuro -Oggetto $meta -NomeProprieta 'rationale' -ValorePredefinito $null
     }
     if ([string]::IsNullOrWhiteSpace([string]$spiegazioneSemplice)) {
-        $spiegazioneSemplice = "Nessuna spiegazione disponibile nel catalogo per questo controllo."
+        $spiegazioneSemplice = if ($isEn) { "No explanation available in the catalog for this control." } else { "Nessuna spiegazione disponibile nel catalogo per questo controllo." }
+    }
+
+    if ($isEn -and $script:TraduzioniControlliEN.ContainsKey($id)) {
+        $trEn = $script:TraduzioniControlliEN[$id]
+        $titolo              = $trEn.title
+        $categoria           = $trEn.cat
+        $spiegazioneSemplice = $trEn.rat
     }
 
     # Spiegazione tecnica (description + check + riferimenti + evidenza)
@@ -6311,12 +6385,18 @@ function Format-DettaglioControllo {
         if ([string]::IsNullOrWhiteSpace([string]$noteRischi))     { $noteRischi     = $statico.risk }
     }
 
+    if ($isEn -and (-not $haProprietaCommandEsplicita) -and $script:TraduzioniControlliEN.ContainsKey($id)) {
+        $trEnRem      = $script:TraduzioniControlliEN[$id]
+        $testoRimedio = $trEnRem.rem
+        $noteRischi   = $trEnRem.risk
+    }
+
     if ([string]::IsNullOrWhiteSpace([string]$testoRimedio)) {
-        $testoRimedio = "Verifica manualmente questa impostazione nel Pannello di controllo o nelle Impostazioni di sicurezza di Windows 11."
+        $testoRimedio = if ($isEn) { "Manually verify this setting in Windows 11 Settings or Control Panel." } else { "Verifica manualmente questa impostazione nel Pannello di controllo o nelle Impostazioni di sicurezza di Windows 11." }
     }
 
     if ([string]::IsNullOrWhiteSpace([string]$noteRischi)) {
-        $noteRischi = "Valuta l'impatto prima di applicare modifiche manuali alla configurazione del sistema."
+        $noteRischi = if ($isEn) { "Evaluate the impact before applying manual configuration changes." } else { "Valuta l'impatto prima di applicare modifiche manuali alla configurazione del sistema." }
     }
 
     # Se command e' null o stringa vuota, HaComando = $false (mostra solo il testo)
@@ -6385,9 +6465,9 @@ function Get-NomeFileExport {
 .DESCRIPTION
     Carica il layout XAML da src/ui/MainWindow.xaml tramite XamlReader,
     collega i controlli con FindName, gestisce il tema chiaro/scuro,
-    i filtri, il pannello di dettaglio, l'export JSON/HTML e l'esecuzione
-    asincrona della scansione in un Runspace separato con aggiornamento
-    tramite Dispatcher.
+    la localizzazione completa bilingue (IT/EN), i filtri, il pannello
+    di dettaglio, l'export JSON/HTML e l'esecuzione asincrona della
+    scansione e dell'assistente IA Ollama in Runspace separati.
     Il codice e' in SOLA LETTURA e riusa esattamente il motore di src/core.
 #>
 
@@ -6412,64 +6492,64 @@ function Update-TemaFinestra {
 
     if ($Tema -eq 'Scuro') {
         $mappaColori = @{
-            'BgPrimary'        = '#0F172A'
-            'BgSurface'        = '#1E293B'
-            'BgHeader'         = '#020617'
+            'BgPrimary'        = '#0B0F19'
+            'BgSurface'        = '#131C2E'
+            'BgHeader'         = '#060913'
             'TextHeader'       = '#F8FAFC'
             'BgSubtle'         = '#0F172A'
             'TextPrimary'      = '#F1F5F9'
             'TextSecondary'    = '#94A3B8'
-            'BorderSubtle'     = '#334155'
+            'BorderSubtle'     = '#1E293B'
             'AccentBrush'      = '#3B82F6'
             'AccentText'       = '#FFFFFF'
             'PassBg'           = '#064E3B'
-            'PassFg'           = '#A7F3D0'
-            'PassBorder'       = '#059669'
+            'PassFg'           = '#6EE7B7'
+            'PassBorder'       = '#10B981'
             'FailBg'           = '#7F1D1D'
-            'FailFg'           = '#FECACA'
-            'FailBorder'       = '#DC2626'
-            'UnknownBg'        = '#334155'
-            'UnknownFg'        = '#E2E8F0'
+            'FailFg'           = '#FCA5A5'
+            'FailBorder'       = '#EF4444'
+            'UnknownBg'        = '#1E293B'
+            'UnknownFg'        = '#CBD5E1'
             'UnknownBorder'    = '#64748B'
-            'NaBg'             = '#1E293B'
+            'NaBg'             = '#0F172A'
             'NaFg'             = '#94A3B8'
             'NaBorder'         = '#475569'
             'ErrorBg'          = '#7C2D12'
-            'ErrorFg'          = '#FED7AA'
-            'ErrorBorder'      = '#EA580C'
-            'WarnBannerBg'     = '#78350F'
-            'WarnBannerFg'     = '#FEF3C7'
+            'ErrorFg'          = '#FDBA74'
+            'ErrorBorder'      = '#F97316'
+            'WarnBannerBg'     = '#451A03'
+            'WarnBannerFg'     = '#FDE68A'
             'WarnBannerBorder' = '#D97706'
         }
     }
     else {
         $mappaColori = @{
-            'BgPrimary'        = '#F4F6F9'
+            'BgPrimary'        = '#F1F5F9'
             'BgSurface'        = '#FFFFFF'
-            'BgHeader'         = '#0F172A'
+            'BgHeader'         = '#0B1120'
             'TextHeader'       = '#F8FAFC'
             'BgSubtle'         = '#F8FAFC'
-            'TextPrimary'      = '#1E293B'
+            'TextPrimary'      = '#0F172A'
             'TextSecondary'    = '#475569'
-            'BorderSubtle'     = '#CBD5E1'
+            'BorderSubtle'     = '#E2E8F0'
             'AccentBrush'      = '#2563EB'
             'AccentText'       = '#FFFFFF'
-            'PassBg'           = '#DCFCE7'
-            'PassFg'           = '#166534'
-            'PassBorder'       = '#86EFAC'
-            'FailBg'           = '#FEE2E2'
+            'PassBg'           = '#ECFDF5'
+            'PassFg'           = '#065F46'
+            'PassBorder'       = '#10B981'
+            'FailBg'           = '#FEF2F2'
             'FailFg'           = '#991B1B'
-            'FailBorder'       = '#FCA5A5'
-            'UnknownBg'        = '#E2E8F0'
+            'FailBorder'       = '#EF4444'
+            'UnknownBg'        = '#F1F5F9'
             'UnknownFg'        = '#334155'
-            'UnknownBorder'    = '#94A3B8'
-            'NaBg'             = '#F1F5F9'
-            'NaFg'             = '#475569'
-            'NaBorder'         = '#CBD5E1'
-            'ErrorBg'          = '#FFEDD5'
+            'UnknownBorder'    = '#64748B'
+            'NaBg'             = '#F8FAFC'
+            'NaFg'             = '#64748B'
+            'NaBorder'         = '#94A3B8'
+            'ErrorBg'          = '#FFF7ED'
             'ErrorFg'          = '#9A3412'
-            'ErrorBorder'      = '#FDBA74'
-            'WarnBannerBg'     = '#FEF3C7'
+            'ErrorBorder'      = '#F97316'
+            'WarnBannerBg'     = '#FFFBEB'
             'WarnBannerFg'     = '#92400E'
             'WarnBannerBorder' = '#F59E0B'
         }
@@ -6485,18 +6565,6 @@ function Start-ScannerUI {
     <#
     .SYNOPSIS
         Costruisce e mostra la finestra WPF dello scanner di sicurezza.
-    .PARAMETER Catalogo
-        Oggetto catalogo caricato da Import-Catalogo.
-    .PARAMETER Ambiente
-        Oggetto ambiente rilevato da Get-AmbienteSistema.
-    .PARAMETER PercorsoProgetto
-        Percorso radice del repository (opzionale in modalita' standalone singolo file).
-    .PARAMETER ContenutoXaml
-        Stringa XAML opzionale (usata nella versione compilata in singolo file in stile winutil).
-    .PARAMETER ControlId
-        Filtro opzionale di ID di controllo passato da riga di comando.
-    .PARAMETER VersioneTool
-        Versione dello scanner (es. '0.1.0').
     #>
     [CmdletBinding()]
     param(
@@ -6549,10 +6617,14 @@ function Start-ScannerUI {
 
     # Riferimenti ai controlli tramite FindName
     $ctrl = @{
+        TxtTitoloApp           = $finestra.FindName('TxtTitoloApp')
+        TxtBadgeSolaLettura    = $finestra.FindName('TxtBadgeSolaLettura')
+        TxtSottotitoloApp      = $finestra.FindName('TxtSottotitoloApp')
         TxtAmbienteInfo        = $finestra.FindName('TxtAmbienteInfo')
         BtnLingua              = $finestra.FindName('BtnLingua')
         BtnTema                = $finestra.FindName('BtnTema')
         BannerNonAdmin         = $finestra.FindName('BannerNonAdmin')
+        TxtBannerNonAdmin      = $finestra.FindName('TxtBannerNonAdmin')
         BtnRiavviaAdmin        = $finestra.FindName('BtnRiavviaAdmin')
         BannerErrore           = $finestra.FindName('BannerErrore')
         TxtBannerErrore        = $finestra.FindName('TxtBannerErrore')
@@ -6565,14 +6637,24 @@ function Start-ScannerUI {
         TxtCountSconosciuti    = $finestra.FindName('TxtCountSconosciuti')
         TxtCountNonApplicabili = $finestra.FindName('TxtCountNonApplicabili')
         TxtCountErrori         = $finestra.FindName('TxtCountErrori')
+        LblFiltroStato         = $finestra.FindName('LblFiltroStato')
+        LblFiltroGravita       = $finestra.FindName('LblFiltroGravita')
+        LblFiltroCategoria     = $finestra.FindName('LblFiltroCategoria')
+        LblFiltroCerca         = $finestra.FindName('LblFiltroCerca')
         CmbFiltroStato         = $finestra.FindName('CmbFiltroStato')
         CmbFiltroGravita       = $finestra.FindName('CmbFiltroGravita')
         CmbFiltroCategoria     = $finestra.FindName('CmbFiltroCategoria')
         TxtRicerca             = $finestra.FindName('TxtRicerca')
         BtnResetFiltri         = $finestra.FindName('BtnResetFiltri')
         GridRisultati          = $finestra.FindName('GridRisultati')
+        ColStato               = $finestra.FindName('ColStato')
+        ColGravita             = $finestra.FindName('ColGravita')
+        ColCategoria           = $finestra.FindName('ColCategoria')
+        ColId                  = $finestra.FindName('ColId')
+        ColControllo           = $finestra.FindName('ColControllo')
         PanelGuidaVuota        = $finestra.FindName('PanelGuidaVuota')
         TxtMessaggioGuida      = $finestra.FindName('TxtMessaggioGuida')
+        TxtSottotitoloGuida    = $finestra.FindName('TxtSottotitoloGuida')
         TxtDettaglioTitolo     = $finestra.FindName('TxtDettaglioTitolo')
         TxtDettaglioSottotitolo= $finestra.FindName('TxtDettaglioSottotitolo')
         BtnModoSemplice        = $finestra.FindName('BtnModoSemplice')
@@ -6581,27 +6663,39 @@ function Start-ScannerUI {
         TxtDettaglioSpiegazione= $finestra.FindName('TxtDettaglioSpiegazione')
         BannerDettaglioErrore  = $finestra.FindName('BannerDettaglioErrore')
         TxtDettaglioErrore     = $finestra.FindName('TxtDettaglioErrore')
+        LblValoreAtteso        = $finestra.FindName('LblValoreAtteso')
+        LblValoreOsservato     = $finestra.FindName('LblValoreOsservato')
         TxtDettaglioAtteso     = $finestra.FindName('TxtDettaglioAtteso')
         TxtDettaglioOsservato  = $finestra.FindName('TxtDettaglioOsservato')
+        LblComeCorreggere      = $finestra.FindName('LblComeCorreggere')
         TxtDettaglioRimedio    = $finestra.FindName('TxtDettaglioRimedio')
         PanelComandoRimedio    = $finestra.FindName('PanelComandoRimedio')
+        LblComandoRif          = $finestra.FindName('LblComandoRif')
         TxtComandoRimedio      = $finestra.FindName('TxtComandoRimedio')
         BtnCopiaComando        = $finestra.FindName('BtnCopiaComando')
         TxtFeedbackCopia       = $finestra.FindName('TxtFeedbackCopia')
+        LblNoteRischi          = $finestra.FindName('LblNoteRischi')
         TxtDettaglioRischi     = $finestra.FindName('TxtDettaglioRischi')
         BtnNavScansione        = $finestra.FindName('BtnNavScansione')
         BtnNavIA               = $finestra.FindName('BtnNavIA')
         BtnTornaScansione      = $finestra.FindName('BtnTornaScansione')
         GridPaginaScansione    = $finestra.FindName('GridPaginaScansione')
         GridPaginaIA           = $finestra.FindName('GridPaginaIA')
+        LblMotoreIaTitle       = $finestra.FindName('LblMotoreIaTitle')
+        LblIndirizzoOllama     = $finestra.FindName('LblIndirizzoOllama')
         TxtEndpointOllama      = $finestra.FindName('TxtEndpointOllama')
+        LblModelloOllama       = $finestra.FindName('LblModelloOllama')
         CmbModelloOllama       = $finestra.FindName('CmbModelloOllama')
         ChkAutoInstallaOllama  = $finestra.FindName('ChkAutoInstallaOllama')
+        TxtChkAutoInstalla     = $finestra.FindName('TxtChkAutoInstalla')
         BtnVerificaOllama      = $finestra.FindName('BtnVerificaOllama')
+        LblGeneraAnalisiTitle  = $finestra.FindName('LblGeneraAnalisiTitle')
         BtnSpiegaLLM           = $finestra.FindName('BtnSpiegaLLM')
         BtnResocontoLLM        = $finestra.FindName('BtnResocontoLLM')
         BtnSpiegaControlloTab  = $finestra.FindName('BtnSpiegaControlloTab')
         BtnResocontoTab        = $finestra.FindName('BtnResocontoTab')
+        LblCriticitaRilevate   = $finestra.FindName('LblCriticitaRilevate')
+        LblTitoloResocontoIA   = $finestra.FindName('LblTitoloResocontoIA')
         BtnCopiaRispostaLLM    = $finestra.FindName('BtnCopiaRispostaLLM')
         ListFallitiIA          = $finestra.FindName('ListFallitiIA')
         TxtStatoLLM            = $finestra.FindName('TxtStatoLLM')
@@ -6610,6 +6704,7 @@ function Start-ScannerUI {
         BtnEsportaHtml         = $finestra.FindName('BtnEsportaHtml')
         ChkSalvaLogTecnico     = $finestra.FindName('ChkSalvaLogTecnico')
         TxtRiepilogoFooter     = $finestra.FindName('TxtRiepilogoFooter')
+        TxtDisclaimerPermanente= $finestra.FindName('TxtDisclaimerPermanente')
     }
 
     # Stato interno dell'interfaccia
@@ -6622,50 +6717,101 @@ function Start-ScannerUI {
         ElementiVista       = @()
         ElementoSelezionato = $null
         ScansioneInCorso    = $false
+        UltimaModalitaIA    = 'Resoconto'
         SyncRunspace        = $null
         PsInstance          = $null
         Runspace            = $null
     }
 
-    # Popola informazioni ambiente nell'intestazione
-    $testoAdmin = if ($Ambiente.IsAdmin) { 'Si' } else { 'No' }
-    $ctrl.TxtAmbienteInfo.Text = "Windows 11 $($Ambiente.Edition) $($Ambiente.Build) | Admin: $testoAdmin"
     $ctrl.ProgressScansione.Maximum = if ($totaleControlli -gt 0) { $totaleControlli } else { 1 }
-    $ctrl.TxtProgresso.Text = "Pronto (0/$totaleControlli)"
 
     # Banner giallo se non avviato come amministratore
     if (-not $Ambiente.IsAdmin) {
         $ctrl.BannerNonAdmin.Visibility = [System.Windows.Visibility]::Visible
     }
 
-    # Popola le categorie nel filtro Categoria
-    $categorieUniche = @()
-    foreach ($c in $Catalogo.controls) {
-        if ($null -ne $c.PSObject.Properties['category'] -and $c.category) {
-            if ($categorieUniche -notcontains $c.category) {
-                $categorieUniche += $c.category
+    # Funzione helper per ripopolare i filtri ComboBox nella lingua corrente
+    $aggiornaFiltriComboLingua = {
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+
+        $idxStato = if ($ctrl.CmbFiltroStato.SelectedIndex -ge 0) { $ctrl.CmbFiltroStato.SelectedIndex } else { 0 }
+        $idxGrav  = if ($ctrl.CmbFiltroGravita.SelectedIndex -ge 0) { $ctrl.CmbFiltroGravita.SelectedIndex } else { 0 }
+        $idxCat   = if ($ctrl.CmbFiltroCategoria.SelectedIndex -ge 0) { $ctrl.CmbFiltroCategoria.SelectedIndex } else { 0 }
+
+        $vociStato = if ($isEn) {
+            @('All', 'Failed', 'Passed', 'Unknown', 'N/A', 'Error')
+        } else {
+            @('Tutti', 'Fallito', 'Superato', 'Sconosciuto', 'Non_Applicabile', 'Errore')
+        }
+
+        $vociGrav = if ($isEn) {
+            @('All', 'Critical', 'High', 'Medium', 'Low', 'Info')
+        } else {
+            @('Tutte', 'Critico', 'Alto', 'Medio', 'Basso', 'Informativo')
+        }
+
+        $ctrl.CmbFiltroStato.Items.Clear()
+        foreach ($v in $vociStato) {
+            $item = New-Object System.Windows.Controls.ComboBoxItem
+            $item.Content = $v
+            [void]$ctrl.CmbFiltroStato.Items.Add($item)
+        }
+        $ctrl.CmbFiltroStato.SelectedIndex = [Math]::Min($idxStato, $vociStato.Count - 1)
+
+        $ctrl.CmbFiltroGravita.Items.Clear()
+        foreach ($v in $vociGrav) {
+            $item = New-Object System.Windows.Controls.ComboBoxItem
+            $item.Content = $v
+            [void]$ctrl.CmbFiltroGravita.Items.Add($item)
+        }
+        $ctrl.CmbFiltroGravita.SelectedIndex = [Math]::Min($idxGrav, $vociGrav.Count - 1)
+
+        # Popola categorie nella lingua corrente
+        $categorieUniche = @()
+        foreach ($c in $Catalogo.controls) {
+            $cid = [string]$c.id
+            $catVal = [string]$c.category
+            if ($isEn -and $script:TraduzioniControlliEN.ContainsKey($cid)) {
+                $catVal = $script:TraduzioniControlliEN[$cid].cat
+            }
+            if ($catVal -and ($categorieUniche -notcontains $catVal)) {
+                $categorieUniche += $catVal
             }
         }
-    }
-    foreach ($cat in ($categorieUniche | Sort-Object)) {
-        $itemCat = New-Object System.Windows.Controls.ComboBoxItem
-        $itemCat.Content = $cat
-        [void]$ctrl.CmbFiltroCategoria.Items.Add($itemCat)
+
+        $ctrl.CmbFiltroCategoria.Items.Clear()
+        $itemTutte = New-Object System.Windows.Controls.ComboBoxItem
+        $itemTutte.Content = if ($isEn) { 'All' } else { 'Tutte' }
+        [void]$ctrl.CmbFiltroCategoria.Items.Add($itemTutte)
+
+        foreach ($cat in ($categorieUniche | Sort-Object)) {
+            $itemCat = New-Object System.Windows.Controls.ComboBoxItem
+            $itemCat.Content = $cat
+            [void]$ctrl.CmbFiltroCategoria.Items.Add($itemCat)
+        }
+        $ctrl.CmbFiltroCategoria.SelectedIndex = [Math]::Min($idxCat, $ctrl.CmbFiltroCategoria.Items.Count - 1)
     }
 
     # --- Funzioni di aggiornamento UI ---
     $aggiornaPannelloDettaglio = {
-        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita $statoUI.ModalitaDettaglio
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $dettaglio = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita $statoUI.ModalitaDettaglio -Lingua $statoUI.LinguaCorrente
         $ctrl.TxtDettaglioTitolo.Text = $dettaglio.Title
-        $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Stato: $($dettaglio.StatusLabel)  |  Gravita': $($dettaglio.SeverityLabel)  |  Categoria: $($dettaglio.Category)"
+
+        if ($isEn) {
+            $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Status: $($dettaglio.StatusLabel)  |  Severity: $($dettaglio.SeverityLabel)  |  Category: $($dettaglio.Category)"
+        }
+        else {
+            $ctrl.TxtDettaglioSottotitolo.Text = "ID: $($dettaglio.ControlId)  |  Stato: $($dettaglio.StatusLabel)  |  Gravita': $($dettaglio.SeverityLabel)  |  Categoria: $($dettaglio.Category)"
+        }
 
         if ($statoUI.ModalitaDettaglio -eq 'Tecnico') {
-            $ctrl.TxtTitoloSpiegazione.Text = "Dettaglio tecnico e riferimenti"
+            $ctrl.TxtTitoloSpiegazione.Text = if ($isEn) { "Technical details & references" } else { "Dettaglio tecnico e riferimenti" }
             $ctrl.BtnModoTecnico.FontWeight = [System.Windows.FontWeights]::Bold
             $ctrl.BtnModoSemplice.FontWeight = [System.Windows.FontWeights]::Normal
         }
         else {
-            $ctrl.TxtTitoloSpiegazione.Text = "Perche' conta (spiegazione semplice)"
+            $ctrl.TxtTitoloSpiegazione.Text = if ($isEn) { "Why it matters (simple explanation)" } else { "Perche' conta (spiegazione semplice)" }
             $ctrl.BtnModoSemplice.FontWeight = [System.Windows.FontWeights]::Bold
             $ctrl.BtnModoTecnico.FontWeight = [System.Windows.FontWeights]::Normal
         }
@@ -6697,7 +6843,9 @@ function Start-ScannerUI {
 
     $aggiornaConteggiERiepilogo = {
         $conteggi = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
-        if ($statoUI.LinguaCorrente -eq 'EN') {
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+
+        if ($isEn) {
             $ctrl.TxtCountSuperati.Text       = "[OK] $($conteggi.superato) Passed"
             $ctrl.TxtCountFalliti.Text        = "[X] $($conteggi.fallito) Failed"
             $ctrl.TxtCountSconosciuti.Text    = "[?] $($conteggi.sconosciuto) Unknown"
@@ -6715,82 +6863,17 @@ function Start-ScannerUI {
         }
 
         if ($conteggi.errore -gt 0) {
-            $ctrl.TxtBannerErrore.Text = "Alcuni controlli ($($conteggi.errore)) hanno restituito un imprevisto durante la lettura. Seleziona il controllo per maggiori informazioni o esporta il log tecnico."
+            $ctrl.TxtBannerErrore.Text = if ($isEn) {
+                "Some controls ($($conteggi.errore)) returned an unexpected read error. Select the control for details or export the technical log."
+            } else {
+                "Alcuni controlli ($($conteggi.errore)) hanno restituito un imprevisto durante la lettura. Seleziona il controllo per maggiori informazioni o esporta il log tecnico."
+            }
             $ctrl.BannerErrore.Visibility = [System.Windows.Visibility]::Visible
         }
         else {
             $ctrl.BannerErrore.Visibility = [System.Windows.Visibility]::Collapsed
         }
     }
-
-    $applicaLinguaUI = {
-        if ($statoUI.LinguaCorrente -eq 'EN') {
-            $finestra.Title                 = "Windows 11 Security Scanner (Read-Only)"
-            $ctrl.BtnLingua.Content         = "Lang: IT"
-            $ctrl.BtnNavScansione.Content   = "1. Security Controls & Details"
-            $ctrl.BtnNavIA.Content          = "2. AI Security Advisor (Ollama)"
-            $ctrl.BtnAvvia.Content          = "_Start Scan ($totaleControlli controls)"
-            $ctrl.BtnAnnulla.Content        = "_Cancel"
-            $ctrl.BtnResocontoLLM.Content   = "Open AI Security Report"
-            $ctrl.BtnResetFiltri.Content    = "Reset Filters"
-            $ctrl.BtnModoSemplice.Content   = "Simple View"
-            $ctrl.BtnModoTecnico.Content    = "Technical Details"
-            $ctrl.BtnSpiegaLLM.Content      = "Explain with AI (Page 2)"
-            $ctrl.BtnCopiaComando.Content   = "_Copy Command"
-            $ctrl.BtnVerificaOllama.Content = "Check / Auto-Setup Ollama"
-            $ctrl.BtnResocontoTab.Content   = "Generate Full PC Security Report"
-            $ctrl.BtnSpiegaControlloTab.Content = "Explain Selected Control"
-            $ctrl.BtnCopiaRispostaLLM.Content   = "Copy AI Report"
-            $ctrl.BtnTornaScansione.Content     = "Back to Controls Table"
-            $ctrl.BtnEsportaJson.Content    = "Export _JSON"
-            $ctrl.BtnEsportaHtml.Content    = "Export _HTML"
-            $ctrl.ChkSalvaLogTecnico.Content= "Include technical error log next to export"
-            $ctrl.ChkAutoInstallaOllama.Content = "If Ollama is missing on VM, silently auto-install and start it in background"
-            if ($statoUI.RisultatiGrezzi.Count -eq 0) {
-                $ctrl.TxtMessaggioGuida.Text = "Click 'Start Scan' to audit all $totaleControlli Windows 11 security controls."
-                $ctrl.TxtProgresso.Text      = "Ready (0/$totaleControlli)"
-            }
-        }
-        else {
-            $finestra.Title                 = "Scanner sicurezza Windows"
-            $ctrl.BtnLingua.Content         = "Lang: EN"
-            $ctrl.BtnNavScansione.Content   = "1. Tabella Controlli & Dettagli"
-            $ctrl.BtnNavIA.Content          = "2. Pagina Resoconto IA (Ollama)"
-            $ctrl.BtnAvvia.Content          = "_Avvia scansione ($totaleControlli controlli)"
-            $ctrl.BtnAnnulla.Content        = "A_nnulla"
-            $ctrl.BtnResocontoLLM.Content   = "Apri Resoconto IA & Consigli"
-            $ctrl.BtnResetFiltri.Content    = "Reimposta filtri"
-            $ctrl.BtnModoSemplice.Content   = "Spiegazione Semplice"
-            $ctrl.BtnModoTecnico.Content    = "Dettagli Tecnici"
-            $ctrl.BtnSpiegaLLM.Content      = "Spiega con IA (Pagina 2)"
-            $ctrl.BtnCopiaComando.Content   = "_Copia comando negli appunti"
-            $ctrl.BtnVerificaOllama.Content = "Verifica / Auto-Configura Ollama"
-            $ctrl.BtnResocontoTab.Content   = "Genera Resoconto Completo PC"
-            $ctrl.BtnSpiegaControlloTab.Content = "Spiega il Controllo Selezionato"
-            $ctrl.BtnCopiaRispostaLLM.Content   = "Copia Resoconto"
-            $ctrl.BtnTornaScansione.Content     = "Torna alla Tabella Controlli"
-            $ctrl.BtnEsportaJson.Content    = "Esporta _JSON"
-            $ctrl.BtnEsportaHtml.Content    = "Esporta _HTML"
-            $ctrl.ChkSalvaLogTecnico.Content= "Includi file di log tecnico accanto all'export"
-            $ctrl.ChkAutoInstallaOllama.Content = "Se Ollama manca sulla VM, installalo e avvialo automaticamente in background"
-            if ($statoUI.RisultatiGrezzi.Count -eq 0) {
-                $ctrl.TxtMessaggioGuida.Text = "Premi 'Avvia scansione' per analizzare i $totaleControlli controlli di sicurezza del PC."
-                $ctrl.TxtProgresso.Text      = "Pronto (0/$totaleControlli)"
-            }
-        }
-        & $aggiornaConteggiERiepilogo
-        & $aggiornaPannelloDettaglio
-    }
-
-    $ctrl.BtnLingua.Add_Click({
-        if ($statoUI.LinguaCorrente -eq 'IT') {
-            $statoUI.LinguaCorrente = 'EN'
-        }
-        else {
-            $statoUI.LinguaCorrente = 'IT'
-        }
-        & $applicaLinguaUI
-    })
 
     $applicaFiltriTabella = {
         $statoSel = if ($null -ne $ctrl.CmbFiltroStato.SelectedItem) { [string]$ctrl.CmbFiltroStato.SelectedItem.Content } else { 'Tutti' }
@@ -6807,7 +6890,11 @@ function Start-ScannerUI {
             $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         }
         elseif ($filtrati.Count -eq 0) {
-            $ctrl.TxtMessaggioGuida.Text = "Nessun controllo corrisponde ai filtri selezionati."
+            $ctrl.TxtMessaggioGuida.Text = if ($statoUI.LinguaCorrente -eq 'EN') {
+                "No controls match the selected filters."
+            } else {
+                "Nessun controllo corrisponde ai filtri selezionati."
+            }
             $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         }
         else {
@@ -6826,22 +6913,209 @@ function Start-ScannerUI {
         }
     }
 
+    $applicaLinguaUI = {
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+        $testoAdmin = if ($Ambiente.IsAdmin) {
+            if ($isEn) { 'Yes' } else { 'Si' }
+        } else {
+            'No'
+        }
+        $ctrl.TxtAmbienteInfo.Text = "Windows 11 $($Ambiente.Edition) $($Ambiente.Build) | Admin: $testoAdmin"
+
+        if ($isEn) {
+            $finestra.Title                        = "Windows 11 Security Scanner (Read-Only)"
+            $ctrl.TxtTitoloApp.Text                = "Windows 11 Security Scanner"
+            $ctrl.TxtBadgeSolaLettura.Text         = "READ-ONLY"
+            $ctrl.TxtSottotitoloApp.Text           = "$totaleControlli Deterministic Controls + Local AI Security Advisor (Ollama)"
+            $ctrl.BtnLingua.Content                = "Lang: IT"
+            $ctrl.BtnTema.Content                  = if ($statoUI.TemaCorrente -eq 'Chiaro') { "Theme: Dark" } else { "Theme: Light" }
+            $ctrl.TxtBannerNonAdmin.Text           = "[!] Non-administrative session: some controls will report 'Unknown'. Restart as Administrator for a complete audit."
+            $ctrl.BtnRiavviaAdmin.Content          = "Restart as Administrator"
+            $ctrl.BtnNavScansione.Content          = "1. Security Controls & Details"
+            $ctrl.BtnNavIA.Content                 = "2. AI Security Advisor (Ollama)"
+            $ctrl.BtnAvvia.Content                 = "Start Scan ($totaleControlli controls)"
+            $ctrl.BtnAnnulla.Content               = "Cancel"
+            $ctrl.BtnResocontoLLM.Content          = "Open AI Security Report"
+            $ctrl.LblFiltroStato.Text              = "Status:"
+            $ctrl.LblFiltroGravita.Text            = "Severity:"
+            $ctrl.LblFiltroCategoria.Text          = "Category:"
+            $ctrl.LblFiltroCerca.Text              = "Search:"
+            $ctrl.BtnResetFiltri.Content           = "Reset Filters"
+            $ctrl.ColStato.Header                  = "Status"
+            $ctrl.ColGravita.Header                = "Severity"
+            $ctrl.ColCategoria.Header              = "Category"
+            $ctrl.ColId.Header                     = "ID"
+            $ctrl.ColControllo.Header              = "Security Control"
+            $ctrl.TxtSottotitoloGuida.Text         = "The scanner operates strictly in read-only mode and modifies no Windows settings."
+            $ctrl.BtnModoSemplice.Content          = "Simple View"
+            $ctrl.BtnModoTecnico.Content           = "Technical Details"
+            $ctrl.BtnSpiegaLLM.Content             = "Explain with AI (Page 2)"
+            $ctrl.LblValoreAtteso.Text             = "EXPECTED VALUE"
+            $ctrl.LblValoreOsservato.Text          = "OBSERVED VALUE"
+            $ctrl.LblComeCorreggere.Text           = "How to Remediate (Manual Instructions)"
+            $ctrl.LblComandoRif.Text               = "REFERENCE COMMAND (NOT EXECUTED AUTOMATICALLY):"
+            $ctrl.BtnCopiaComando.Content          = "Copy Command to Clipboard"
+            $ctrl.TxtFeedbackCopia.Text            = "Copied!"
+            $ctrl.LblNoteRischi.Text               = "Risk & Impact Notes"
+            $ctrl.LblMotoreIaTitle.Text            = "LOCAL AI ENGINE (OLLAMA)"
+            $ctrl.LblIndirizzoOllama.Text          = "Ollama Server Address:"
+            $ctrl.LblModelloOllama.Text            = "Lightweight LLM Model:"
+            $ctrl.TxtChkAutoInstalla.Text          = "If Ollama is missing on VM, silently auto-install and start it in background"
+            $ctrl.BtnVerificaOllama.Content        = "Check / Auto-Setup Ollama"
+            $ctrl.LblGeneraAnalisiTitle.Text       = "GENERATE ANALYSIS & ADVICE"
+            $ctrl.BtnResocontoTab.Content          = "Generate Full PC Security Report"
+            $ctrl.BtnSpiegaControlloTab.Content    = "Explain Selected Control"
+            $ctrl.LblCriticitaRilevate.Text        = "DETECTED ISSUES (CLICK TO ANALYZE):"
+            $ctrl.LblTitoloResocontoIA.Text        = "AI SECURITY REPORT & HARDENING PLAN"
+            $ctrl.BtnCopiaRispostaLLM.Content      = "Copy AI Report"
+            $ctrl.BtnTornaScansione.Content        = "Back to Controls Table"
+            $ctrl.BtnEsportaJson.Content           = "Export JSON"
+            $ctrl.BtnEsportaHtml.Content           = "Export HTML"
+            $ctrl.ChkSalvaLogTecnico.Content       = "Include technical error log next to export"
+            $ctrl.TxtDisclaimerPermanente.Text     = "Permanent Notice: This tool audits security configurations strictly in read-only mode. A compliant audit does not guarantee the absence of system compromise."
+        }
+        else {
+            $finestra.Title                        = "Scanner Sicurezza Windows 11 (Sola Lettura)"
+            $ctrl.TxtTitoloApp.Text                = "Scanner Sicurezza Windows 11"
+            $ctrl.TxtBadgeSolaLettura.Text         = "SOLA LETTURA"
+            $ctrl.TxtSottotitoloApp.Text           = "$totaleControlli Controlli Deterministici + Assistente IA Locale (Ollama)"
+            $ctrl.BtnLingua.Content                = "Lang: EN"
+            $ctrl.BtnTema.Content                  = if ($statoUI.TemaCorrente -eq 'Chiaro') { "Tema: Scuro" } else { "Tema: Chiaro" }
+            $ctrl.TxtBannerNonAdmin.Text           = "[!] Sessione non amministrativa: alcuni controlli risulteranno 'Sconosciuto'. Riavvia come Amministratore per l'analisi completa."
+            $ctrl.BtnRiavviaAdmin.Content          = "Riavvia come amministratore"
+            $ctrl.BtnNavScansione.Content          = "1. Tabella Controlli & Dettagli"
+            $ctrl.BtnNavIA.Content                 = "2. Pagina Resoconto IA (Ollama)"
+            $ctrl.BtnAvvia.Content                 = "Avvia scansione ($totaleControlli controlli)"
+            $ctrl.BtnAnnulla.Content               = "Annulla"
+            $ctrl.BtnResocontoLLM.Content          = "Apri Resoconto IA & Consigli"
+            $ctrl.LblFiltroStato.Text              = "Stato:"
+            $ctrl.LblFiltroGravita.Text            = "Gravita':"
+            $ctrl.LblFiltroCategoria.Text          = "Categoria:"
+            $ctrl.LblFiltroCerca.Text              = "Cerca:"
+            $ctrl.BtnResetFiltri.Content           = "Reimposta filtri"
+            $ctrl.ColStato.Header                  = "Stato"
+            $ctrl.ColGravita.Header                = "Gravita'"
+            $ctrl.ColCategoria.Header              = "Categoria"
+            $ctrl.ColId.Header                     = "ID"
+            $ctrl.ColControllo.Header              = "Controllo"
+            $ctrl.TxtSottotitoloGuida.Text         = "Lo strumento opera esclusivamente in sola lettura e non modifica alcuna impostazione di Windows."
+            $ctrl.BtnModoSemplice.Content          = "Spiegazione Semplice"
+            $ctrl.BtnModoTecnico.Content           = "Dettagli Tecnici"
+            $ctrl.BtnSpiegaLLM.Content             = "Spiega con IA (Pagina 2)"
+            $ctrl.LblValoreAtteso.Text             = "VALORE ATTESO"
+            $ctrl.LblValoreOsservato.Text          = "VALORE OSSERVATO"
+            $ctrl.LblComeCorreggere.Text           = "Come correggere (istruzioni manuali)"
+            $ctrl.LblComandoRif.Text               = "COMANDO DI RIFERIMENTO (NON ESEGUITO AUTOMATICAMENTE):"
+            $ctrl.BtnCopiaComando.Content          = "Copia comando negli appunti"
+            $ctrl.TxtFeedbackCopia.Text            = "Copiato!"
+            $ctrl.LblNoteRischi.Text               = "Note sui rischi"
+            $ctrl.LblMotoreIaTitle.Text            = "MOTORE IA LOCALE (OLLAMA)"
+            $ctrl.LblIndirizzoOllama.Text          = "Indirizzo Server Ollama:"
+            $ctrl.LblModelloOllama.Text            = "Modello LLM leggero:"
+            $ctrl.TxtChkAutoInstalla.Text          = "Se Ollama manca sulla VM, installalo e avvialo automaticamente in background"
+            $ctrl.BtnVerificaOllama.Content        = "Verifica / Auto-Configura Ollama"
+            $ctrl.LblGeneraAnalisiTitle.Text       = "GENERA ANALISI E CONSIGLI"
+            $ctrl.BtnResocontoTab.Content          = "Genera Resoconto Completo PC"
+            $ctrl.BtnSpiegaControlloTab.Content    = "Spiega il Controllo Selezionato"
+            $ctrl.LblCriticitaRilevate.Text        = "CRITICITA' RILEVATE (CLICCA PER ANALIZZARE):"
+            $ctrl.LblTitoloResocontoIA.Text        = "RESOCONTO DI SICUREZZA & PIANO DI MIGLIORAMENTO IA"
+            $ctrl.BtnCopiaRispostaLLM.Content      = "Copia Resoconto"
+            $ctrl.BtnTornaScansione.Content        = "Torna alla Tabella Controlli"
+            $ctrl.BtnEsportaJson.Content           = "Esporta JSON"
+            $ctrl.BtnEsportaHtml.Content           = "Esporta HTML"
+            $ctrl.ChkSalvaLogTecnico.Content       = "Includi file di log tecnico accanto all'export"
+            $ctrl.TxtDisclaimerPermanente.Text     = "Avviso permanente: questo strumento verifica solo alcune configurazioni di sicurezza in sola lettura. Un audit conforme non dimostra l'assenza di compromissioni sul sistema."
+        }
+
+        & $aggiornaFiltriComboLingua
+
+        if ($statoUI.RisultatiGrezzi.Count -eq 0) {
+            if ($isEn) {
+                $ctrl.TxtMessaggioGuida.Text = "Click 'Start Scan' to audit all $totaleControlli Windows 11 security controls."
+                $ctrl.TxtProgresso.Text      = "Ready (0/$totaleControlli)"
+                $ctrl.TxtStatoLLM.Text       = "Status: Ready (auto-connects or auto-installs Ollama on demand)"
+                $ctrl.TxtRispostaLLM.Text    = "1. Run the PC scan using the 'Start Scan (34 controls)' button at the top.`r`n2. Click 'Generate Full PC Security Report' on the left to get an executive summary, prioritized remediation plan, and hardening recommendations.`r`n3. On a VM without Ollama installed, leave the auto-install checkbox enabled: the tool will silently configure Ollama or provide an instant built-in expert analysis."
+            }
+            else {
+                $ctrl.TxtMessaggioGuida.Text = "Premi 'Avvia scansione' per analizzare i $totaleControlli controlli di sicurezza del PC."
+                $ctrl.TxtProgresso.Text      = "Pronto (0/$totaleControlli)"
+                $ctrl.TxtStatoLLM.Text       = "Stato: Pronto (connessione o auto-installazione automatica al primo avvio)"
+                $ctrl.TxtRispostaLLM.Text    = "1. Esegui prima la scansione del PC col pulsante 'Avvia scansione (34 controlli)' in alto.`r`n2. Premi 'Genera Resoconto Completo PC' qui a sinistra per ricevere l'analisi di tutte le vulnerabilita' trovate e i consigli pratici di messa in sicurezza.`r`n3. Se sei su una Macchina Virtuale senza Ollama, lascia attiva la spunta a sinistra: il tool pensera' a tutto in automatico (oppure fornira' l'analisi immediata tramite il motore esperto integrato)."
+            }
+        }
+        else {
+            $nValutati = $statoUI.RisultatiGrezzi.Count
+            $idSelPrec = if ($null -ne $statoUI.ElementoSelezionato) { $statoUI.ElementoSelezionato.ControlId } else { $null }
+
+            # Rigenera gli elementi della vista nella lingua selezionata
+            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $statoUI.LinguaCorrente)
+            if ($null -ne $idSelPrec) {
+                foreach ($el in $statoUI.ElementiVista) {
+                    if ($el.ControlId -eq $idSelPrec) {
+                        $statoUI.ElementoSelezionato = $el
+                        break
+                    }
+                }
+            }
+
+            if (-not $statoUI.ScansioneInCorso) {
+                $ctrl.TxtProgresso.Text = if ($isEn) { "Completed ($nValutati/$nValutati)" } else { "Completata ($nValutati/$nValutati)" }
+            }
+
+            # Aggiorna la lista delle criticita' nella Pagina 2 (IA)
+            $falliti = @($statoUI.ElementiVista | Where-Object { $_.Status -eq 'fallito' })
+            $ctrl.ListFallitiIA.ItemsSource = $falliti
+            if ($null -ne $statoUI.ElementoSelezionato -and $statoUI.ElementoSelezionato.Status -eq 'fallito') {
+                $ctrl.ListFallitiIA.SelectedItem = $statoUI.ElementoSelezionato
+            }
+
+            # Aggiorna anche il testo del Resoconto IA nella lingua selezionata cosi' non resta mai nella lingua precedente
+            if ($statoUI.UltimaModalitaIA -eq 'Controllo' -and $null -ne $statoUI.ElementoSelezionato) {
+                $dettCorr = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $statoUI.LinguaCorrente
+                $ctrl.TxtRispostaLLM.Text = Format-AnalisiLocaleControllo -Dettaglio $dettCorr -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
+                $ctrl.TxtStatoLLM.Text    = if ($isEn) { "Completed: Instant Security Analysis ($($dettCorr.ControlId))" } else { "Completato: Analisi di Sicurezza ($($dettCorr.ControlId))" }
+            }
+            else {
+                $conteggiCorr = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
+                $ctrl.TxtRispostaLLM.Text = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggiCorr -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
+                $ctrl.TxtStatoLLM.Text    = if ($isEn) { "Completed: Full PC Security Report (EN)" } else { "Completato: Resoconto Completo Sicurezza PC (IT)" }
+            }
+
+            & $applicaFiltriTabella
+        }
+
+        & $aggiornaConteggiERiepilogo
+        & $aggiornaPannelloDettaglio
+    }
+
+    $ctrl.BtnLingua.Add_Click({
+        if ($statoUI.LinguaCorrente -eq 'IT') {
+            $statoUI.LinguaCorrente = 'EN'
+        }
+        else {
+            $statoUI.LinguaCorrente = 'IT'
+        }
+        & $applicaLinguaUI
+    })
+
     # --- Eventi Tema ---
     $ctrl.BtnTema.Add_Click({
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
         if ($statoUI.TemaCorrente -eq 'Chiaro') {
             $statoUI.TemaCorrente = 'Scuro'
             Update-TemaFinestra -Finestra $finestra -Tema 'Scuro'
-            $ctrl.BtnTema.Content = 'Tema: Chiaro'
+            $ctrl.BtnTema.Content = if ($isEn) { 'Theme: Light' } else { 'Tema: Chiaro' }
         }
         else {
             $statoUI.TemaCorrente = 'Chiaro'
             Update-TemaFinestra -Finestra $finestra -Tema 'Chiaro'
-            $ctrl.BtnTema.Content = 'Tema: Scuro'
+            $ctrl.BtnTema.Content = if ($isEn) { 'Theme: Dark' } else { 'Tema: Scuro' }
         }
     })
 
     # --- Evento Riavvia come Amministratore ---
     $ctrl.BtnRiavviaAdmin.Add_Click({
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
         try {
             $percorsoEntry = if ($PercorsoProgetto -and (Test-Path -LiteralPath (Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'))) {
                 Join-Path $PercorsoProgetto 'src\Invoke-Scanner.ps1'
@@ -6867,21 +7141,21 @@ function Start-ScannerUI {
                 $finestra.Close()
             }
             else {
-                [System.Windows.MessageBox]::Show(
-                    "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando.",
-                    "Scanner sicurezza Windows",
-                    [System.Windows.MessageBoxButton]::OK,
-                    [System.Windows.MessageBoxImage]::Information
-                ) | Out-Null
+                $msg = if ($isEn) {
+                    "Launched from remote memory: open a new PowerShell window as Administrator and re-run the command."
+                } else {
+                    "Avviato da memoria remota: apri una nuova finestra di PowerShell come Amministratore e riesegui il comando."
+                }
+                [System.Windows.MessageBox]::Show($msg, $finestra.Title, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
             }
         }
         catch {
-            [System.Windows.MessageBox]::Show(
-                "Riavvio come amministratore annullato o non riuscito.",
-                "Scanner sicurezza Windows",
-                [System.Windows.MessageBoxButton]::OK,
-                [System.Windows.MessageBoxImage]::Information
-            ) | Out-Null
+            $msgErr = if ($isEn) {
+                "Restart as Administrator was canceled or failed."
+            } else {
+                "Riavvio come amministratore annullato o non riuscito."
+            }
+            [System.Windows.MessageBox]::Show($msgErr, $finestra.Title, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information) | Out-Null
         }
     })
 
@@ -6966,6 +7240,8 @@ function Start-ScannerUI {
             [string]$TestoFallback = ''
         )
 
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
+
         # Passa automaticamente alla Pagina 2 (Pagina dedicata Assistente IA)
         & $mostraPagina 'IA'
 
@@ -6986,14 +7262,23 @@ function Start-ScannerUI {
         $ctrl.BtnResocontoLLM.IsEnabled       = $false
         $ctrl.BtnResocontoTab.IsEnabled       = $false
         $ctrl.BtnVerificaOllama.IsEnabled     = $false
-        $ctrl.TxtStatoLLM.Text                = "$EtichettaOperazione in corso ($modelloScelto)..."
+        $ctrl.TxtStatoLLM.Text                = if ($isEn) { "$EtichettaOperazione in progress ($modelloScelto)..." } else { "$EtichettaOperazione in corso ($modelloScelto)..." }
 
         # Mostra subito l'analisi preliminare mentre Ollama genera (o si auto-installa sulla VM)
         if (-not [string]::IsNullOrWhiteSpace($TestoFallback)) {
-            $ctrl.TxtRispostaLLM.Text = "[Connessione/Preparazione di Ollama ($modelloScelto) in corso in background... Ecco intanto il resoconto strutturato immediato:]`n`n$TestoFallback"
+            $bannerAttesa = if ($isEn) {
+                "[Connecting/Preparing Ollama ($modelloScelto) in background... Here is the immediate structured report:]"
+            } else {
+                "[Connessione/Preparazione di Ollama ($modelloScelto) in corso in background... Ecco intanto il resoconto strutturato immediato:]"
+            }
+            $ctrl.TxtRispostaLLM.Text = "$bannerAttesa`n`n$TestoFallback"
         }
         else {
-            $ctrl.TxtRispostaLLM.Text = "Elaborazione in corso con Ollama ($modelloScelto)... Se ti trovi su una VM senza Ollama, lo scanner lo sta configurando automaticamente in background."
+            $ctrl.TxtRispostaLLM.Text = if ($isEn) {
+                "Processing with Ollama ($modelloScelto)... If you are on a VM without Ollama, the scanner is auto-configuring it in background."
+            } else {
+                "Elaborazione in corso con Ollama ($modelloScelto)... Se ti trovi su una VM senza Ollama, lo scanner lo sta configurando automaticamente in background."
+            }
         }
 
         $callbackStatoLlm = [Action[string]]{
@@ -7003,6 +7288,7 @@ function Start-ScannerUI {
 
         $callbackFineLlm = [Action[object]]{
             param($EsitoLlm)
+            $isEnNow = ($statoUI.LinguaCorrente -eq 'EN')
             $ctrl.BtnSpiegaLLM.IsEnabled          = $true
             $ctrl.BtnSpiegaControlloTab.IsEnabled = $true
             $ctrl.BtnResocontoTab.IsEnabled       = $true
@@ -7014,11 +7300,11 @@ function Start-ScannerUI {
             if ($EsitoLlm.Successo) {
                 $sec = [math]::Round(($EsitoLlm.DurataMs / 1000.0), 1)
                 $sorgente = if ($null -ne $EsitoLlm.PSObject.Properties['Sorgente']) { $EsitoLlm.Sorgente } else { $EsitoLlm.Modello }
-                $ctrl.TxtStatoLLM.Text    = "Completato da: $sorgente (${sec}s)"
+                $ctrl.TxtStatoLLM.Text    = if ($isEnNow) { "Completed by: $sorgente (${sec}s)" } else { "Completato da: $sorgente (${sec}s)" }
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Risposta
             }
             else {
-                $ctrl.TxtStatoLLM.Text    = "Stato: $($EsitoLlm.Modello) non disponibile"
+                $ctrl.TxtStatoLLM.Text    = if ($isEnNow) { "Status: $($EsitoLlm.Modello) unavailable" } else { "Stato: $($EsitoLlm.Modello) non disponibile" }
                 $ctrl.TxtRispostaLLM.Text = $EsitoLlm.Errore
             }
         }
@@ -7030,6 +7316,7 @@ function Start-ScannerUI {
             Endpoint       = $endpointScelto
             Fallback       = $TestoFallback
             AutoProvision  = $autoInstalla
+            Lingua         = $statoUI.LinguaCorrente
             CallbackStato  = $callbackStatoLlm
             CallbackFine   = $callbackFineLlm
         })
@@ -7061,7 +7348,7 @@ function Start-ScannerUI {
                     $statoMsg
                 )
             }
-            $esito = Invoke-RichiestaOllama -Prompt $SyncLlm.Prompt -Modello $SyncLlm.Modello -Endpoint $SyncLlm.Endpoint -TestoFallbackLocale $SyncLlm.Fallback -AutoProvision $SyncLlm.AutoProvision -OnStatus $onStatusBlock
+            $esito = Invoke-RichiestaOllama -Prompt $SyncLlm.Prompt -Modello $SyncLlm.Modello -Endpoint $SyncLlm.Endpoint -TestoFallbackLocale $SyncLlm.Fallback -AutoProvision $SyncLlm.AutoProvision -Lingua $SyncLlm.Lingua -OnStatus $onStatusBlock
             [void]$SyncLlm.Finestra.Dispatcher.Invoke(
                 [System.Windows.Threading.DispatcherPriority]::Normal,
                 $SyncLlm.CallbackFine,
@@ -7073,14 +7360,16 @@ function Start-ScannerUI {
 
     # --- Pulsante Verifica / Auto-Configura Ollama in background ---
     $ctrl.BtnVerificaOllama.Add_Click({
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
         $endpointScelto = if ([string]::IsNullOrWhiteSpace($ctrl.TxtEndpointOllama.Text)) { 'http://127.0.0.1:11434' } else { $ctrl.TxtEndpointOllama.Text.Trim() }
         $autoInst = ($ctrl.ChkAutoInstallaOllama.IsChecked -eq $true)
         $ctrl.BtnVerificaOllama.IsEnabled = $false
-        $ctrl.TxtStatoLLM.Text = "Verifica o installazione automatica di Ollama in corso..."
+        $ctrl.TxtStatoLLM.Text = if ($isEn) { "Checking or auto-installing Ollama..." } else { "Verifica o installazione automatica di Ollama in corso..." }
 
         $cbStato = [Action[string]]{ param([string]$m) $ctrl.TxtStatoLLM.Text = $m }
         $cbFine  = [Action[object]]{
             param($statoOll)
+            $isEnNow = ($statoUI.LinguaCorrente -eq 'EN')
             $ctrl.BtnVerificaOllama.IsEnabled = $true
             if ($statoOll.Disponibile) {
                 $ctrl.TxtEndpointOllama.Text = $statoOll.Endpoint
@@ -7092,14 +7381,26 @@ function Start-ScannerUI {
                         [void]$ctrl.CmbModelloOllama.Items.Add($itemM)
                     }
                     $ctrl.CmbModelloOllama.SelectedIndex = 0
-                    $ctrl.TxtStatoLLM.Text = "Ollama connesso su $($statoOll.Endpoint)! Modelli pronti: $($statoOll.Modelli -join ', ')"
+                    $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
+                        "Ollama connected on $($statoOll.Endpoint)! Ready models: $($statoOll.Modelli -join ', ')"
+                    } else {
+                        "Ollama connesso su $($statoOll.Endpoint)! Modelli pronti: $($statoOll.Modelli -join ', ')"
+                    }
                 }
                 else {
-                    $ctrl.TxtStatoLLM.Text = "Ollama attivo su $($statoOll.Endpoint)! Il modello '$($ctrl.CmbModelloOllama.Text)' verra' scaricato automaticamente alla prima analisi."
+                    $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
+                        "Ollama active on $($statoOll.Endpoint)! Model '$($ctrl.CmbModelloOllama.Text)' will be downloaded automatically on first analysis."
+                    } else {
+                        "Ollama attivo su $($statoOll.Endpoint)! Il modello '$($ctrl.CmbModelloOllama.Text)' verra' scaricato automaticamente alla prima analisi."
+                    }
                 }
             }
             else {
-                $ctrl.TxtStatoLLM.Text = "Ollama non raggiungibile: attivo il Motore Esperto Integrato."
+                $ctrl.TxtStatoLLM.Text = if ($isEnNow) {
+                    "Ollama unreachable: Built-in Expert Security Engine is active."
+                } else {
+                    "Ollama non raggiungibile: attivo il Motore Esperto Integrato."
+                }
             }
         }
 
@@ -7140,28 +7441,42 @@ function Start-ScannerUI {
 
     # --- Azione: Spiega controllo selezionato ---
     $eseguiSpiegazioneControllo = {
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
         & $mostraPagina 'IA'
         if ($null -eq $statoUI.ElementoSelezionato) {
-            $ctrl.TxtStatoLLM.Text = "Seleziona prima un controllo dalla lista 'Criticita' rilevate' qui a sinistra (o dalla Tabella Controlli)."
+            $ctrl.TxtStatoLLM.Text = if ($isEn) {
+                "Please select a control from the 'Detected Issues' list on the left (or from the Controls Table) first."
+            } else {
+                "Seleziona prima un controllo dalla lista 'Criticita' rilevate' qui a sinistra (o dalla Tabella Controlli)."
+            }
             return
         }
-        $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice'
+        $statoUI.UltimaModalitaIA = 'Controllo'
+        $dettaglio   = Format-DettaglioControllo -Elemento $statoUI.ElementoSelezionato -Modalita 'Semplice' -Lingua $statoUI.LinguaCorrente
         $promptCtrl  = Format-PromptControlloOllama -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
         $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $dettaglio -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        & $avviaRichiestaOllamaAsincrona $promptCtrl "Analisi di $($dettaglio.ControlId)" $fallbackLoc
+        $lblOp       = if ($isEn) { "Analyzing $($dettaglio.ControlId)" } else { "Analisi di $($dettaglio.ControlId)" }
+        & $avviaRichiestaOllamaAsincrona $promptCtrl $lblOp $fallbackLoc
     }
 
     # --- Azione: Genera Resoconto Completo della Scansione ---
     $eseguiResocontoScansione = {
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
         & $mostraPagina 'IA'
         if ($statoUI.ElementiVista.Count -eq 0) {
-            $ctrl.TxtStatoLLM.Text = "Premi prima 'Avvia scansione' in alto per raccogliere i dati del PC."
+            $ctrl.TxtStatoLLM.Text = if ($isEn) {
+                "Click 'Start Scan' at the top first to collect PC security data."
+            } else {
+                "Premi prima 'Avvia scansione' in alto per raccogliere i dati del PC."
+            }
             return
         }
+        $statoUI.UltimaModalitaIA = 'Resoconto'
         $conteggi    = Measure-ConteggiRisultati -Elementi $statoUI.RisultatiGrezzi
         $promptRes   = Format-PromptResocontoOllama -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
         $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $statoUI.ElementiVista -Conteggi $conteggi -Ambiente $Ambiente -Lingua $statoUI.LinguaCorrente
-        & $avviaRichiestaOllamaAsincrona $promptRes "Generazione Resoconto Sicurezza PC" $fallbackRes
+        $lblOp       = if ($isEn) { "Generating Full PC Security Report" } else { "Generazione Resoconto Sicurezza PC" }
+        & $avviaRichiestaOllamaAsincrona $promptRes $lblOp $fallbackRes
     }
 
     $ctrl.BtnSpiegaLLM.Add_Click($eseguiSpiegazioneControllo)
@@ -7170,15 +7485,17 @@ function Start-ScannerUI {
     $ctrl.BtnResocontoTab.Add_Click($eseguiResocontoScansione)
 
     $ctrl.BtnCopiaRispostaLLM.Add_Click({
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
         if (-not [string]::IsNullOrWhiteSpace($ctrl.TxtRispostaLLM.Text)) {
             [System.Windows.Clipboard]::SetText($ctrl.TxtRispostaLLM.Text)
-            $ctrl.TxtStatoLLM.Text = "Resoconto copiato negli appunti di Windows!"
+            $ctrl.TxtStatoLLM.Text = if ($isEn) { "AI Report copied to Windows clipboard!" } else { "Resoconto copiato negli appunti di Windows!" }
         }
     })
 
     # --- Avvia scansione in Runspace separato ---
     $ctrl.BtnAvvia.Add_Click({
         if ($statoUI.ScansioneInCorso) { return }
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
 
         $statoUI.ScansioneInCorso    = $true
         $statoUI.RisultatiGrezzi     = @()
@@ -7191,8 +7508,8 @@ function Start-ScannerUI {
         $ctrl.BtnEsportaHtml.IsEnabled  = $false
         $ctrl.BannerErrore.Visibility   = [System.Windows.Visibility]::Collapsed
         $ctrl.ProgressScansione.Value   = 0
-        $ctrl.TxtProgresso.Text         = "Avvio scansione..."
-        $ctrl.TxtMessaggioGuida.Text    = "Scansione in corso... I risultati compariranno man mano."
+        $ctrl.TxtProgresso.Text         = if ($isEn) { "Starting scan..." } else { "Avvio scansione..." }
+        $ctrl.TxtMessaggioGuida.Text    = if ($isEn) { "Scan in progress... Results will appear as controls are evaluated." } else { "Scansione in corso... I risultati compariranno man mano." }
         $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         $ctrl.GridRisultati.ItemsSource = @()
         & $aggiornaConteggiERiepilogo
@@ -7202,12 +7519,13 @@ function Start-ScannerUI {
         $callbackProgresso = [Action[int, int, object]]{
             param([int]$Indice, [int]$Totale, [object]$RisultatoSingolo)
 
+            $isEnProg = ($statoUI.LinguaCorrente -eq 'EN')
             $statoUI.RisultatiGrezzi += $RisultatoSingolo
-            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo)
+            $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $statoUI.LinguaCorrente)
 
             $ctrl.ProgressScansione.Maximum = if ($Totale -gt 0) { $Totale } else { 1 }
             $ctrl.ProgressScansione.Value   = $Indice
-            $ctrl.TxtProgresso.Text         = "Avanzamento: $Indice/$Totale"
+            $ctrl.TxtProgresso.Text         = if ($isEnProg) { "Progress: $Indice/$Totale" } else { "Avanzamento: $Indice/$Totale" }
 
             & $aggiornaConteggiERiepilogo
             & $applicaFiltriTabella
@@ -7215,6 +7533,7 @@ function Start-ScannerUI {
 
         # Callback invocato sul thread UI al termine (o annullamento) della scansione
         $callbackFine = [Action]{
+            $isEnEnd = ($statoUI.LinguaCorrente -eq 'EN')
             $statoUI.ScansioneInCorso   = $false
             $ctrl.BtnAvvia.IsEnabled    = $true
             $ctrl.BtnAnnulla.IsEnabled  = $false
@@ -7227,18 +7546,22 @@ function Start-ScannerUI {
             }
 
             if ($null -ne $statoUI.SyncRunspace -and $statoUI.SyncRunspace.ErroreFatale) {
-                $ctrl.TxtBannerErrore.Text = "Si e' verificato un problema durante l'esecuzione della scansione. Riprova o esporta il log tecnico."
+                $ctrl.TxtBannerErrore.Text = if ($isEnEnd) {
+                    "An error occurred during the scan execution. Please retry or export the technical log."
+                } else {
+                    "Si e' verificato un problema durante l'esecuzione della scansione. Riprova o esporta il log tecnico."
+                }
                 $ctrl.BannerErrore.Visibility = [System.Windows.Visibility]::Visible
-                $ctrl.TxtProgresso.Text = "Interrotto per errore ($nValutati/$totaleControlli)"
+                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Stopped on error ($nValutati/$totaleControlli)" } else { "Interrotto per errore ($nValutati/$totaleControlli)" }
             }
             elseif ($null -ne $statoUI.SyncRunspace -and $statoUI.SyncRunspace.AnnullaRichiesto) {
-                $ctrl.TxtProgresso.Text = "Annullata ($nValutati/$totaleControlli)"
+                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Canceled ($nValutati/$totaleControlli)" } else { "Annullata ($nValutati/$totaleControlli)" }
                 if ($nValutati -eq 0) {
-                    $ctrl.TxtMessaggioGuida.Text = "Scansione annullata. Premi 'Avvia scansione' per riprovare."
+                    $ctrl.TxtMessaggioGuida.Text = if ($isEnEnd) { "Scan canceled. Click 'Start Scan' to try again." } else { "Scansione annullata. Premi 'Avvia scansione' per riprovare." }
                 }
             }
             else {
-                $ctrl.TxtProgresso.Text = "Completata ($nValutati/$nValutati)"
+                $ctrl.TxtProgresso.Text = if ($isEnEnd) { "Completed ($nValutati/$nValutati)" } else { "Completata ($nValutati/$nValutati)" }
             }
 
             & $aggiornaConteggiERiepilogo
@@ -7272,7 +7595,6 @@ function Start-ScannerUI {
         $statoUI.SyncRunspace = $sync
 
         # Prepara InitialSessionState con le funzioni del motore gia' caricate in memoria
-        # (consente l'esecuzione anche da singolo file autonomo senza cartella src/)
         $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
         $funzioniDaPassare = @(Get-ChildItem Function:\Invoke-Controlli, Function:\Test-* -ErrorAction SilentlyContinue)
         foreach ($fn in $funzioniDaPassare) {
@@ -7356,17 +7678,18 @@ function Start-ScannerUI {
         if ($statoUI.ScansioneInCorso -and $null -ne $statoUI.SyncRunspace) {
             $statoUI.SyncRunspace.AnnullaRichiesto = $true
             $ctrl.BtnAnnulla.IsEnabled = $false
-            $ctrl.TxtProgresso.Text = "Annullamento in corso..."
+            $ctrl.TxtProgresso.Text = if ($statoUI.LinguaCorrente -eq 'EN') { "Canceling..." } else { "Annullamento in corso..." }
         }
     })
 
     # --- Export JSON ---
     $ctrl.BtnEsportaJson.Add_Click({
         if ($statoUI.RisultatiGrezzi.Count -eq 0) { return }
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
 
         $dialogo = New-Object Microsoft.Win32.SaveFileDialog
-        $dialogo.Title      = "Esporta report JSON"
-        $dialogo.Filter     = "File JSON (*.json)|*.json"
+        $dialogo.Title      = if ($isEn) { "Export JSON Report" } else { "Esporta report JSON" }
+        $dialogo.Filter     = "JSON (*.json)|*.json"
         $dialogo.FileName   = (Get-NomeFileExport -Estensione 'json')
         $dialogo.DefaultExt = ".json"
 
@@ -7380,17 +7703,22 @@ function Start-ScannerUI {
                 Export-TechnicalLog -Report $report -PercorsoFile $percorsoLog
             }
 
-            $ctrl.TxtRiepilogoFooter.Text = "Esportato JSON: $(Split-Path -Leaf $dialogo.FileName)"
+            $ctrl.TxtRiepilogoFooter.Text = if ($isEn) {
+                "Exported JSON: $(Split-Path -Leaf $dialogo.FileName)"
+            } else {
+                "Esportato JSON: $(Split-Path -Leaf $dialogo.FileName)"
+            }
         }
     })
 
     # --- Export HTML ---
     $ctrl.BtnEsportaHtml.Add_Click({
         if ($statoUI.RisultatiGrezzi.Count -eq 0) { return }
+        $isEn = ($statoUI.LinguaCorrente -eq 'EN')
 
         $dialogo = New-Object Microsoft.Win32.SaveFileDialog
-        $dialogo.Title      = "Esporta report HTML"
-        $dialogo.Filter     = "Pagina HTML (*.html)|*.html"
+        $dialogo.Title      = if ($isEn) { "Export HTML Report" } else { "Esporta report HTML" }
+        $dialogo.Filter     = "HTML (*.html)|*.html"
         $dialogo.FileName   = (Get-NomeFileExport -Estensione 'html')
         $dialogo.DefaultExt = ".html"
 
@@ -7404,7 +7732,11 @@ function Start-ScannerUI {
                 Export-TechnicalLog -Report $report -PercorsoFile $percorsoLog
             }
 
-            $ctrl.TxtRiepilogoFooter.Text = "Esportato HTML: $(Split-Path -Leaf $dialogo.FileName)"
+            $ctrl.TxtRiepilogoFooter.Text = if ($isEn) {
+                "Exported HTML: $(Split-Path -Leaf $dialogo.FileName)"
+            } else {
+                "Esportato HTML: $(Split-Path -Leaf $dialogo.FileName)"
+            }
         }
     })
 
