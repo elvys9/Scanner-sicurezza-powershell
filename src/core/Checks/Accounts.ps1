@@ -190,16 +190,10 @@ function Test-GuestAccount {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $erroreIniziale = $_
-        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto|not recognized as the name of a cmdlet') {
-            $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Cmdlet Get-LocalUser is not available"
-            $risultato.Error    = $_.Exception.Message
-            return $risultato
-        }
     }
     catch {
         $erroreIniziale = $_
-        if ($_.Exception.Message -notmatch 'Access is denied|Accesso negato|privilegi|privilege|Object reference|CIM resource|1332|Failed to compare') {
+        if ($_.Exception.Message -notmatch 'Access is denied|Accesso negato|privilegi|privilege|Object reference|CIM resource|1332|Failed to compare|not loaded|not supported|LocalAccounts|Zugriff verweigert') {
             $risultato.Status = 'errore'
             $risultato.Error  = $_.Exception.Message
             return $risultato
@@ -213,8 +207,13 @@ function Test-GuestAccount {
     }
 
     if ($null -eq $utenti -or $utenti.Count -eq 0) {
-        $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "No account with SID ending in -501 found"
+        $risultato.Status = 'sconosciuto'
+        if ($null -ne $erroreIniziale -and $erroreIniziale.Exception -is [System.Management.Automation.CommandNotFoundException]) {
+            $risultato.Observed = "Cmdlet Get-LocalUser is not available and local account fallback returned no users"
+        }
+        else {
+            $risultato.Observed = "No account with SID ending in -501 found"
+        }
         $risultato.Evidence = @{ AccountFound = $false }
         if ($null -ne $erroreIniziale) { $risultato.Error = $erroreIniziale.Exception.Message }
         return $risultato
@@ -283,16 +282,10 @@ function Test-AdminAccount {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $erroreIniziale = $_
-        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto|not recognized as the name of a cmdlet') {
-            $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Cmdlet Get-LocalUser is not available"
-            $risultato.Error    = $_.Exception.Message
-            return $risultato
-        }
     }
     catch {
         $erroreIniziale = $_
-        if ($_.Exception.Message -notmatch 'Access is denied|Accesso negato|privilegi|privilege|Object reference|CIM resource|1332|Failed to compare') {
+        if ($_.Exception.Message -notmatch 'Access is denied|Accesso negato|privilegi|privilege|Object reference|CIM resource|1332|Failed to compare|not loaded|not supported|LocalAccounts|Zugriff verweigert') {
             $risultato.Status = 'errore'
             $risultato.Error  = $_.Exception.Message
             return $risultato
@@ -306,8 +299,13 @@ function Test-AdminAccount {
     }
 
     if ($null -eq $utenti -or $utenti.Count -eq 0) {
-        $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "No account with SID ending in -500 found"
+        $risultato.Status = 'sconosciuto'
+        if ($null -ne $erroreIniziale -and $erroreIniziale.Exception -is [System.Management.Automation.CommandNotFoundException]) {
+            $risultato.Observed = "Cmdlet Get-LocalUser is not available and local account fallback returned no users"
+        }
+        else {
+            $risultato.Observed = "No account with SID ending in -500 found"
+        }
         $risultato.Evidence = @{ AccountFound = $false }
         if ($null -ne $erroreIniziale) { $risultato.Error = $erroreIniziale.Exception.Message }
         return $risultato
@@ -377,16 +375,10 @@ function Test-AccountsPasswordRequired {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $erroreIniziale = $_
-        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto|not recognized as the name of a cmdlet') {
-            $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Cmdlet Get-LocalUser is not available"
-            $risultato.Error    = $_.Exception.Message
-            return $risultato
-        }
     }
     catch {
         $erroreIniziale = $_
-        if ($_.Exception.Message -notmatch 'Access is denied|Accesso negato|privilegi|privilege|Object reference|CIM resource|1332|Failed to compare') {
+        if ($_.Exception.Message -notmatch 'Access is denied|Accesso negato|privilegi|privilege|Object reference|CIM resource|1332|Failed to compare|not loaded|not supported|LocalAccounts|Zugriff verweigert') {
             $risultato.Status = 'errore'
             $risultato.Error  = $_.Exception.Message
             return $risultato
@@ -400,8 +392,13 @@ function Test-AccountsPasswordRequired {
     }
 
     if ($null -eq $utenti -or $utenti.Count -eq 0) {
-        $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Local account data unavailable"
+        $risultato.Status = 'sconosciuto'
+        if ($null -ne $erroreIniziale -and $erroreIniziale.Exception -is [System.Management.Automation.CommandNotFoundException]) {
+            $risultato.Observed = "Cmdlet Get-LocalUser is not available and local account fallback returned no users"
+        }
+        else {
+            $risultato.Observed = "Local account data unavailable"
+        }
         if ($null -ne $erroreIniziale) { $risultato.Error = $erroreIniziale.Exception.Message }
         return $risultato
     }

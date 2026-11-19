@@ -81,16 +81,37 @@ Describe 'Test-GuestAccount (HOME-ACC-001)' {
         }
     }
 
-    Context 'Cmdlet unavailable (unknown)' {
-        It 'Returns sconosciuto when Get-LocalUser is not recognized' {
+    Context 'Cmdlet unavailable (fallback & unknown)' {
+        It 'Returns sconosciuto when Get-LocalUser is not recognized and fallback returns empty' {
             Mock Get-LocalUser {
                 throw [System.Management.Automation.CommandNotFoundException]::new(
                     "The term 'Get-LocalUser' is not recognized as the name of a cmdlet."
                 )
             }
+            Mock Test-FallbackUtentiLocali { return @() }
 
             $risultato = Test-GuestAccount -Controllo $controlloFittizio -Ambiente $ambienteFittizio
             $risultato.Status | Should -Be 'sconosciuto'
+        }
+
+        It 'Uses Test-FallbackUtentiLocali and returns superato when Get-LocalUser is unavailable' {
+            Mock Get-LocalUser {
+                throw [System.Management.Automation.CommandNotFoundException]::new(
+                    "The term 'Get-LocalUser' is not recognized as the name of a cmdlet."
+                )
+            }
+            Mock Test-FallbackUtentiLocali {
+                return @(
+                    [PSCustomObject]@{
+                        Name    = 'Guest'
+                        SID     = [PSCustomObject]@{ Value = 'S-1-5-21-1234567890-1234567890-1234567890-501' }
+                        Enabled = $false
+                    }
+                )
+            }
+
+            $risultato = Test-GuestAccount -Controllo $controlloFittizio -Ambiente $ambienteFittizio
+            $risultato.Status | Should -Be 'superato'
         }
     }
 
@@ -150,6 +171,25 @@ Describe 'Test-AdminAccount (HOME-ACC-002)' {
         $res = Test-AdminAccount -Controllo $controlloAdmin -Ambiente $ambiente
         $res.Status | Should -Be 'sconosciuto'
     }
+
+    It 'Uses Test-FallbackUtentiLocali and returns superato when Get-LocalUser is unavailable' {
+        Mock Get-LocalUser {
+            throw [System.Management.Automation.CommandNotFoundException]::new(
+                "The term 'Get-LocalUser' is not recognized as the name of a cmdlet."
+            )
+        }
+        Mock Test-FallbackUtentiLocali {
+            return @(
+                [PSCustomObject]@{
+                    Name    = 'Administrator'
+                    SID     = [PSCustomObject]@{ Value = 'S-1-5-21-111-222-333-500' }
+                    Enabled = $false
+                }
+            )
+        }
+        $res = Test-AdminAccount -Controllo $controlloAdmin -Ambiente $ambiente
+        $res.Status | Should -Be 'superato'
+    }
 }
 
 Describe 'Test-AccountsPasswordRequired (HOME-ACC-003)' {
@@ -201,6 +241,28 @@ Describe 'Test-AccountsPasswordRequired (HOME-ACC-003)' {
 
     It 'Returns superato (no false positive) when PasswordRequired = False but PrincipalSource = MicrosoftAccount' {
         Mock Get-LocalUser {
+            return @(
+                [PSCustomObject]@{
+                    Name             = 'MicrosoftHelloUser'
+                    SID              = [PSCustomObject]@{ Value = 'S-1-5-21-111-1003' }
+                    Enabled          = $true
+                    PasswordRequired = $false
+                    PrincipalSource  = 'MicrosoftAccount'
+                }
+            )
+        }
+        $res = Test-AccountsPasswordRequired -Controllo $controlloPwd -Ambiente $ambiente
+        $res.Status   | Should -Be 'superato'
+        $res.Observed | Should -Match 'MicrosoftHelloUser'
+    }
+
+    It 'Uses Test-FallbackUtentiLocali and returns superato when Get-LocalUser is unavailable' {
+        Mock Get-LocalUser {
+            throw [System.Management.Automation.CommandNotFoundException]::new(
+                "The term 'Get-LocalUser' is not recognized as the name of a cmdlet."
+            )
+        }
+        Mock Test-FallbackUtentiLocali {
             return @(
                 [PSCustomObject]@{
                     Name             = 'MicrosoftHelloUser'

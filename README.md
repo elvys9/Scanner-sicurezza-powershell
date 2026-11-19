@@ -162,7 +162,7 @@ tools/
   Build.ps1                Compiles all modules into dist/scanner-win11*.ps1 (IT/EN/DE)
   yaml_to_json.py          Converts YAML catalog to JSON and validates against schema.json
 tests/
-  *.Tests.ps1              167 Pester 5 automated tests (Unit, AST Read-Only, ViewModel, Ollama, E2E)
+  *.Tests.ps1              170 Pester 5 automated tests (Unit, AST Read-Only, ViewModel, Ollama, E2E)
 ```
 
 ---
@@ -176,6 +176,6 @@ python tools/yaml_to_json.py
 # 2. Rebuild the standalone single-file scripts in dist/:
 powershell -ExecutionPolicy Bypass -File tools\Build.ps1
 
-# 3. Run the entire Pester 5 test suite (167 tests):
+# 3. Run the entire Pester 5 test suite (170 tests):
 Invoke-Pester tests -Output Detailed
 ```
