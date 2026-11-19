@@ -342,6 +342,28 @@ Describe 'ViewModel — Funzioni pure (senza WPF)' {
             $itemsDe[1].RebootBadgeLabel | Should -Be 'Neustart erforderlich'
         }
 
+        It 'Get-AutoFixableControlIds returns AutoSafe, AutoReboot, and Guided IDs while excluding Manual controls' {
+            $sampleVista = @(
+                [PSCustomObject]@{ ControlId = 'HOME-SYS-001'; Title = 'File Ext';      Category = 'Windows Settings'; Severity = 'medio';   SeverityLabel = 'Medium';   SeverityRank = 3; Status = 'fallito' }
+                [PSCustomObject]@{ ControlId = 'HOME-SEC-002'; Title = 'LSA RunAsPPL';  Category = 'Advanced Security'; Severity = 'alto';    SeverityLabel = 'High';     SeverityRank = 2; Status = 'fallito' }
+                [PSCustomObject]@{ ControlId = 'HOME-FIL-009'; Title = 'Unquoted Path'; Category = 'File Security';     Severity = 'alto';    SeverityLabel = 'High';     SeverityRank = 2; Status = 'fallito' }
+                [PSCustomObject]@{ ControlId = 'HOME-ACC-003'; Title = 'Password';      Category = 'Accounts';          Severity = 'critico'; SeverityLabel = 'Critical'; SeverityRank = 1; Status = 'fallito' }
+                [PSCustomObject]@{ ControlId = 'HOME-SEC-001'; Title = 'Secure Boot';   Category = 'Advanced Security'; Severity = 'critico'; SeverityLabel = 'Critical'; SeverityRank = 1; Status = 'fallito' }
+            )
+
+            $autoItems = @(ConvertTo-AutoFixItems -ElementiVista $sampleVista -Lingua 'EN')
+            $fixIds    = @(Get-AutoFixableControlIds -AutoFixItems $autoItems)
+
+            $fixIds | Should -Contain 'HOME-SYS-001'
+            $fixIds | Should -Contain 'HOME-SEC-002'
+            $fixIds | Should -Contain 'HOME-FIL-009'
+            $fixIds | Should -Not -Contain 'HOME-ACC-003'
+            $fixIds | Should -Not -Contain 'HOME-SEC-001'
+            $fixIds.Count | Should -Be 3
+
+            @(Get-AutoFixableControlIds -AutoFixItems @()).Count | Should -Be 0
+        }
+
         It 'Format-DettaglioControllo aligns commands with RemediationCatalog PreviewCommands (e.g., HOME-FW-001)' {
             $fwItem = [PSCustomObject]@{
                 ControlId   = 'HOME-FW-001'
@@ -519,6 +541,7 @@ Describe 'MainWindow.xaml — Coerenza strutturale XAML' {
             'TxtRiepilogoFooter',
             'TxtDisclaimerPermanente',
             'BtnNavAutoFix',
+            'BtnAutoFixTutti',
             'GridPaginaAutoFix',
             'PanelAzioneRapidaDettaglio',
             'BtnRiparaSingolo',
@@ -526,6 +549,7 @@ Describe 'MainWindow.xaml — Coerenza strutturale XAML' {
             'TxtEsitoFixDettaglio',
             'LblAutoFixPresetTitle',
             'BtnSelezionaFixSicuri',
+            'BtnSelezionaTuttiFix',
             'BtnDeselezionaTuttiFix',
             'TxtConteggioSelezionati',
             'LblAutoFixSicurezzaTitle',

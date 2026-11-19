@@ -1391,6 +1391,47 @@ function ConvertTo-AutoFixItems {
     return $sorted
 }
 
+function Get-AutoFixableControlIds {
+    <#
+    .SYNOPSIS
+        Returns ordered, deduplicated ControlIds from Auto-Fix view items where CanAutoFix is true.
+
+    .PARAMETER AutoFixItems
+        Array of Auto-Fix items built by ConvertTo-AutoFixItems.
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [array]$AutoFixItems = @()
+    )
+
+    if ($null -eq $AutoFixItems -or $AutoFixItems.Count -eq 0) {
+        return @()
+    }
+
+    $result = New-Object System.Collections.ArrayList
+    $seen   = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($item in $AutoFixItems) {
+        if ($null -eq $item) { continue }
+        $canFix = [bool](Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'CanAutoFix' -ValorePredefinito $false)
+        if (-not $canFix) { continue }
+
+        $cid = [string](Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'ControlId' -ValorePredefinito '')
+        $cidTrim = if ($null -ne $cid) { $cid.Trim() } else { '' }
+        if ([string]::IsNullOrWhiteSpace($cidTrim)) { continue }
+
+        if ($seen.Add($cidTrim)) {
+            [void]$result.Add($cidTrim)
+        }
+    }
+
+    return @($result.ToArray([string]))
+}
+
 function Format-RemediationScriptExport {
     <#
     .SYNOPSIS

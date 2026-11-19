@@ -615,6 +615,7 @@ function Start-ScannerUI {
         GridPaginaAutoFix      = $finestra.FindName('GridPaginaAutoFix')
         LblAutoFixPresetTitle  = $finestra.FindName('LblAutoFixPresetTitle')
         BtnSelezionaFixSicuri  = $finestra.FindName('BtnSelezionaFixSicuri')
+        BtnSelezionaTuttiFix   = $finestra.FindName('BtnSelezionaTuttiFix')
         BtnDeselezionaTuttiFix = $finestra.FindName('BtnDeselezionaTuttiFix')
         TxtConteggioSelezionati = $finestra.FindName('TxtConteggioSelezionati')
         LblAutoFixSicurezzaTitle = $finestra.FindName('LblAutoFixSicurezzaTitle')
@@ -646,6 +647,7 @@ function Start-ScannerUI {
         LblGeneraAnalisiTitle  = $finestra.FindName('LblGeneraAnalisiTitle')
         BtnSpiegaLLM           = $finestra.FindName('BtnSpiegaLLM')
         BtnResocontoLLM        = $finestra.FindName('BtnResocontoLLM')
+        BtnAutoFixTutti        = $finestra.FindName('BtnAutoFixTutti')
         BtnSpiegaControlloTab  = $finestra.FindName('BtnSpiegaControlloTab')
         BtnResocontoTab        = $finestra.FindName('BtnResocontoTab')
         LblCriticitaRilevate   = $finestra.FindName('LblCriticitaRilevate')
@@ -950,11 +952,25 @@ function Start-ScannerUI {
             default { "Applica correzioni selezionate ($nSel)" }
         }
 
+        $ctrl.BtnAutoFixTutti.Content = switch ($langAuto) {
+            'EN' { "Auto-Fix All ($nDispon)" }
+            'DE' { "Alle Auto-Fix ($nDispon)" }
+            default { "Auto-Fix Tutti ($nDispon)" }
+        }
+
+        $ctrl.BtnSelezionaTuttiFix.Content = switch ($langAuto) {
+            'EN' { "Select All Auto-Fixable ($nDispon)" }
+            'DE' { "Alle Auto-Fixes waehlen ($nDispon)" }
+            default { "Seleziona tutti i Fix Automatici ($nDispon)" }
+        }
+
         $occupato = ($statoUI.FixInCorso -or $statoUI.ScansioneInCorso)
         $ctrl.BtnApplicaFixSelezionati.IsEnabled = (-not $occupato) -and ($nSel -gt 0)
         $ctrl.BtnAnteprimaComandi.IsEnabled      = (-not $occupato) -and ($nSel -gt 0 -or $nDispon -gt 0)
         $ctrl.BtnEsportaScriptFix.IsEnabled      = (-not $occupato) -and ($nSel -gt 0 -or $nDispon -gt 0)
         $ctrl.BtnSelezionaFixSicuri.IsEnabled    = (-not $occupato) -and ($nAutoSafe -gt 0)
+        $ctrl.BtnSelezionaTuttiFix.IsEnabled     = (-not $occupato) -and ($nDispon -gt 0)
+        $ctrl.BtnAutoFixTutti.IsEnabled          = (-not $occupato) -and ($nDispon -gt 0)
         $ctrl.BtnDeselezionaTuttiFix.IsEnabled   = (-not $occupato) -and ($itemsAuto.Count -gt 0)
         $ctrl.BtnRollbackUltimo.IsEnabled        = (-not $occupato) -and (-not [string]::IsNullOrWhiteSpace($statoUI.UltimoBackupPath)) -and ([System.IO.File]::Exists($statoUI.UltimoBackupPath))
 
@@ -1172,6 +1188,7 @@ function Start-ScannerUI {
             $ctrl.ChkSalvaLogTecnico.Content       = "Include technical error log next to export"
             $ctrl.TxtDisclaimerPermanente.Text     = "Permanent Notice: This tool audits security configurations strictly in read-only mode. A compliant audit does not guarantee the absence of system compromise."
             $ctrl.BtnNavAutoFix.Content            = "3. Auto-Fix (WinUtil)"
+            $ctrl.BtnAutoFixTutti.ToolTip          = "Apply all available automatic fixes for failed controls in 1 click. Manual controls keep their 'Open Windows Settings' button untouched."
             $ctrl.BtnRiparaSingolo.Content         = "Apply Auto-Fix (1-Click)"
             $ctrl.BtnApriImpostazioni.Content      = "Open Windows Settings"
             $ctrl.LblAutoFixPresetTitle.Text       = "QUICK SELECTION (WINUTIL STYLE)"
@@ -1239,6 +1256,7 @@ function Start-ScannerUI {
             $ctrl.ChkSalvaLogTecnico.Content       = "Technisches Fehlerprotokoll neben dem Export speichern"
             $ctrl.TxtDisclaimerPermanente.Text     = "Dauerhafter Hinweis: Dieses Tool prueft Sicherheitskonfigurationen ausschliesslich schreibgeschuetzt. Ein konformes Audit garantiert nicht die Abwesenheit einer Kompromittierung."
             $ctrl.BtnNavAutoFix.Content            = "3. Auto-Fix (WinUtil)"
+            $ctrl.BtnAutoFixTutti.ToolTip          = "Alle verfuegbaren Auto-Fixes fuer fehlgeschlagene Pruefungen mit 1 Klick anwenden. Manuelle Pruefungen behalten 'Windows-Einstellungen oeffnen'."
             $ctrl.BtnRiparaSingolo.Content         = "Auto-Fix anwenden (1-Klick)"
             $ctrl.BtnApriImpostazioni.Content      = "Windows-Einstellungen oeffnen"
             $ctrl.LblAutoFixPresetTitle.Text       = "SCHNELLAUSWAHL (WINUTIL-STIL)"
@@ -1306,6 +1324,7 @@ function Start-ScannerUI {
             $ctrl.ChkSalvaLogTecnico.Content       = "Includi file di log tecnico accanto all'export"
             $ctrl.TxtDisclaimerPermanente.Text     = "Avviso permanente: questo strumento verifica solo alcune configurazioni di sicurezza in sola lettura. Un audit conforme non dimostra l'assenza di compromissioni sul sistema."
             $ctrl.BtnNavAutoFix.Content            = "3. Auto-Fix (WinUtil)"
+            $ctrl.BtnAutoFixTutti.ToolTip          = "Applica con 1 click tutti i fix automatici disponibili per i controlli falliti. I controlli manuali restano invariati con 'Apri in Impostazioni Windows'."
             $ctrl.BtnRiparaSingolo.Content         = "Applica Fix Automatico (1-Click)"
             $ctrl.BtnApriImpostazioni.Content      = "Apri in Impostazioni Windows"
             $ctrl.LblAutoFixPresetTitle.Text       = "SELEZIONE RAPIDA (STILE WINUTIL)"
@@ -1619,6 +1638,16 @@ function Start-ScannerUI {
         & $aggiornaConteggioAutoFix
     })
 
+    $ctrl.BtnSelezionaTuttiFix.Add_Click({
+        foreach ($item in @($statoUI.ElementiAutoFix)) {
+            if ($null -ne $item) {
+                $item.IsSelected = [bool]$item.CanAutoFix
+            }
+        }
+        $ctrl.ListAutoFixControlli.Items.Refresh()
+        & $aggiornaConteggioAutoFix
+    })
+
     $ctrl.BtnDeselezionaTuttiFix.Add_Click({
         foreach ($item in @($statoUI.ElementiAutoFix)) {
             if ($null -ne $item) {
@@ -1680,7 +1709,10 @@ function Start-ScannerUI {
     })
 
     $avviaRemediationAsincrona = {
-        param([string[]]$IdsRichiesti)
+        param(
+            [string[]]$IdsRichiesti,
+            [bool]$PassaAPaginaAutoFix = $false
+        )
 
         if ($statoUI.ScansioneInCorso -or $statoUI.FixInCorso) { return }
         if ($null -eq (Get-Command -Name 'Invoke-SecurityRemediation' -ErrorAction SilentlyContinue)) { return }
@@ -1708,11 +1740,32 @@ function Start-ScannerUI {
             return
         }
 
-        $creaRp = ($ctrl.ChkCreaRestorePoint.IsChecked -eq $true)
+        $creaRp   = ($ctrl.ChkCreaRestorePoint.IsChecked -eq $true)
+        $nReboot  = @($previews | Where-Object { $_.RequiresReboot -and ($_.FixMode -in @('AutoSafe', 'AutoReboot', 'Guided')) }).Count
+        $nManuali = @($statoUI.ElementiAutoFix | Where-Object { -not $_.CanAutoFix }).Count
+
+        $notaReboot = ''
+        if ($nReboot -gt 0) {
+            $notaReboot = switch ($lang) {
+                'EN' { "`r`nNote: $nReboot control(s) require a Windows restart for full runtime enforcement." }
+                'DE' { "`r`nHinweis: $nReboot Pruefung(en) erfordern einen Windows-Neustart." }
+                default { "`r`nNota: $nReboot controllo/i richiedono il riavvio di Windows per l'applicazione completa." }
+            }
+        }
+
+        $notaManuali = ''
+        if ($PassaAPaginaAutoFix -and $nManuali -gt 0) {
+            $notaManuali = switch ($lang) {
+                'EN' { "`r`nNote: $nManuali manual/non-auto-fixable control(s) will remain untouched with their 'Open Windows Settings' button." }
+                'DE' { "`r`nHinweis: $nManuali manuelle Pruefung(en) bleiben unveraendert mit ihrer Schaltflaeche 'Einstellungen'." }
+                default { "`r`nNota: $nManuali controllo/i manuali non automatizzabili resteranno invariati con il pulsante 'Apri in Impostazioni Windows'." }
+            }
+        }
+
         $msgConf = switch ($lang) {
-            'EN' { "Apply $($idsClean.Count) remediation(s)?`r`nControls: $($idsClean -join ', ')`r`n`r`nA JSON rollback backup is saved automatically before modifying the system." }
-            'DE' { "$($idsClean.Count) Korrektur(en) anwenden?`r`nPruefungen: $($idsClean -join ', ')`r`n`r`nVor den Aenderungen wird automatisch eine JSON-Rollback-Sicherung erstellt." }
-            default { "Applicare $($idsClean.Count) correzione/i selezionate?`r`nControlli: $($idsClean -join ', ')`r`n`r`nVerrà salvato automaticamente un backup JSON per eventuale Rollback." }
+            'EN' { "Apply $($idsClean.Count) remediation(s)?`r`nControls: $($idsClean -join ', ')$notaReboot$notaManuali`r`n`r`nA JSON rollback backup is saved automatically before modifying the system." }
+            'DE' { "$($idsClean.Count) Korrektur(en) anwenden?`r`nPruefungen: $($idsClean -join ', ')$notaReboot$notaManuali`r`n`r`nVor den Aenderungen wird automatisch eine JSON-Rollback-Sicherung erstellt." }
+            default { "Applicare $($idsClean.Count) correzione/i selezionate?`r`nControlli: $($idsClean -join ', ')$notaReboot$notaManuali`r`n`r`nVerra' salvato automaticamente un backup JSON per eventuale Rollback." }
         }
         $sceltaConf = [System.Windows.MessageBox]::Show($msgConf, $finestra.Title, [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
         if ($sceltaConf -ne [System.Windows.MessageBoxResult]::Yes) {
@@ -1720,6 +1773,9 @@ function Start-ScannerUI {
         }
 
         $statoUI.FixInCorso = $true
+        if ($PassaAPaginaAutoFix) {
+            & $mostraPagina 'AutoFix'
+        }
         & $aggiornaConteggioAutoFix
         & $aggiornaPannelloDettaglio
         $ctrl.BtnAvvia.IsEnabled = $false
@@ -1942,6 +1998,21 @@ function Start-ScannerUI {
     $ctrl.BtnRiparaSingolo.Add_Click({
         if ($null -eq $statoUI.ElementoSelezionato) { return }
         & $avviaRemediationAsincrona @($statoUI.ElementoSelezionato.ControlId)
+    })
+
+    $ctrl.BtnAutoFixTutti.Add_Click({
+        $allFixIds = @(Get-AutoFixableControlIds -AutoFixItems $statoUI.ElementiAutoFix)
+        if ($allFixIds.Count -eq 0) { return }
+
+        foreach ($item in @($statoUI.ElementiAutoFix)) {
+            if ($null -ne $item) {
+                $item.IsSelected = [bool]$item.CanAutoFix
+            }
+        }
+        $ctrl.ListAutoFixControlli.Items.Refresh()
+        & $aggiornaConteggioAutoFix
+
+        & $avviaRemediationAsincrona $allFixIds $true
     })
 
     $ctrl.BtnRollbackUltimo.Add_Click({
@@ -2438,8 +2509,10 @@ function Start-ScannerUI {
         }
         $ctrl.PanelGuidaVuota.Visibility = [System.Windows.Visibility]::Visible
         $ctrl.GridRisultati.ItemsSource = @()
+        $statoUI.ElementiAutoFix = @()
         & $aggiornaConteggiERiepilogo
         & $aggiornaPannelloDettaglio
+        & $aggiornaConteggioAutoFix
 
         # Callback invocato sul thread UI tramite Dispatcher per ogni controllo completato
         $callbackProgresso = [Action[int, int, object]]{

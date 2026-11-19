@@ -578,9 +578,20 @@
                             Style="{StaticResource ModernButton}"
                             Content="Apri Resoconto IA &amp; Consigli"
                             FontWeight="Bold"
-                            Padding="14,7"
-                            Margin="0,0,14,0"
+                            Padding="12,7"
+                            Margin="0,0,8,0"
                             Background="#7C3AED"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"
+                            IsEnabled="False"/>
+
+                    <Button x:Name="BtnAutoFixTutti"
+                            Style="{StaticResource ModernButton}"
+                            Content="Auto-Fix Tutti (0)"
+                            FontWeight="Bold"
+                            Padding="12,7"
+                            Margin="0,0,12,0"
+                            Background="#059669"
                             Foreground="#FFFFFF"
                             BorderThickness="0"
                             IsEnabled="False"/>
@@ -588,6 +599,7 @@
 
                 <!-- Barra di Progresso arrotondata -->
                 <Border Grid.Column="2"
+                        MinWidth="60"
                         CornerRadius="6"
                         Background="{DynamicResource BgSubtle}"
                         BorderBrush="{DynamicResource BorderStrong}"
@@ -1361,6 +1373,17 @@
                                             BorderThickness="0"
                                             FontWeight="Bold"
                                             HorizontalAlignment="Stretch"/>
+                                    <Button x:Name="BtnSelezionaTuttiFix"
+                                            Style="{StaticResource ModernButton}"
+                                            Content="Seleziona tutti i Fix Automatici (0)"
+                                            Padding="12,8"
+                                            Margin="0,0,0,7"
+                                            Background="#0D9488"
+                                            Foreground="#FFFFFF"
+                                            BorderThickness="0"
+                                            FontWeight="Bold"
+                                            HorizontalAlignment="Stretch"
+                                            IsEnabled="False"/>
                                     <Button x:Name="BtnDeselezionaTuttiFix"
                                             Style="{StaticResource ModernButton}"
                                             Content="Deseleziona tutti"
