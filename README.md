@@ -11,17 +11,17 @@ Open **Windows PowerShell** (recommended: **Run as Administrator**) from any fol
 
 ### Option 1: Launch in English (`EN` default)
 ```powershell
-irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11-en.ps1 | iex
+irm https://raw.githubusercontent.com/elvys9/Powershell-Vulnerability-Scanner/main/dist/scanner-win11-en.ps1 | iex
 ```
 
 ### Option 2: Launch in Italian (`IT` default)
 ```powershell
-irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11.ps1 | iex
+irm https://raw.githubusercontent.com/elvys9/Powershell-Vulnerability-Scanner/main/dist/scanner-win11.ps1 | iex
 ```
 
 ### Option 3: Launch in German (`DE` default)
 ```powershell
-irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/dist/scanner-win11-de.ps1 | iex
+irm https://raw.githubusercontent.com/elvys9/Powershell-Vulnerability-Scanner/main/dist/scanner-win11-de.ps1 | iex
 ```
 
 *(Note: Inside the GUI you can switch at any time between **Italian (`[*] IT Italiano`)**, **English (`[*] EN English`)**, and **German (`[*] DE Deutsch`)**, as well as between **Dark** and **Light** themes with a single click in the top header).*
