@@ -656,7 +656,9 @@ function Test-SmartScreenEnabled {
 function Test-MemoryIntegrityEnabled {
     <#
     .SYNOPSIS
-        Verifica che l'Isolamento core / Integrita' della memoria (HVCI) sia abilitato.
+        Verifica che l'Isolamento core / Integrita' della memoria (HVCI) sia realmente attivo a runtime
+        tramite Win32_DeviceGuard (VirtualizationBasedSecurityStatus = 2 e SecurityServicesRunning contiene 2),
+        mantenendo la chiave di registro come evidenza diagnostica e fallback (HOME-SYS-004).
     #>
     [CmdletBinding()]
     param(
@@ -670,40 +672,79 @@ function Test-MemoryIntegrityEnabled {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "HypervisorEnforcedCodeIntegrity Enabled = 1"
+        Expected = "VirtualizationBasedSecurityStatus = 2 e SecurityServicesRunning contiene 2 (HVCI attivo a runtime)"
         Evidence = $null
         Error    = $null
     }
 
     try {
         $percorsoHvci = 'HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity'
-        if (-not (Test-Path -LiteralPath $percorsoHvci)) {
+        $esisteChiave = (Test-Path -LiteralPath $percorsoHvci -ErrorAction SilentlyContinue)
+        $valoreReg = 0
+        if ($esisteChiave) {
+            $propHvci = Get-ItemProperty -LiteralPath $percorsoHvci -ErrorAction SilentlyContinue
+            if ($null -ne $propHvci -and $null -ne $propHvci.PSObject.Properties['Enabled'] -and $null -ne $propHvci.Enabled) {
+                $valoreReg = [int]$propHvci.Enabled
+            }
+        }
+
+        try {
+            $dg = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace 'root\Microsoft\Windows\DeviceGuard' -ErrorAction Stop
+            if ($null -ne $dg) {
+                $vbsStatus = if ($null -ne $dg.PSObject.Properties['VirtualizationBasedSecurityStatus'] -and $null -ne $dg.VirtualizationBasedSecurityStatus) {
+                    [int]$dg.VirtualizationBasedSecurityStatus
+                }
+                else {
+                    0
+                }
+                $serviziRunning = @()
+                if ($null -ne $dg.PSObject.Properties['SecurityServicesRunning'] -and $null -ne $dg.SecurityServicesRunning) {
+                    $serviziRunning = @($dg.SecurityServicesRunning | ForEach-Object { [int]$_ })
+                }
+
+                $risultato.Evidence = @{
+                    Fonte                             = 'Win32_DeviceGuard'
+                    VirtualizationBasedSecurityStatus = $vbsStatus
+                    SecurityServicesRunning           = $serviziRunning
+                    RegistryPath                      = $percorsoHvci
+                    RegistryEnabled                   = $valoreReg
+                }
+
+                if ($vbsStatus -eq 2 -and ($serviziRunning -contains 2)) {
+                    $risultato.Status   = 'superato'
+                    $risultato.Observed = "Integrita' della memoria (HVCI) attiva a runtime (VBS=2, SecurityServicesRunning contiene 2)"
+                }
+                else {
+                    $risultato.Status   = 'fallito'
+                    $risultato.Observed = "HVCI non in esecuzione a runtime (VBSStatus=$vbsStatus, ServicesRunning=[$($serviziRunning -join ',')], RegEnabled=$valoreReg)"
+                }
+                return $risultato
+            }
+        }
+        catch {
+            # Fallback diagnostico sul registro se il namespace CIM DeviceGuard non e' accessibile
+        }
+
+        if (-not $esisteChiave) {
             $risultato.Status   = 'fallito'
             $risultato.Observed = "Integrita' della memoria (HVCI) non configurata"
-            $risultato.Evidence = @{ KeyExists = $false }
+            $risultato.Evidence = @{ Fonte = 'RegistryFallback'; KeyExists = $false }
             return $risultato
         }
 
-        $propHvci = Get-ItemProperty -LiteralPath $percorsoHvci -ErrorAction Stop
-        $valore = if ($null -ne $propHvci.PSObject.Properties['Enabled'] -and $null -ne $propHvci.Enabled) {
-            [int]$propHvci.Enabled
-        }
-        else {
-            0
-        }
-
         $risultato.Evidence = @{
-            Path    = $percorsoHvci
-            Enabled = $valore
+            Fonte           = 'RegistryFallback'
+            Path            = $percorsoHvci
+            RegistryEnabled = $valoreReg
         }
 
-        if ($valore -eq 1) {
+        if ($valoreReg -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Isolamento core / Integrita' della memoria attiva (Enabled = 1)"
+            $risultato.Observed = "Isolamento core / Integrita' della memoria abilitata da registro (Enabled = 1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Isolamento core / Integrita' della memoria disattivata (Enabled = $valore)"
+            $risultato.Observed = "Isolamento core / Integrita' della memoria disattivata (Enabled = $valoreReg)"
         }
     }
     catch {
@@ -1003,10 +1044,11 @@ function Test-RegistroRemotoDisabilitato {
     return $risultato
 }
 
-function Test-DepAttivo {
+function Test-UacSecureElevation {
     <#
     .SYNOPSIS
-        Verifica che la Protezione esecuzione programmi (DEP / Data Execution Prevention) sia attiva (HOME-SEC-004).
+        Verifica che UAC richieda la conferma per l'elevazione (ConsentPromptBehaviorAdmin in 1, 2, 5)
+        e che il prompt venga mostrato sul Desktop sicuro (PromptOnSecureDesktop = 1) (HOME-UAC-002).
     #>
     [CmdletBinding()]
     param(
@@ -1020,55 +1062,210 @@ function Test-DepAttivo {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "DataExecutionPrevention_SupportPolicy >= 2 (OptIn / OptOut / AlwaysOn)"
+        Expected = "ConsentPromptBehaviorAdmin in (1, 2, 5) e PromptOnSecureDesktop = 1"
         Evidence = $null
         Error    = $null
     }
 
     try {
-        $osCim = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
-        $depPol = [int]$osCim.DataExecutionPrevention_SupportPolicy
-        $depAvail = [bool]$osCim.DataExecutionPrevention_Available
-
-        $risultato.Evidence = @{
-            DEP_Available     = $depAvail
-            DEP_SupportPolicy = $depPol
+        $chiaveUac = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+        if (-not (Test-Path -LiteralPath $chiaveUac)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Chiave di registro UAC Policies\System non trovata"
+            return $risultato
         }
 
-        if ($depAvail -and $depPol -ge 1) {
+        $propUac = Get-ItemProperty -LiteralPath $chiaveUac -ErrorAction Stop
+        $consent = if ($null -ne $propUac.PSObject.Properties['ConsentPromptBehaviorAdmin'] -and $null -ne $propUac.ConsentPromptBehaviorAdmin) {
+            [int]$propUac.ConsentPromptBehaviorAdmin
+        }
+        else {
+            -1
+        }
+        $secureDesk = if ($null -ne $propUac.PSObject.Properties['PromptOnSecureDesktop'] -and $null -ne $propUac.PromptOnSecureDesktop) {
+            [int]$propUac.PromptOnSecureDesktop
+        }
+        else {
+            0
+        }
+
+        $risultato.Evidence = @{
+            Path                       = $chiaveUac
+            ConsentPromptBehaviorAdmin = $consent
+            PromptOnSecureDesktop      = $secureDesk
+        }
+
+        $consentSicuro = ($consent -in @(1, 2, 5))
+        $desktopSicuro = ($secureDesk -eq 1)
+
+        if ($consentSicuro -and $desktopSicuro) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "DEP hardware attivo (Policy = $depPol)"
+            $risultato.Observed = "UAC richiede conferma su Desktop sicuro (ConsentPromptBehaviorAdmin=$consent, PromptOnSecureDesktop=1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "DEP disabilitato (Policy = $depPol, Available = $depAvail)"
+            $risultato.Observed = "Configurazione elevazione UAC debole (ConsentPromptBehaviorAdmin=$consent, PromptOnSecureDesktop=$secureDesk)"
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alla chiave UAC Policies\System"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-SmartAppControl {
+    <#
+    .SYNOPSIS
+        Verifica lo stato di Smart App Control (SAC) in HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy
+        (VerifiedAndReputablePolicyState: 1 = Enforced, 2 = Evaluation, 0 = Off) (HOME-SEC-007).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "VerifiedAndReputablePolicyState = 1 (Enforced) oppure 2 (Evaluation)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveSac = 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy'
+        $statoSac = 0
+        if (Test-Path -LiteralPath $chiaveSac) {
+            $propSac = Get-ItemProperty -LiteralPath $chiaveSac -ErrorAction SilentlyContinue
+            if ($null -ne $propSac -and $null -ne $propSac.PSObject.Properties['VerifiedAndReputablePolicyState'] -and $null -ne $propSac.VerifiedAndReputablePolicyState) {
+                $statoSac = [int]$propSac.VerifiedAndReputablePolicyState
+            }
+        }
+
+        $risultato.Evidence = @{
+            Path                            = $chiaveSac
+            VerifiedAndReputablePolicyState = $statoSac
+        }
+
+        if ($statoSac -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Smart App Control attivo in modalita' Enforced (1)"
+        }
+        elseif ($statoSac -eq 2) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Smart App Control attivo in modalita' Evaluation (2 - apprendimento attivo)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Smart App Control disattivato (VerifiedAndReputablePolicyState = $statoSac)"
         }
     }
     catch {
-        if ([Environment]::Is64BitOperatingSystem) {
-            $risultato.Status   = 'superato'
-            $risultato.Observed = "DEP hardware (NX) obbligatorio attivo su architettura Windows 11 x64"
-            $risultato.Evidence = @{ Is64BitOS = $true; Fonte = 'EnvironmentFallback' }
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-Tpm20Ready {
+    <#
+    .SYNOPSIS
+        Verifica tramite Get-Tpm (o fallback CIM Win32_Tpm) che il chip hardware TPM 2.0
+        sia presente e pronto (TpmPresent = True e TpmReady = True) (HOME-SEC-008).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "TpmPresent = True e TpmReady = True"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $tpm = Get-Tpm -ErrorAction Stop
+        $present = [bool]$tpm.TpmPresent
+        $ready   = [bool]$tpm.TpmReady
+
+        $risultato.Evidence = @{
+            Fonte      = 'Get-Tpm'
+            TpmPresent = $present
+            TpmReady   = $ready
         }
-        elseif ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+
+        if ($present -and $ready) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Modulo hardware TPM 2.0 presente e pronto (TpmPresent=True, TpmReady=True)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "TPM non pronto o assente (TpmPresent=$present, TpmReady=$ready)"
+        }
+    }
+    catch {
+        try {
+            $cimTpm = Get-CimInstance -ClassName Win32_Tpm -Namespace 'root\cimv2\Security\MicrosoftTpm' -ErrorAction Stop
+            if ($null -ne $cimTpm) {
+                $enVal  = [bool]$cimTpm.IsEnabled_InitialValue
+                $actVal = [bool]$cimTpm.IsActivated_InitialValue
+                $risultato.Evidence = @{
+                    Fonte                    = 'Win32_Tpm'
+                    IsEnabled_InitialValue   = $enVal
+                    IsActivated_InitialValue = $actVal
+                }
+                if ($enVal -and $actVal) {
+                    $risultato.Status   = 'superato'
+                    $risultato.Observed = "Modulo hardware TPM 2.0 abilitato e attivo (Win32_Tpm)"
+                }
+                else {
+                    $risultato.Status   = 'fallito'
+                    $risultato.Observed = "TPM non attivo (Enabled=$enVal, Activated=$actVal)"
+                }
+                return $risultato
+            }
+        }
+        catch { }
+
+        if ($_.Exception.Message -match 'Administrator|amministratore|Access is denied|Accesso negato|privilegi|privilege|CIM resource') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Servizio CIM non disponibile per leggere la policy DEP"
+            $risultato.Observed = "Privilegi di amministratore richiesti per interrogare lo stato del chip TPM 2.0"
             $risultato.Error    = $_.Exception.Message
         }
         else {
-            $risultato.Status = 'errore'
-            $risultato.Error  = $_.Exception.Message
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Impossibile interrogare lo stato TPM ($($_.Exception.Message))"
+            $risultato.Error    = $_.Exception.Message
         }
     }
 
     return $risultato
 }
 
-function Test-PowerShellV2Disabilitato {
+function Test-WshDisabled {
     <#
     .SYNOPSIS
-        Verifica che il motore obsoleto PowerShell 2.0 non sia installato, prevenendo
-        attacchi di downgrade che aggirano AMSI e Script Block Logging (HOME-SEC-005).
+        Verifica che Windows Script Host (WSH: wscript.exe / cscript.exe per .vbs/.js)
+        sia disabilitato (Enabled = 0) (HOME-SYS-009).
     #>
     [CmdletBinding()]
     param(
@@ -1082,43 +1279,106 @@ function Test-PowerShellV2Disabilitato {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Motore legacy PowerShell 2.0 assente o disabilitato"
+        Expected = "Enabled = 0 in HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings"
         Evidence = $null
         Error    = $null
     }
 
     try {
-        $chiaveEngineV2 = 'HKLM:\SOFTWARE\Microsoft\PowerShell\1\PowerShellEngine'
-        $v2Presente = $false
-        $psVer = ''
+        $chiaveWshLM = 'HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings'
+        $chiaveWshCU = 'HKCU:\SOFTWARE\Microsoft\Windows Script Host\Settings'
 
-        if (Test-Path -LiteralPath $chiaveEngineV2) {
-            $propV2 = Get-ItemProperty -LiteralPath $chiaveEngineV2 -ErrorAction SilentlyContinue
-            if ($null -ne $propV2 -and $null -ne $propV2.PSObject.Properties['PowerShellVersion']) {
-                $psVer = [string]$propV2.PowerShellVersion
-                if ($psVer -like '2.*') {
-                    # Verifica anche se la DLL di PS v2 esiste su disco
-                    $dllV2 = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\System.Management.Automation.ni.dll'
-                    if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\PowerShell\3') {
-                        # Su Windows 10/11 la chiave \1\PowerShellEngine esiste solo con PSVersion=2.0 se la feature MicrosoftWindowsPowerShellV2 e' attiva
-                        $v2Presente = $true
-                    }
-                }
+        $valLM = 1
+        if (Test-Path -LiteralPath $chiaveWshLM) {
+            $propLM = Get-ItemProperty -LiteralPath $chiaveWshLM -ErrorAction SilentlyContinue
+            if ($null -ne $propLM -and $null -ne $propLM.PSObject.Properties['Enabled'] -and $null -ne $propLM.Enabled) {
+                $valLM = [int]$propLM.Enabled
+            }
+        }
+
+        $valCU = 1
+        if (Test-Path -LiteralPath $chiaveWshCU) {
+            $propCU = Get-ItemProperty -LiteralPath $chiaveWshCU -ErrorAction SilentlyContinue
+            if ($null -ne $propCU -and $null -ne $propCU.PSObject.Properties['Enabled'] -and $null -ne $propCU.Enabled) {
+                $valCU = [int]$propCU.Enabled
             }
         }
 
         $risultato.Evidence = @{
-            EngineV2KeyExists = $v2Presente
-            VersionFound      = $psVer
+            PathHKLM    = $chiaveWshLM
+            EnabledHKLM = $valLM
+            EnabledHKCU = $valCU
         }
 
-        if (-not $v2Presente) {
+        if ($valLM -eq 0 -or $valCU -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Motore obsoleto PowerShell 2.0 non installato"
+            $risultato.Observed = "Windows Script Host (WSH) disabilitato (HKLM=$valLM, HKCU=$valCU)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Motore obsoleto PowerShell 2.0 presente ($psVer - rischio downgrade attack)"
+            $risultato.Observed = "Windows Script Host (WSH) attivo per script .vbs/.js (Enabled = 1)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-PowerShellExecutionPolicySecure {
+    <#
+    .SYNOPSIS
+        Verifica tramite Get-ExecutionPolicy -List che gli scope persistenti (MachinePolicy, UserPolicy,
+        LocalMachine, CurrentUser) non siano impostati su Unrestricted o Bypass (HOME-SEC-009).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessuno scope persistente impostato su Unrestricted o Bypass"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $listaPol = @(Get-ExecutionPolicy -List -ErrorAction Stop)
+        $scopeDaControllare = @('MachinePolicy', 'UserPolicy', 'LocalMachine', 'CurrentUser')
+        $scopeInsicuri = @()
+        $mappaPol = @{}
+
+        foreach ($voce in $listaPol) {
+            $nomeScope = [string]$voce.Scope
+            $valPol    = [string]$voce.ExecutionPolicy
+            $mappaPol[$nomeScope] = $valPol
+
+            if ($scopeDaControllare -contains $nomeScope) {
+                if ($valPol -in @('Unrestricted', 'Bypass')) {
+                    $scopeInsicuri += "$nomeScope=$valPol"
+                }
+            }
+        }
+
+        $risultato.Evidence = $mappaPol
+
+        if ($scopeInsicuri.Count -eq 0) {
+            $polLM = if ($mappaPol.ContainsKey('LocalMachine')) { $mappaPol['LocalMachine'] } else { 'Undefined' }
+            $polCU = if ($mappaPol.ContainsKey('CurrentUser')) { $mappaPol['CurrentUser'] } else { 'Undefined' }
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "ExecutionPolicy sicura (LocalMachine=$polLM, CurrentUser=$polCU)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "ExecutionPolicy troppo permissiva rilevata: $($scopeInsicuri -join ', ')"
         }
     }
     catch {

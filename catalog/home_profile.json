@@ -49,25 +49,20 @@
     },
     {
       "id": "HOME-UAC-002",
-      "title": "UAC richiede conferma per elevazione",
+      "title": "UAC richiede conferma su Desktop sicuro per elevazione",
       "category": "UAC",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che UAC richieda il consenso dell'utente per le operazioni con privilegi elevati (ConsentPromptBehaviorAdmin diverso da 0).",
-      "rationale": "Se UAC e' impostato per non chiedere conferma, i programmi malevoli possono ottenere privilegi elevati senza che l'utente se ne accorga.",
+      "description": "Verifica che UAC richieda il consenso per l'elevazione (ConsentPromptBehaviorAdmin in 1, 2, 5) sul Desktop sicuro (PromptOnSecureDesktop = 1).",
+      "rationale": "Se UAC non richiede conferma sul Desktop sicuro, processi malevoli possono intercettare o simulare il clic di conferma per ottenere privilegi di amministratore.",
       "check": {
-        "registry": {
-          "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
-          "name": "ConsentPromptBehaviorAdmin",
-          "operator": "ne",
-          "value": 0
-        }
+        "command_ref": "SystemSecurity.ps1#Test-UacSecureElevation"
       },
       "references": [
-        "CIS Benchmark Windows 11 - 2.3.17.1"
+        "CIS Benchmark Windows 11 - 2.3.17.1 / 2.3.17.7"
       ]
     },
     {
@@ -549,13 +544,14 @@
     },
     {
       "id": "HOME-ENC-001",
-      "title": "BitLocker attivo sul disco di sistema",
+      "title": "BitLocker o Crittografia dispositivo attivo sul disco di sistema",
       "category": "Crittografia",
       "severity": "alto",
       "editions": [
+        "Home",
         "Pro"
       ],
-      "description": "Verifica che BitLocker sia attivo sulla partizione di sistema.",
+      "description": "Verifica che BitLocker o Crittografia dispositivo (Device Encryption) sia attivo sulla partizione di sistema (C:).",
       "rationale": "La crittografia del disco protegge i dati in caso di furto o smarrimento del dispositivo.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-BitLockerSystemDrive"
@@ -837,12 +833,12 @@
       "id": "HOME-SYS-006",
       "title": "Protezione credenziali WDigest (nessuna password in chiaro in memoria)",
       "category": "Impostazioni Windows",
-      "severity": "critico",
+      "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che UseLogonCredential in WDigest sia 0 (o assente) per impedire la memorizzazione di password in chiaro in LSASS.",
+      "description": "Verifica anti-manomissione che UseLogonCredential in WDigest sia 0 (o assente) per impedire la memorizzazione di password in chiaro in LSASS.",
       "rationale": "Se WDigest UseLogonCredential viene impostato a 1 da un attaccante, Windows conserva le password utente in chiaro nella memoria RAM.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-WDigestDisabilitato"
@@ -888,39 +884,140 @@
       ]
     },
     {
-      "id": "HOME-SEC-004",
-      "title": "Protezione esecuzione programmi (DEP / Data Execution Prevention) attiva",
+      "id": "HOME-SEC-006",
+      "title": "Microsoft Vulnerable Driver Blocklist (anti-BYOVD) abilitata",
       "category": "Sicurezza Avanzata",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica tramite WMI/CIM che la protezione hardware DEP sia disponibile e attiva per i processi di sistema.",
-      "rationale": "DEP impedisce l'esecuzione di codice malevolo (buffer overflow / shellcode) nelle aree di memoria riservate ai dati.",
+      "description": "Verifica che la blocklist dei driver vulnerabili di Microsoft (VulnerableDriverBlocklistEnable = 1) sia attiva in CI\\Config.",
+      "rationale": "Impedisce il caricamento di driver firmati ma con vulnerabilita' note sfruttati negli attacchi Bring Your Own Vulnerable Driver (BYOVD) per disabilitare EDR/Defender nel kernel.",
       "check": {
-        "command_ref": "SystemSecurity.ps1#Test-DepAttivo"
+        "registry": {
+          "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CI\\Config",
+          "name": "VulnerableDriverBlocklistEnable",
+          "operator": "eq",
+          "value": 1
+        }
       },
       "references": [
-        "Microsoft Windows Exploit Protection - DEP"
+        "Microsoft Security Baseline Windows 11 - Driver Block Rules",
+        "MITRE ATT&CK T1068 - Exploitation for Privilege Escalation (BYOVD)"
       ]
     },
     {
-      "id": "HOME-SEC-005",
-      "title": "Motore obsoleto PowerShell v2.0 disabilitato (anti-downgrade attack)",
+      "id": "HOME-SEC-007",
+      "title": "Smart App Control (SAC) attivo",
       "category": "Sicurezza Avanzata",
-      "severity": "critico",
+      "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il vecchio motore PowerShell 2.0 non sia installato o abilitato sul sistema.",
-      "rationale": "Gli attaccanti avviano 'powershell.exe -Version 2' per aggirare completamente AMSI (scansione antivirus degli script) e lo Script Block Logging di PowerShell 5.1.",
+      "description": "Verifica lo stato di Smart App Control (VerifiedAndReputablePolicyState = 1 Enforced o 2 Evaluation) in Control\\CI\\Policy.",
+      "rationale": "Smart App Control blocca a livello di sistema l'esecuzione di applicazioni non attendibili, non firmate o potenzialmente malevole su Windows 11.",
       "check": {
-        "command_ref": "SystemSecurity.ps1#Test-PowerShellV2Disabilitato"
+        "command_ref": "SystemSecurity.ps1#Test-SmartAppControl"
       },
       "references": [
-        "MITRE ATT&CK T1059.001 - PowerShell Downgrade Attack"
+        "Microsoft Windows 11 Security - Smart App Control",
+        "Harden-Windows-Security Baseline"
+      ]
+    },
+    {
+      "id": "HOME-AV-011",
+      "title": "Regole Attack Surface Reduction (ASR) di Microsoft Defender attive",
+      "category": "Antivirus",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica tramite Get-MpPreference che siano configurate regole ASR in modalita' Block (1) o Warn (6), incluso il blocco furto credenziali LSASS e script offuscati.",
+      "rationale": "Le regole ASR bloccano i vettori di attacco piu' comuni usati da ransomware e malware fileless (estrazione credenziali da LSASS, macro Office, script offuscati).",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderAsrRules"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.47.5",
+        "Microsoft Defender Exploit Guard - Attack Surface Reduction"
+      ]
+    },
+    {
+      "id": "HOME-SEC-008",
+      "title": "Chip di sicurezza hardware TPM 2.0 presente e pronto",
+      "category": "Sicurezza Avanzata",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica tramite Get-Tpm (o Win32_Tpm) che il modulo TPM 2.0 sia presente e pronto all'uso (TpmPresent = True, TpmReady = True).",
+      "rationale": "Il chip TPM 2.0 fornisce la radice di fiducia hardware indispensabile per BitLocker, Windows Hello, Secure Boot e Credential Guard.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-Tpm20Ready"
+      },
+      "references": [
+        "Microsoft Windows 11 Hardware Security Baseline - TPM 2.0"
+      ]
+    },
+    {
+      "id": "HOME-NET-008",
+      "title": "Protocolli obsoleti TLS 1.0/1.1 disabilitati e DNS over HTTPS (DoH) supportato",
+      "category": "Rete",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che TLS 1.0 e TLS 1.1 non siano forzatamente abilitati in SCHANNEL e che il client DNS supporti DNS over HTTPS (DoH).",
+      "rationale": "Disabilitare TLS 1.0/1.1 previene attacchi di downgrade crittografico (BEAST/POODLE), mentre DNS over HTTPS cifra le query DNS contro intercettazioni e spoofing.",
+      "check": {
+        "command_ref": "Network.ps1#Test-LegacyTlsAndDoh"
+      },
+      "references": [
+        "IETF RFC 8996 - Deprecating TLS 1.0 and TLS 1.1",
+        "IETF RFC 8484 - DNS Queries over HTTPS (DoH)"
+      ]
+    },
+    {
+      "id": "HOME-SYS-009",
+      "title": "Windows Script Host (WSH) disabilitato contro script .vbs/.js malevoli",
+      "category": "Impostazioni Windows",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che Windows Script Host (wscript.exe/cscript.exe) sia disabilitato impostando Enabled = 0 in Windows Script Host\\Settings.",
+      "rationale": "Disabilitare WSH impedisce l'esecuzione automatica di script VBScript (.vbs/.vbe) e JScript (.js/.jse) comunemente usati come dropper da campagne phishing e malware.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-WshDisabled"
+      },
+      "references": [
+        "HardeningKitty - Windows Script Host Hardening",
+        "MITRE ATT&CK T1059.005 / T1059.007"
+      ]
+    },
+    {
+      "id": "HOME-SEC-009",
+      "title": "PowerShell ExecutionPolicy sicura (nessuno scope Unrestricted o Bypass)",
+      "category": "Sicurezza Avanzata",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica tramite Get-ExecutionPolicy -List che nessuno scope persistente (MachinePolicy, UserPolicy, LocalMachine, CurrentUser) sia impostato su Unrestricted o Bypass.",
+      "rationale": "Una ExecutionPolicy troppo permissiva consente l'avvio diretto di script PowerShell non firmati o scaricati da Internet senza alcun controllo.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-PowerShellExecutionPolicySecure"
+      },
+      "references": [
+        "Microsoft PowerShell Security Best Practices",
+        "HardeningKitty - PowerShell Execution Policy"
       ]
     }
   ]

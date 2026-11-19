@@ -198,4 +198,21 @@ Describe 'Test-AccountsPasswordRequired (HOME-ACC-003)' {
         $res.Status   | Should -Be 'fallito'
         $res.Observed | Should -Match 'UtenteSenzaPwd'
     }
+
+    It 'Restituisce superato (nessun falso positivo) se un account attivo ha PasswordRequired = False ma PrincipalSource = MicrosoftAccount' {
+        Mock Get-LocalUser {
+            return @(
+                [PSCustomObject]@{
+                    Name             = 'UtenteMicrosoftHello'
+                    SID              = [PSCustomObject]@{ Value = 'S-1-5-21-111-1003' }
+                    Enabled          = $true
+                    PasswordRequired = $false
+                    PrincipalSource  = 'MicrosoftAccount'
+                }
+            )
+        }
+        $res = Test-AccountsPasswordRequired -Controllo $controlloPwd -Ambiente $ambiente
+        $res.Status   | Should -Be 'superato'
+        $res.Observed | Should -Match 'UtenteMicrosoftHello'
+    }
 }

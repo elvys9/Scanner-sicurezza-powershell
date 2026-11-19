@@ -33,7 +33,7 @@ function Test-FirewallProfiles {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Tutti i profili firewall attivi (Domain, Private, Public)"
+        Expected = "Tutti i profili firewall attivi (Domain, Private, Public) con DefaultInboundAction != Allow"
         Evidence = $null
         Error    = $null
     }
@@ -44,32 +44,50 @@ function Test-FirewallProfiles {
 
         $evidenza = @{}
         $tuttiAttivi = $true
+        $profiliDisattivi = @()
+        $profiliInboundAllow = @()
 
         foreach ($profilo in $profili) {
-            $nomeNormalizzato = $profilo.Name
+            $nomeNormalizzato = [string]$profilo.Name
             $attivo = [bool]$profilo.Enabled
-            $evidenza[$nomeNormalizzato] = $attivo
+            $inboundAct = if ($null -ne $profilo.PSObject.Properties['DefaultInboundAction'] -and $null -ne $profilo.DefaultInboundAction) {
+                [string]$profilo.DefaultInboundAction
+            }
+            else {
+                'NotConfigured'
+            }
+
+            $evidenza[$nomeNormalizzato] = @{
+                Enabled              = $attivo
+                DefaultInboundAction = $inboundAct
+            }
 
             if (-not $attivo) {
                 $tuttiAttivi = $false
+                $profiliDisattivi += $nomeNormalizzato
+            }
+            if ($inboundAct -eq 'Allow') {
+                $tuttiAttivi = $false
+                $profiliInboundAllow += "$nomeNormalizzato (DefaultInboundAction=Allow)"
             }
         }
 
         $risultato.Evidence = $evidenza
 
         if ($tuttiAttivi) {
-            $risultato.Status = 'superato'
-            $risultato.Observed = "Tutti i profili attivi"
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Tutti i profili attivi con traffico in ingresso bloccato per impostazione predefinita"
         }
         else {
             $risultato.Status = 'fallito'
-            $profiliDisattivi = @()
-            foreach ($chiave in $evidenza.Keys) {
-                if (-not $evidenza[$chiave]) {
-                    $profiliDisattivi += $chiave
-                }
+            $motivi = @()
+            if ($profiliDisattivi.Count -gt 0) {
+                $motivi += "Profili disattivi: $($profiliDisattivi -join ', ')"
             }
-            $risultato.Observed = "Profili disattivi: $($profiliDisattivi -join ', ')"
+            if ($profiliInboundAllow.Count -gt 0) {
+                $motivi += "Profili che consentono traffico in ingresso: $($profiliInboundAllow -join ', ')"
+            }
+            $risultato.Observed = ($motivi -join '; ')
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {

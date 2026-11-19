@@ -162,4 +162,31 @@ Describe 'Controlli Windows Defender (HOME-AV-001 .. HOME-AV-008)' {
             $res.Status | Should -Be 'sconosciuto'
         }
     }
+
+    Context 'Test-DefenderAsrRules (HOME-AV-011)' {
+
+        It 'Restituisce superato quando regole ASR (LSASS e Script offuscati) sono attive in Block (1) o Warn (6)' {
+            Mock Get-MpPreference {
+                return [PSCustomObject]@{
+                    AttackSurfaceReductionRules_Ids     = @('9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2', '5beb7efe-fd9a-4556-801d-275e5ffc04cc')
+                    AttackSurfaceReductionRules_Actions = @(1, 6)
+                }
+            }
+            $res = Test-DefenderAsrRules -Controllo $controllo
+            $res.Status | Should -Be 'superato'
+            $res.Evidence.LsassProtected | Should -Be $true
+            $res.Evidence.ScriptsProtected | Should -Be $true
+        }
+
+        It 'Restituisce fallito quando nessuna regola ASR e attiva in Block o Warn' {
+            Mock Get-MpPreference {
+                return [PSCustomObject]@{
+                    AttackSurfaceReductionRules_Ids     = @()
+                    AttackSurfaceReductionRules_Actions = @()
+                }
+            }
+            $res = Test-DefenderAsrRules -Controllo $controllo
+            $res.Status | Should -Be 'fallito'
+        }
+    }
 }

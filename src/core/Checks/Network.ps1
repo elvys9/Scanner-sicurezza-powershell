@@ -534,3 +534,98 @@ function Test-WpadDisabilitato {
 
     return $risultato
 }
+
+function Test-LegacyTlsAndDoh {
+    <#
+    .SYNOPSIS
+        Verifica che i protocolli crittografici obsoleti TLS 1.0 e TLS 1.1 non siano abilitati in SCHANNEL
+        e controlla la configurazione di DNS over HTTPS (DoH) (HOME-NET-008).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "TLS 1.0/1.1 non abilitati (Enabled != 1) e supporto DNS over HTTPS (DoH) presente"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $baseSchannel = 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols'
+        $sottoChiaviTls = @(
+            'TLS 1.0\Client',
+            'TLS 1.0\Server',
+            'TLS 1.1\Client',
+            'TLS 1.1\Server'
+        )
+
+        $tlsLegacyAttivi = @()
+        foreach ($sub in $sottoChiaviTls) {
+            $percorsoTls = Join-Path $baseSchannel $sub
+            if (Test-Path -LiteralPath $percorsoTls -ErrorAction SilentlyContinue) {
+                $propTls = Get-ItemProperty -LiteralPath $percorsoTls -ErrorAction SilentlyContinue
+                if ($null -ne $propTls -and $null -ne $propTls.PSObject.Properties['Enabled'] -and $null -ne $propTls.Enabled) {
+                    $valEn = [int]$propTls.Enabled
+                    if ($valEn -eq 1) {
+                        $tlsLegacyAttivi += "$sub (Enabled=1)"
+                    }
+                }
+            }
+        }
+
+        # Verifica configurazione DNS over HTTPS (DoH)
+        $chiaveDnsCache = 'HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters'
+        $autoDoh = 0
+        if (Test-Path -LiteralPath $chiaveDnsCache -ErrorAction SilentlyContinue) {
+            $propDns = Get-ItemProperty -LiteralPath $chiaveDnsCache -ErrorAction SilentlyContinue
+            if ($null -ne $propDns -and $null -ne $propDns.PSObject.Properties['EnableAutoDoh'] -and $null -ne $propDns.EnableAutoDoh) {
+                $autoDoh = [int]$propDns.EnableAutoDoh
+            }
+        }
+
+        $dohServerCount = 0
+        try {
+            if (Get-Command -Name 'Get-DnsClientDohServerAddress' -ErrorAction SilentlyContinue) {
+                $dohServers = @(Get-DnsClientDohServerAddress -ErrorAction SilentlyContinue)
+                $dohServerCount = $dohServers.Count
+            }
+        }
+        catch { }
+
+        $dohConfigurato = ($autoDoh -ge 1) -or ($dohServerCount -gt 0)
+
+        $risultato.Evidence = @{
+            LegacyTlsEnabled = $tlsLegacyAttivi
+            EnableAutoDoh    = $autoDoh
+            DohServersCount  = $dohServerCount
+            DohConfigured    = $dohConfigurato
+        }
+
+        if ($tlsLegacyAttivi.Count -gt 0) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Protocolli crittografici obsoleti abilitati: $($tlsLegacyAttivi -join ', ')"
+        }
+        elseif (-not $dohConfigurato) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "TLS 1.0/1.1 disabilitati, ma DNS over HTTPS (DoH) non configurato (EnableAutoDoh=$autoDoh)"
+        }
+        else {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "TLS 1.0/1.1 disabilitati e supporto DNS over HTTPS (DoH) attivo (EnableAutoDoh=$autoDoh, ServerDoH=$dohServerCount)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}

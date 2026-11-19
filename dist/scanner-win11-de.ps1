@@ -69,25 +69,20 @@ $script:CatalogoJsonIncorporato = @'
     },
     {
       "id": "HOME-UAC-002",
-      "title": "UAC richiede conferma per elevazione",
+      "title": "UAC richiede conferma su Desktop sicuro per elevazione",
       "category": "UAC",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che UAC richieda il consenso dell'utente per le operazioni con privilegi elevati (ConsentPromptBehaviorAdmin diverso da 0).",
-      "rationale": "Se UAC e' impostato per non chiedere conferma, i programmi malevoli possono ottenere privilegi elevati senza che l'utente se ne accorga.",
+      "description": "Verifica che UAC richieda il consenso per l'elevazione (ConsentPromptBehaviorAdmin in 1, 2, 5) sul Desktop sicuro (PromptOnSecureDesktop = 1).",
+      "rationale": "Se UAC non richiede conferma sul Desktop sicuro, processi malevoli possono intercettare o simulare il clic di conferma per ottenere privilegi di amministratore.",
       "check": {
-        "registry": {
-          "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
-          "name": "ConsentPromptBehaviorAdmin",
-          "operator": "ne",
-          "value": 0
-        }
+        "command_ref": "SystemSecurity.ps1#Test-UacSecureElevation"
       },
       "references": [
-        "CIS Benchmark Windows 11 - 2.3.17.1"
+        "CIS Benchmark Windows 11 - 2.3.17.1 / 2.3.17.7"
       ]
     },
     {
@@ -569,13 +564,14 @@ $script:CatalogoJsonIncorporato = @'
     },
     {
       "id": "HOME-ENC-001",
-      "title": "BitLocker attivo sul disco di sistema",
+      "title": "BitLocker o Crittografia dispositivo attivo sul disco di sistema",
       "category": "Crittografia",
       "severity": "alto",
       "editions": [
+        "Home",
         "Pro"
       ],
-      "description": "Verifica che BitLocker sia attivo sulla partizione di sistema.",
+      "description": "Verifica che BitLocker o Crittografia dispositivo (Device Encryption) sia attivo sulla partizione di sistema (C:).",
       "rationale": "La crittografia del disco protegge i dati in caso di furto o smarrimento del dispositivo.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-BitLockerSystemDrive"
@@ -857,12 +853,12 @@ $script:CatalogoJsonIncorporato = @'
       "id": "HOME-SYS-006",
       "title": "Protezione credenziali WDigest (nessuna password in chiaro in memoria)",
       "category": "Impostazioni Windows",
-      "severity": "critico",
+      "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che UseLogonCredential in WDigest sia 0 (o assente) per impedire la memorizzazione di password in chiaro in LSASS.",
+      "description": "Verifica anti-manomissione che UseLogonCredential in WDigest sia 0 (o assente) per impedire la memorizzazione di password in chiaro in LSASS.",
       "rationale": "Se WDigest UseLogonCredential viene impostato a 1 da un attaccante, Windows conserva le password utente in chiaro nella memoria RAM.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-WDigestDisabilitato"
@@ -908,39 +904,140 @@ $script:CatalogoJsonIncorporato = @'
       ]
     },
     {
-      "id": "HOME-SEC-004",
-      "title": "Protezione esecuzione programmi (DEP / Data Execution Prevention) attiva",
+      "id": "HOME-SEC-006",
+      "title": "Microsoft Vulnerable Driver Blocklist (anti-BYOVD) abilitata",
       "category": "Sicurezza Avanzata",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica tramite WMI/CIM che la protezione hardware DEP sia disponibile e attiva per i processi di sistema.",
-      "rationale": "DEP impedisce l'esecuzione di codice malevolo (buffer overflow / shellcode) nelle aree di memoria riservate ai dati.",
+      "description": "Verifica che la blocklist dei driver vulnerabili di Microsoft (VulnerableDriverBlocklistEnable = 1) sia attiva in CI\\Config.",
+      "rationale": "Impedisce il caricamento di driver firmati ma con vulnerabilita' note sfruttati negli attacchi Bring Your Own Vulnerable Driver (BYOVD) per disabilitare EDR/Defender nel kernel.",
       "check": {
-        "command_ref": "SystemSecurity.ps1#Test-DepAttivo"
+        "registry": {
+          "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CI\\Config",
+          "name": "VulnerableDriverBlocklistEnable",
+          "operator": "eq",
+          "value": 1
+        }
       },
       "references": [
-        "Microsoft Windows Exploit Protection - DEP"
+        "Microsoft Security Baseline Windows 11 - Driver Block Rules",
+        "MITRE ATT&CK T1068 - Exploitation for Privilege Escalation (BYOVD)"
       ]
     },
     {
-      "id": "HOME-SEC-005",
-      "title": "Motore obsoleto PowerShell v2.0 disabilitato (anti-downgrade attack)",
+      "id": "HOME-SEC-007",
+      "title": "Smart App Control (SAC) attivo",
       "category": "Sicurezza Avanzata",
-      "severity": "critico",
+      "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il vecchio motore PowerShell 2.0 non sia installato o abilitato sul sistema.",
-      "rationale": "Gli attaccanti avviano 'powershell.exe -Version 2' per aggirare completamente AMSI (scansione antivirus degli script) e lo Script Block Logging di PowerShell 5.1.",
+      "description": "Verifica lo stato di Smart App Control (VerifiedAndReputablePolicyState = 1 Enforced o 2 Evaluation) in Control\\CI\\Policy.",
+      "rationale": "Smart App Control blocca a livello di sistema l'esecuzione di applicazioni non attendibili, non firmate o potenzialmente malevole su Windows 11.",
       "check": {
-        "command_ref": "SystemSecurity.ps1#Test-PowerShellV2Disabilitato"
+        "command_ref": "SystemSecurity.ps1#Test-SmartAppControl"
       },
       "references": [
-        "MITRE ATT&CK T1059.001 - PowerShell Downgrade Attack"
+        "Microsoft Windows 11 Security - Smart App Control",
+        "Harden-Windows-Security Baseline"
+      ]
+    },
+    {
+      "id": "HOME-AV-011",
+      "title": "Regole Attack Surface Reduction (ASR) di Microsoft Defender attive",
+      "category": "Antivirus",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica tramite Get-MpPreference che siano configurate regole ASR in modalita' Block (1) o Warn (6), incluso il blocco furto credenziali LSASS e script offuscati.",
+      "rationale": "Le regole ASR bloccano i vettori di attacco piu' comuni usati da ransomware e malware fileless (estrazione credenziali da LSASS, macro Office, script offuscati).",
+      "check": {
+        "command_ref": "Defender.ps1#Test-DefenderAsrRules"
+      },
+      "references": [
+        "CIS Benchmark Windows 11 - 18.9.47.5",
+        "Microsoft Defender Exploit Guard - Attack Surface Reduction"
+      ]
+    },
+    {
+      "id": "HOME-SEC-008",
+      "title": "Chip di sicurezza hardware TPM 2.0 presente e pronto",
+      "category": "Sicurezza Avanzata",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica tramite Get-Tpm (o Win32_Tpm) che il modulo TPM 2.0 sia presente e pronto all'uso (TpmPresent = True, TpmReady = True).",
+      "rationale": "Il chip TPM 2.0 fornisce la radice di fiducia hardware indispensabile per BitLocker, Windows Hello, Secure Boot e Credential Guard.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-Tpm20Ready"
+      },
+      "references": [
+        "Microsoft Windows 11 Hardware Security Baseline - TPM 2.0"
+      ]
+    },
+    {
+      "id": "HOME-NET-008",
+      "title": "Protocolli obsoleti TLS 1.0/1.1 disabilitati e DNS over HTTPS (DoH) supportato",
+      "category": "Rete",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che TLS 1.0 e TLS 1.1 non siano forzatamente abilitati in SCHANNEL e che il client DNS supporti DNS over HTTPS (DoH).",
+      "rationale": "Disabilitare TLS 1.0/1.1 previene attacchi di downgrade crittografico (BEAST/POODLE), mentre DNS over HTTPS cifra le query DNS contro intercettazioni e spoofing.",
+      "check": {
+        "command_ref": "Network.ps1#Test-LegacyTlsAndDoh"
+      },
+      "references": [
+        "IETF RFC 8996 - Deprecating TLS 1.0 and TLS 1.1",
+        "IETF RFC 8484 - DNS Queries over HTTPS (DoH)"
+      ]
+    },
+    {
+      "id": "HOME-SYS-009",
+      "title": "Windows Script Host (WSH) disabilitato contro script .vbs/.js malevoli",
+      "category": "Impostazioni Windows",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che Windows Script Host (wscript.exe/cscript.exe) sia disabilitato impostando Enabled = 0 in Windows Script Host\\Settings.",
+      "rationale": "Disabilitare WSH impedisce l'esecuzione automatica di script VBScript (.vbs/.vbe) e JScript (.js/.jse) comunemente usati come dropper da campagne phishing e malware.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-WshDisabled"
+      },
+      "references": [
+        "HardeningKitty - Windows Script Host Hardening",
+        "MITRE ATT&CK T1059.005 / T1059.007"
+      ]
+    },
+    {
+      "id": "HOME-SEC-009",
+      "title": "PowerShell ExecutionPolicy sicura (nessuno scope Unrestricted o Bypass)",
+      "category": "Sicurezza Avanzata",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica tramite Get-ExecutionPolicy -List che nessuno scope persistente (MachinePolicy, UserPolicy, LocalMachine, CurrentUser) sia impostato su Unrestricted o Bypass.",
+      "rationale": "Una ExecutionPolicy troppo permissiva consente l'avvio diretto di script PowerShell non firmati o scaricati da Internet senza alcun controllo.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-PowerShellExecutionPolicySecure"
+      },
+      "references": [
+        "Microsoft PowerShell Security Best Practices",
+        "HardeningKitty - PowerShell Execution Policy"
       ]
     }
   ]
@@ -1319,7 +1416,7 @@ $script:XamlIncorporato = @'
                             </Border>
                         </StackPanel>
                         <TextBlock x:Name="TxtSottotitoloApp"
-                                   Text="50 Controlli Deterministici + Assistente IA Locale (Ollama)"
+                                   Text="55 Controlli Deterministici + Assistente IA Locale (Ollama)"
                                    FontSize="11.5"
                                    Foreground="#94A3B8"
                                    Margin="0,2,0,0"/>
@@ -4250,7 +4347,7 @@ function Test-FirewallProfiles {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Tutti i profili firewall attivi (Domain, Private, Public)"
+        Expected = "Tutti i profili firewall attivi (Domain, Private, Public) con DefaultInboundAction != Allow"
         Evidence = $null
         Error    = $null
     }
@@ -4261,32 +4358,50 @@ function Test-FirewallProfiles {
 
         $evidenza = @{}
         $tuttiAttivi = $true
+        $profiliDisattivi = @()
+        $profiliInboundAllow = @()
 
         foreach ($profilo in $profili) {
-            $nomeNormalizzato = $profilo.Name
+            $nomeNormalizzato = [string]$profilo.Name
             $attivo = [bool]$profilo.Enabled
-            $evidenza[$nomeNormalizzato] = $attivo
+            $inboundAct = if ($null -ne $profilo.PSObject.Properties['DefaultInboundAction'] -and $null -ne $profilo.DefaultInboundAction) {
+                [string]$profilo.DefaultInboundAction
+            }
+            else {
+                'NotConfigured'
+            }
+
+            $evidenza[$nomeNormalizzato] = @{
+                Enabled              = $attivo
+                DefaultInboundAction = $inboundAct
+            }
 
             if (-not $attivo) {
                 $tuttiAttivi = $false
+                $profiliDisattivi += $nomeNormalizzato
+            }
+            if ($inboundAct -eq 'Allow') {
+                $tuttiAttivi = $false
+                $profiliInboundAllow += "$nomeNormalizzato (DefaultInboundAction=Allow)"
             }
         }
 
         $risultato.Evidence = $evidenza
 
         if ($tuttiAttivi) {
-            $risultato.Status = 'superato'
-            $risultato.Observed = "Tutti i profili attivi"
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Tutti i profili attivi con traffico in ingresso bloccato per impostazione predefinita"
         }
         else {
             $risultato.Status = 'fallito'
-            $profiliDisattivi = @()
-            foreach ($chiave in $evidenza.Keys) {
-                if (-not $evidenza[$chiave]) {
-                    $profiliDisattivi += $chiave
-                }
+            $motivi = @()
+            if ($profiliDisattivi.Count -gt 0) {
+                $motivi += "Profili disattivi: $($profiliDisattivi -join ', ')"
             }
-            $risultato.Observed = "Profili disattivi: $($profiliDisattivi -join ', ')"
+            if ($profiliInboundAllow.Count -gt 0) {
+                $motivi += "Profili che consentono traffico in ingresso: $($profiliInboundAllow -join ', ')"
+            }
+            $risultato.Observed = ($motivi -join '; ')
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
@@ -4537,17 +4652,30 @@ function Test-AccountsPasswordRequired {
     try {
         $utenti = @(Get-LocalUser -ErrorAction Stop)
         $attiviSenzaObbligo = @()
-        $dettaglioAttivi = @()
+        $accountMicrosoft   = @()
+        $dettaglioAttivi    = @()
 
         foreach ($u in $utenti) {
             if ($u.Enabled) {
                 $pwdReq = [bool]$u.PasswordRequired
+                $sorgente = if ($null -ne $u.PSObject.Properties['PrincipalSource'] -and $null -ne $u.PrincipalSource) {
+                    [string]$u.PrincipalSource
+                }
+                else {
+                    'Local'
+                }
+
                 $dettaglioAttivi += @{
                     Nome             = $u.Name
                     SID              = $u.SID.Value
                     PasswordRequired = $pwdReq
+                    PrincipalSource  = $sorgente
                 }
-                if (-not $pwdReq) {
+
+                if ($sorgente -eq 'MicrosoftAccount') {
+                    $accountMicrosoft += $u.Name
+                }
+                elseif (-not $pwdReq) {
                     $attiviSenzaObbligo += $u.Name
                 }
             }
@@ -4555,16 +4683,22 @@ function Test-AccountsPasswordRequired {
 
         $risultato.Evidence = @{
             AccountAttivi              = $dettaglioAttivi
+            AccountMicrosoft           = $accountMicrosoft
             AccountSenzaPasswordObblig = $attiviSenzaObbligo
         }
 
         if ($attiviSenzaObbligo.Count -eq 0) {
             $risultato.Status = 'superato'
-            $risultato.Observed = "Tutti gli account attivi ($($dettaglioAttivi.Count)) richiedono una password"
+            if ($accountMicrosoft.Count -gt 0) {
+                $risultato.Observed = "Tutti gli account attivi ($($dettaglioAttivi.Count)) richiedono autenticazione (Account Microsoft/Windows Hello: $($accountMicrosoft -join ', '))"
+            }
+            else {
+                $risultato.Observed = "Tutti gli account attivi ($($dettaglioAttivi.Count)) richiedono una password"
+            }
         }
         else {
             $risultato.Status = 'fallito'
-            $risultato.Observed = "Account attivi con PasswordRequired=False: $($attiviSenzaObbligo -join ', ')"
+            $risultato.Observed = "Account locali attivi con PasswordRequired=False: $($attiviSenzaObbligo -join ', ')"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
@@ -5485,6 +5619,99 @@ function Test-DefenderNetworkProtection {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
             $risultato.Observed = "Privilegi insufficienti per leggere EnableNetworkProtection"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-DefenderAsrRules {
+    <#
+    .SYNOPSIS
+        Verifica che le regole Attack Surface Reduction (ASR) di Microsoft Defender siano attive
+        in modalita' Block (1) o Warn (6) (in particolare blocco furto credenziali LSASS e script offuscati) (HOME-AV-011).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Regole ASR attive in modalita' Block (1) o Warn (6) (incluso LSASS 9e6c4e1f-... e Script 5beb7efe-...)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $ids = @()
+        if ($null -ne $pref.PSObject.Properties['AttackSurfaceReductionRules_Ids'] -and $null -ne $pref.AttackSurfaceReductionRules_Ids) {
+            $ids = @($pref.AttackSurfaceReductionRules_Ids)
+        }
+        $actions = @()
+        if ($null -ne $pref.PSObject.Properties['AttackSurfaceReductionRules_Actions'] -and $null -ne $pref.AttackSurfaceReductionRules_Actions) {
+            $actions = @($pref.AttackSurfaceReductionRules_Actions)
+        }
+
+        if ($ids.Count -gt 0 -and ([string]$ids[0]) -match 'Must be an administrator|amministratore') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi di amministratore richiesti per leggere le regole ASR di Defender"
+            $risultato.Evidence = @{ RichiedeAdmin = $true }
+            return $risultato
+        }
+
+        $regoleAttive = @()
+        $lsassAttiva  = $false
+        $scriptAttiva = $false
+
+        $maxIdx = [Math]::Min($ids.Count, $actions.Count)
+        for ($i = 0; $i -lt $maxIdx; $i++) {
+            $guid = ([string]$ids[$i]).Trim().ToLowerInvariant()
+            $act  = [int]$actions[$i]
+            if ($act -eq 1 -or $act -eq 6) {
+                $regoleAttive += "$guid=$act"
+                if ($guid -eq '9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2') { $lsassAttiva  = $true }
+                if ($guid -eq '5beb7efe-fd9a-4556-801d-275e5ffc04cc') { $scriptAttiva = $true }
+            }
+        }
+
+        $risultato.Evidence = @{
+            TotaleConfigurate = $ids.Count
+            TotaleAttive      = $regoleAttive.Count
+            LsassProtected    = $lsassAttiva
+            ScriptsProtected  = $scriptAttiva
+            RegoleAttive      = $regoleAttive
+        }
+
+        if ($regoleAttive.Count -gt 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "$($regoleAttive.Count) regole ASR attive in modalita' Block/Warn (LSASS=$lsassAttiva, ObfuscatedScripts=$scriptAttiva)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Nessuna regola Attack Surface Reduction (ASR) attiva in modalita' Block/Warn ($($ids.Count) configurate)"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare le regole ASR di Defender"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -6503,6 +6730,101 @@ function Test-WpadDisabilitato {
     return $risultato
 }
 
+function Test-LegacyTlsAndDoh {
+    <#
+    .SYNOPSIS
+        Verifica che i protocolli crittografici obsoleti TLS 1.0 e TLS 1.1 non siano abilitati in SCHANNEL
+        e controlla la configurazione di DNS over HTTPS (DoH) (HOME-NET-008).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "TLS 1.0/1.1 non abilitati (Enabled != 1) e supporto DNS over HTTPS (DoH) presente"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $baseSchannel = 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols'
+        $sottoChiaviTls = @(
+            'TLS 1.0\Client',
+            'TLS 1.0\Server',
+            'TLS 1.1\Client',
+            'TLS 1.1\Server'
+        )
+
+        $tlsLegacyAttivi = @()
+        foreach ($sub in $sottoChiaviTls) {
+            $percorsoTls = Join-Path $baseSchannel $sub
+            if (Test-Path -LiteralPath $percorsoTls -ErrorAction SilentlyContinue) {
+                $propTls = Get-ItemProperty -LiteralPath $percorsoTls -ErrorAction SilentlyContinue
+                if ($null -ne $propTls -and $null -ne $propTls.PSObject.Properties['Enabled'] -and $null -ne $propTls.Enabled) {
+                    $valEn = [int]$propTls.Enabled
+                    if ($valEn -eq 1) {
+                        $tlsLegacyAttivi += "$sub (Enabled=1)"
+                    }
+                }
+            }
+        }
+
+        # Verifica configurazione DNS over HTTPS (DoH)
+        $chiaveDnsCache = 'HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters'
+        $autoDoh = 0
+        if (Test-Path -LiteralPath $chiaveDnsCache -ErrorAction SilentlyContinue) {
+            $propDns = Get-ItemProperty -LiteralPath $chiaveDnsCache -ErrorAction SilentlyContinue
+            if ($null -ne $propDns -and $null -ne $propDns.PSObject.Properties['EnableAutoDoh'] -and $null -ne $propDns.EnableAutoDoh) {
+                $autoDoh = [int]$propDns.EnableAutoDoh
+            }
+        }
+
+        $dohServerCount = 0
+        try {
+            if (Get-Command -Name 'Get-DnsClientDohServerAddress' -ErrorAction SilentlyContinue) {
+                $dohServers = @(Get-DnsClientDohServerAddress -ErrorAction SilentlyContinue)
+                $dohServerCount = $dohServers.Count
+            }
+        }
+        catch { }
+
+        $dohConfigurato = ($autoDoh -ge 1) -or ($dohServerCount -gt 0)
+
+        $risultato.Evidence = @{
+            LegacyTlsEnabled = $tlsLegacyAttivi
+            EnableAutoDoh    = $autoDoh
+            DohServersCount  = $dohServerCount
+            DohConfigured    = $dohConfigurato
+        }
+
+        if ($tlsLegacyAttivi.Count -gt 0) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Protocolli crittografici obsoleti abilitati: $($tlsLegacyAttivi -join ', ')"
+        }
+        elseif (-not $dohConfigurato) {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "TLS 1.0/1.1 disabilitati, ma DNS over HTTPS (DoH) non configurato (EnableAutoDoh=$autoDoh)"
+        }
+        else {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "TLS 1.0/1.1 disabilitati e supporto DNS over HTTPS (DoH) attivo (EnableAutoDoh=$autoDoh, ServerDoH=$dohServerCount)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
 # =============================================================================
 # MODULO: src\core\Checks\SystemSecurity.ps1
 # =============================================================================
@@ -7164,7 +7486,9 @@ function Test-SmartScreenEnabled {
 function Test-MemoryIntegrityEnabled {
     <#
     .SYNOPSIS
-        Verifica che l'Isolamento core / Integrita' della memoria (HVCI) sia abilitato.
+        Verifica che l'Isolamento core / Integrita' della memoria (HVCI) sia realmente attivo a runtime
+        tramite Win32_DeviceGuard (VirtualizationBasedSecurityStatus = 2 e SecurityServicesRunning contiene 2),
+        mantenendo la chiave di registro come evidenza diagnostica e fallback (HOME-SYS-004).
     #>
     [CmdletBinding()]
     param(
@@ -7178,40 +7502,79 @@ function Test-MemoryIntegrityEnabled {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "HypervisorEnforcedCodeIntegrity Enabled = 1"
+        Expected = "VirtualizationBasedSecurityStatus = 2 e SecurityServicesRunning contiene 2 (HVCI attivo a runtime)"
         Evidence = $null
         Error    = $null
     }
 
     try {
         $percorsoHvci = 'HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity'
-        if (-not (Test-Path -LiteralPath $percorsoHvci)) {
+        $esisteChiave = (Test-Path -LiteralPath $percorsoHvci -ErrorAction SilentlyContinue)
+        $valoreReg = 0
+        if ($esisteChiave) {
+            $propHvci = Get-ItemProperty -LiteralPath $percorsoHvci -ErrorAction SilentlyContinue
+            if ($null -ne $propHvci -and $null -ne $propHvci.PSObject.Properties['Enabled'] -and $null -ne $propHvci.Enabled) {
+                $valoreReg = [int]$propHvci.Enabled
+            }
+        }
+
+        try {
+            $dg = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace 'root\Microsoft\Windows\DeviceGuard' -ErrorAction Stop
+            if ($null -ne $dg) {
+                $vbsStatus = if ($null -ne $dg.PSObject.Properties['VirtualizationBasedSecurityStatus'] -and $null -ne $dg.VirtualizationBasedSecurityStatus) {
+                    [int]$dg.VirtualizationBasedSecurityStatus
+                }
+                else {
+                    0
+                }
+                $serviziRunning = @()
+                if ($null -ne $dg.PSObject.Properties['SecurityServicesRunning'] -and $null -ne $dg.SecurityServicesRunning) {
+                    $serviziRunning = @($dg.SecurityServicesRunning | ForEach-Object { [int]$_ })
+                }
+
+                $risultato.Evidence = @{
+                    Fonte                             = 'Win32_DeviceGuard'
+                    VirtualizationBasedSecurityStatus = $vbsStatus
+                    SecurityServicesRunning           = $serviziRunning
+                    RegistryPath                      = $percorsoHvci
+                    RegistryEnabled                   = $valoreReg
+                }
+
+                if ($vbsStatus -eq 2 -and ($serviziRunning -contains 2)) {
+                    $risultato.Status   = 'superato'
+                    $risultato.Observed = "Integrita' della memoria (HVCI) attiva a runtime (VBS=2, SecurityServicesRunning contiene 2)"
+                }
+                else {
+                    $risultato.Status   = 'fallito'
+                    $risultato.Observed = "HVCI non in esecuzione a runtime (VBSStatus=$vbsStatus, ServicesRunning=[$($serviziRunning -join ',')], RegEnabled=$valoreReg)"
+                }
+                return $risultato
+            }
+        }
+        catch {
+            # Fallback diagnostico sul registro se il namespace CIM DeviceGuard non e' accessibile
+        }
+
+        if (-not $esisteChiave) {
             $risultato.Status   = 'fallito'
             $risultato.Observed = "Integrita' della memoria (HVCI) non configurata"
-            $risultato.Evidence = @{ KeyExists = $false }
+            $risultato.Evidence = @{ Fonte = 'RegistryFallback'; KeyExists = $false }
             return $risultato
         }
 
-        $propHvci = Get-ItemProperty -LiteralPath $percorsoHvci -ErrorAction Stop
-        $valore = if ($null -ne $propHvci.PSObject.Properties['Enabled'] -and $null -ne $propHvci.Enabled) {
-            [int]$propHvci.Enabled
-        }
-        else {
-            0
-        }
-
         $risultato.Evidence = @{
-            Path    = $percorsoHvci
-            Enabled = $valore
+            Fonte           = 'RegistryFallback'
+            Path            = $percorsoHvci
+            RegistryEnabled = $valoreReg
         }
 
-        if ($valore -eq 1) {
+        if ($valoreReg -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Isolamento core / Integrita' della memoria attiva (Enabled = 1)"
+            $risultato.Observed = "Isolamento core / Integrita' della memoria abilitata da registro (Enabled = 1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Isolamento core / Integrita' della memoria disattivata (Enabled = $valore)"
+            $risultato.Observed = "Isolamento core / Integrita' della memoria disattivata (Enabled = $valoreReg)"
         }
     }
     catch {
@@ -7511,10 +7874,11 @@ function Test-RegistroRemotoDisabilitato {
     return $risultato
 }
 
-function Test-DepAttivo {
+function Test-UacSecureElevation {
     <#
     .SYNOPSIS
-        Verifica che la Protezione esecuzione programmi (DEP / Data Execution Prevention) sia attiva (HOME-SEC-004).
+        Verifica che UAC richieda la conferma per l'elevazione (ConsentPromptBehaviorAdmin in 1, 2, 5)
+        e che il prompt venga mostrato sul Desktop sicuro (PromptOnSecureDesktop = 1) (HOME-UAC-002).
     #>
     [CmdletBinding()]
     param(
@@ -7528,55 +7892,210 @@ function Test-DepAttivo {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "DataExecutionPrevention_SupportPolicy >= 2 (OptIn / OptOut / AlwaysOn)"
+        Expected = "ConsentPromptBehaviorAdmin in (1, 2, 5) e PromptOnSecureDesktop = 1"
         Evidence = $null
         Error    = $null
     }
 
     try {
-        $osCim = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
-        $depPol = [int]$osCim.DataExecutionPrevention_SupportPolicy
-        $depAvail = [bool]$osCim.DataExecutionPrevention_Available
-
-        $risultato.Evidence = @{
-            DEP_Available     = $depAvail
-            DEP_SupportPolicy = $depPol
+        $chiaveUac = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+        if (-not (Test-Path -LiteralPath $chiaveUac)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Chiave di registro UAC Policies\System non trovata"
+            return $risultato
         }
 
-        if ($depAvail -and $depPol -ge 1) {
+        $propUac = Get-ItemProperty -LiteralPath $chiaveUac -ErrorAction Stop
+        $consent = if ($null -ne $propUac.PSObject.Properties['ConsentPromptBehaviorAdmin'] -and $null -ne $propUac.ConsentPromptBehaviorAdmin) {
+            [int]$propUac.ConsentPromptBehaviorAdmin
+        }
+        else {
+            -1
+        }
+        $secureDesk = if ($null -ne $propUac.PSObject.Properties['PromptOnSecureDesktop'] -and $null -ne $propUac.PromptOnSecureDesktop) {
+            [int]$propUac.PromptOnSecureDesktop
+        }
+        else {
+            0
+        }
+
+        $risultato.Evidence = @{
+            Path                       = $chiaveUac
+            ConsentPromptBehaviorAdmin = $consent
+            PromptOnSecureDesktop      = $secureDesk
+        }
+
+        $consentSicuro = ($consent -in @(1, 2, 5))
+        $desktopSicuro = ($secureDesk -eq 1)
+
+        if ($consentSicuro -and $desktopSicuro) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "DEP hardware attivo (Policy = $depPol)"
+            $risultato.Observed = "UAC richiede conferma su Desktop sicuro (ConsentPromptBehaviorAdmin=$consent, PromptOnSecureDesktop=1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "DEP disabilitato (Policy = $depPol, Available = $depAvail)"
+            $risultato.Observed = "Configurazione elevazione UAC debole (ConsentPromptBehaviorAdmin=$consent, PromptOnSecureDesktop=$secureDesk)"
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alla chiave UAC Policies\System"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-SmartAppControl {
+    <#
+    .SYNOPSIS
+        Verifica lo stato di Smart App Control (SAC) in HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy
+        (VerifiedAndReputablePolicyState: 1 = Enforced, 2 = Evaluation, 0 = Off) (HOME-SEC-007).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "VerifiedAndReputablePolicyState = 1 (Enforced) oppure 2 (Evaluation)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaveSac = 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy'
+        $statoSac = 0
+        if (Test-Path -LiteralPath $chiaveSac) {
+            $propSac = Get-ItemProperty -LiteralPath $chiaveSac -ErrorAction SilentlyContinue
+            if ($null -ne $propSac -and $null -ne $propSac.PSObject.Properties['VerifiedAndReputablePolicyState'] -and $null -ne $propSac.VerifiedAndReputablePolicyState) {
+                $statoSac = [int]$propSac.VerifiedAndReputablePolicyState
+            }
+        }
+
+        $risultato.Evidence = @{
+            Path                            = $chiaveSac
+            VerifiedAndReputablePolicyState = $statoSac
+        }
+
+        if ($statoSac -eq 1) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Smart App Control attivo in modalita' Enforced (1)"
+        }
+        elseif ($statoSac -eq 2) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Smart App Control attivo in modalita' Evaluation (2 - apprendimento attivo)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Smart App Control disattivato (VerifiedAndReputablePolicyState = $statoSac)"
         }
     }
     catch {
-        if ([Environment]::Is64BitOperatingSystem) {
-            $risultato.Status   = 'superato'
-            $risultato.Observed = "DEP hardware (NX) obbligatorio attivo su architettura Windows 11 x64"
-            $risultato.Evidence = @{ Is64BitOS = $true; Fonte = 'EnvironmentFallback' }
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-Tpm20Ready {
+    <#
+    .SYNOPSIS
+        Verifica tramite Get-Tpm (o fallback CIM Win32_Tpm) che il chip hardware TPM 2.0
+        sia presente e pronto (TpmPresent = True e TpmReady = True) (HOME-SEC-008).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "TpmPresent = True e TpmReady = True"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $tpm = Get-Tpm -ErrorAction Stop
+        $present = [bool]$tpm.TpmPresent
+        $ready   = [bool]$tpm.TpmReady
+
+        $risultato.Evidence = @{
+            Fonte      = 'Get-Tpm'
+            TpmPresent = $present
+            TpmReady   = $ready
         }
-        elseif ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+
+        if ($present -and $ready) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Modulo hardware TPM 2.0 presente e pronto (TpmPresent=True, TpmReady=True)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "TPM non pronto o assente (TpmPresent=$present, TpmReady=$ready)"
+        }
+    }
+    catch {
+        try {
+            $cimTpm = Get-CimInstance -ClassName Win32_Tpm -Namespace 'root\cimv2\Security\MicrosoftTpm' -ErrorAction Stop
+            if ($null -ne $cimTpm) {
+                $enVal  = [bool]$cimTpm.IsEnabled_InitialValue
+                $actVal = [bool]$cimTpm.IsActivated_InitialValue
+                $risultato.Evidence = @{
+                    Fonte                    = 'Win32_Tpm'
+                    IsEnabled_InitialValue   = $enVal
+                    IsActivated_InitialValue = $actVal
+                }
+                if ($enVal -and $actVal) {
+                    $risultato.Status   = 'superato'
+                    $risultato.Observed = "Modulo hardware TPM 2.0 abilitato e attivo (Win32_Tpm)"
+                }
+                else {
+                    $risultato.Status   = 'fallito'
+                    $risultato.Observed = "TPM non attivo (Enabled=$enVal, Activated=$actVal)"
+                }
+                return $risultato
+            }
+        }
+        catch { }
+
+        if ($_.Exception.Message -match 'Administrator|amministratore|Access is denied|Accesso negato|privilegi|privilege|CIM resource') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Servizio CIM non disponibile per leggere la policy DEP"
+            $risultato.Observed = "Privilegi di amministratore richiesti per interrogare lo stato del chip TPM 2.0"
             $risultato.Error    = $_.Exception.Message
         }
         else {
-            $risultato.Status = 'errore'
-            $risultato.Error  = $_.Exception.Message
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Impossibile interrogare lo stato TPM ($($_.Exception.Message))"
+            $risultato.Error    = $_.Exception.Message
         }
     }
 
     return $risultato
 }
 
-function Test-PowerShellV2Disabilitato {
+function Test-WshDisabled {
     <#
     .SYNOPSIS
-        Verifica che il motore obsoleto PowerShell 2.0 non sia installato, prevenendo
-        attacchi di downgrade che aggirano AMSI e Script Block Logging (HOME-SEC-005).
+        Verifica che Windows Script Host (WSH: wscript.exe / cscript.exe per .vbs/.js)
+        sia disabilitato (Enabled = 0) (HOME-SYS-009).
     #>
     [CmdletBinding()]
     param(
@@ -7590,43 +8109,106 @@ function Test-PowerShellV2Disabilitato {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Motore legacy PowerShell 2.0 assente o disabilitato"
+        Expected = "Enabled = 0 in HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings"
         Evidence = $null
         Error    = $null
     }
 
     try {
-        $chiaveEngineV2 = 'HKLM:\SOFTWARE\Microsoft\PowerShell\1\PowerShellEngine'
-        $v2Presente = $false
-        $psVer = ''
+        $chiaveWshLM = 'HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings'
+        $chiaveWshCU = 'HKCU:\SOFTWARE\Microsoft\Windows Script Host\Settings'
 
-        if (Test-Path -LiteralPath $chiaveEngineV2) {
-            $propV2 = Get-ItemProperty -LiteralPath $chiaveEngineV2 -ErrorAction SilentlyContinue
-            if ($null -ne $propV2 -and $null -ne $propV2.PSObject.Properties['PowerShellVersion']) {
-                $psVer = [string]$propV2.PowerShellVersion
-                if ($psVer -like '2.*') {
-                    # Verifica anche se la DLL di PS v2 esiste su disco
-                    $dllV2 = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\System.Management.Automation.ni.dll'
-                    if (Test-Path -LiteralPath 'HKLM:\SOFTWARE\Microsoft\PowerShell\3') {
-                        # Su Windows 10/11 la chiave \1\PowerShellEngine esiste solo con PSVersion=2.0 se la feature MicrosoftWindowsPowerShellV2 e' attiva
-                        $v2Presente = $true
-                    }
-                }
+        $valLM = 1
+        if (Test-Path -LiteralPath $chiaveWshLM) {
+            $propLM = Get-ItemProperty -LiteralPath $chiaveWshLM -ErrorAction SilentlyContinue
+            if ($null -ne $propLM -and $null -ne $propLM.PSObject.Properties['Enabled'] -and $null -ne $propLM.Enabled) {
+                $valLM = [int]$propLM.Enabled
+            }
+        }
+
+        $valCU = 1
+        if (Test-Path -LiteralPath $chiaveWshCU) {
+            $propCU = Get-ItemProperty -LiteralPath $chiaveWshCU -ErrorAction SilentlyContinue
+            if ($null -ne $propCU -and $null -ne $propCU.PSObject.Properties['Enabled'] -and $null -ne $propCU.Enabled) {
+                $valCU = [int]$propCU.Enabled
             }
         }
 
         $risultato.Evidence = @{
-            EngineV2KeyExists = $v2Presente
-            VersionFound      = $psVer
+            PathHKLM    = $chiaveWshLM
+            EnabledHKLM = $valLM
+            EnabledHKCU = $valCU
         }
 
-        if (-not $v2Presente) {
+        if ($valLM -eq 0 -or $valCU -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Motore obsoleto PowerShell 2.0 non installato"
+            $risultato.Observed = "Windows Script Host (WSH) disabilitato (HKLM=$valLM, HKCU=$valCU)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Motore obsoleto PowerShell 2.0 presente ($psVer - rischio downgrade attack)"
+            $risultato.Observed = "Windows Script Host (WSH) attivo per script .vbs/.js (Enabled = 1)"
+        }
+    }
+    catch {
+        $risultato.Status = 'errore'
+        $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-PowerShellExecutionPolicySecure {
+    <#
+    .SYNOPSIS
+        Verifica tramite Get-ExecutionPolicy -List che gli scope persistenti (MachinePolicy, UserPolicy,
+        LocalMachine, CurrentUser) non siano impostati su Unrestricted o Bypass (HOME-SEC-009).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessuno scope persistente impostato su Unrestricted o Bypass"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $listaPol = @(Get-ExecutionPolicy -List -ErrorAction Stop)
+        $scopeDaControllare = @('MachinePolicy', 'UserPolicy', 'LocalMachine', 'CurrentUser')
+        $scopeInsicuri = @()
+        $mappaPol = @{}
+
+        foreach ($voce in $listaPol) {
+            $nomeScope = [string]$voce.Scope
+            $valPol    = [string]$voce.ExecutionPolicy
+            $mappaPol[$nomeScope] = $valPol
+
+            if ($scopeDaControllare -contains $nomeScope) {
+                if ($valPol -in @('Unrestricted', 'Bypass')) {
+                    $scopeInsicuri += "$nomeScope=$valPol"
+                }
+            }
+        }
+
+        $risultato.Evidence = $mappaPol
+
+        if ($scopeInsicuri.Count -eq 0) {
+            $polLM = if ($mappaPol.ContainsKey('LocalMachine')) { $mappaPol['LocalMachine'] } else { 'Undefined' }
+            $polCU = if ($mappaPol.ContainsKey('CurrentUser')) { $mappaPol['CurrentUser'] } else { 'Undefined' }
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "ExecutionPolicy sicura (LocalMachine=$polLM, CurrentUser=$polCU)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "ExecutionPolicy troppo permissiva rilevata: $($scopeInsicuri -join ', ')"
         }
     }
     catch {
@@ -7903,15 +8485,40 @@ $script:RimediStaticiFetta = @{
         command = 'Stop-Service -Name "RemoteRegistry" -Force -ErrorAction SilentlyContinue; Set-Service -Name "RemoteRegistry" -StartupType Disabled'
         risk    = "Nessuno su PC domestici o workstation singole."
     }
-    'HOME-SEC-004' = [PSCustomObject]@{
-        text    = "Abilita la Protezione esecuzione programmi (DEP) per i programmi e servizi di Windows tramite bcdedit."
-        command = 'bcdedit.exe /set "{current}" nx OptIn'
-        risk    = "Molto basso: OptIn e' la configurazione predefinita sicura di Windows 11."
+    'HOME-SEC-006' = [PSCustomObject]@{
+        text    = "Abilita l'Elenco di blocco driver vulnerabili Microsoft in Sicurezza di Windows -> Sicurezza dispositivi -> Isolamento core."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config" -Name "VulnerableDriverBlocklistEnable" -Value 1 -Type DWord'
+        risk    = "Molto basso: blocca solo driver di kernel con vulnerabilita' note sfruttate da malware BYOVD."
     }
-    'HOME-SEC-005' = [PSCustomObject]@{
-        text    = "Disabilita la funzionalita' opzionale obsoleta Windows PowerShell 2.0 per impedire attacchi di downgrade."
-        command = 'Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2Root -NoRestart'
-        risk    = "Molto basso: tutti gli script moderni usano PowerShell 5.1 o PowerShell 7."
+    'HOME-SEC-007' = [PSCustomObject]@{
+        text    = "Verifica lo stato di Controllo intelligente delle app (Smart App Control) in Sicurezza di Windows -> Controllo delle app e del browser."
+        command = $null
+        risk    = "Nota: su Windows 11 Smart App Control puo' essere attivato in modalita' valutazione o blocco solo da un'installazione pulita o reimpostazione di Windows."
+    }
+    'HOME-AV-011' = [PSCustomObject]@{
+        text    = "Attiva le regole principali Attack Surface Reduction (ASR) di Microsoft Defender (blocco furto credenziali LSASS e blocco script offuscati)."
+        command = 'Add-MpPreference -AttackSurfaceReductionRules_Ids "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2","5beb7efe-fd9a-4556-801d-275e5ffc04cc" -AttackSurfaceReductionRules_Actions Enabled,Enabled'
+        risk    = "Basso: protegge attivamente LSASS e blocca l'esecuzione di script offuscati."
+    }
+    'HOME-SEC-008' = [PSCustomObject]@{
+        text    = "Abilita il chip TPM 2.0 (Intel PTT o AMD fTPM) nelle impostazioni UEFI/BIOS della scheda madre."
+        command = 'Get-Tpm'
+        risk    = "Molto basso: requisito hardware fondamentale di Windows 11 per BitLocker e Windows Hello."
+    }
+    'HOME-NET-008' = [PSCustomObject]@{
+        text    = "Disabilita esplicitamente TLS 1.0/1.1 in SCHANNEL e abilita il supporto automatico DNS over HTTPS (EnableAutoDoh = 2)."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters" -Name "EnableAutoDoh" -Value 2 -Type DWord'
+        risk    = "Basso: cifra automaticamente le query DNS quando il server DNS configurato supporta DoH."
+    }
+    'HOME-SYS-009' = [PSCustomObject]@{
+        text    = "Disabilita Windows Script Host (WSH) nel registro per bloccare l'esecuzione di script .vbs e .js malevoli."
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings" -Force | Out-Null; Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings" -Name "Enabled" -Value 0 -Type DWord'
+        risk    = "Basso: blocca vecchi script VBScript/JScript (.vbs/.js); non influisce su PowerShell."
+    }
+    'HOME-SEC-009' = [PSCustomObject]@{
+        text    = "Imposta la ExecutionPolicy di PowerShell su RemoteSigned (o AllSigned), evitando Unrestricted o Bypass."
+        command = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force'
+        risk    = "Basso: consente gli script locali ma richiede una firma digitale per gli script scaricati da Internet."
     }
 }
 
@@ -7965,11 +8572,16 @@ $script:TraduzioniControlliEN = @{
     'HOME-SYS-006' = @{ cat = 'Windows Settings';  title = 'WDigest cleartext credential caching in memory disabled';    rat = 'If WDigest UseLogonCredential is enabled, Windows stores user passwords in cleartext inside LSASS memory.'; rem = 'Set UseLogonCredential = 0 under HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.'; risk = 'None: protects user passwords against memory dumping.' }
     'HOME-SYS-007' = @{ cat = 'Windows Settings';  title = 'Windows Remote Assistance disabled';                         rat = 'Disabling Solicited Remote Assistance prevents unauthorized remote assistance invitations and inbound connections.'; rem = 'Set fAllowToGetHelp = 0 under HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance.'; risk = 'Very low: disables legacy Windows Remote Assistance.' }
     'HOME-SYS-008' = @{ cat = 'Windows Settings';  title = 'Remote Registry service disabled and stopped';               rat = 'The Remote Registry service allows remote network users to read and modify your Windows Registry.'; rem = 'Stop and disable the RemoteRegistry service (StartupType = Disabled).'; risk = 'None on home PCs and standalone workstations.' }
-    'HOME-SEC-004' = @{ cat = 'Advanced Security'; title = 'Hardware Data Execution Prevention (DEP) enabled';           rat = 'DEP prevents malicious code execution (buffer overflows/shellcode) from memory pages marked as data-only.'; rem = 'Enable DEP via bcdedit.exe /set "{current}" nx OptIn.'; risk = 'Very low: OptIn is the secure default on Windows 11.' }
-    'HOME-SEC-005' = @{ cat = 'Advanced Security'; title = 'Legacy PowerShell v2.0 engine disabled (anti-downgrade)';    rat = 'Attackers run powershell.exe -Version 2 to completely bypass AMSI antivirus inspection and Script Block Logging.'; rem = 'Disable the legacy MicrosoftWindowsPowerShellV2Root optional feature.'; risk = 'Very low: modern scripts run on PowerShell 5.1 or PowerShell 7.' }
+    'HOME-SEC-006' = @{ cat = 'Advanced Security'; title = 'Microsoft Vulnerable Driver Blocklist (anti-BYOVD) enabled';  rat = 'Blocks known vulnerable signed kernel drivers exploited in Bring Your Own Vulnerable Driver (BYOVD) attacks to disable Defender.'; rem = 'Enable Microsoft Vulnerable Driver Blocklist in Windows Security -> Device security -> Core isolation.'; risk = 'Very low: only blocks kernel drivers with known security vulnerabilities.' }
+    'HOME-SEC-007' = @{ cat = 'Advanced Security'; title = 'Smart App Control (SAC) active (Enforced or Evaluation)';     rat = 'Smart App Control blocks untrusted, unsigned, or potentially malicious applications across Windows 11.'; rem = 'Check Smart App Control status in Windows Security -> App & browser control -> Smart App Control.'; risk = 'Note: Smart App Control can only be enabled in evaluation/enforced mode from a clean Windows 11 install.' }
+    'HOME-AV-011'  = @{ cat = 'Antivirus';         title = 'Microsoft Defender Attack Surface Reduction (ASR) rules active'; rat = 'ASR rules block common ransomware and fileless malware vectors such as LSASS credential theft and obfuscated scripts.'; rem = 'Enable core ASR rules (LSASS credential protection and obfuscated script blocking) via Add-MpPreference.'; risk = 'Low: actively protects LSASS memory and blocks obfuscated script execution.' }
+    'HOME-SEC-008' = @{ cat = 'Advanced Security'; title = 'TPM 2.0 hardware security module present and ready';          rat = 'TPM 2.0 provides the hardware root of trust required for BitLocker, Windows Hello, Secure Boot, and Credential Guard.'; rem = 'Enable TPM 2.0 (Intel PTT or AMD fTPM) in your motherboard UEFI/BIOS settings.'; risk = 'Very low: core Windows 11 hardware security requirement.' }
+    'HOME-NET-008' = @{ cat = 'Network';           title = 'Legacy TLS 1.0/1.1 disabled and DNS over HTTPS (DoH) supported'; rat = 'Disabling TLS 1.0/1.1 prevents cryptographic downgrade attacks, while DNS over HTTPS encrypts DNS queries against spoofing.'; rem = 'Ensure TLS 1.0/1.1 are not enabled in SCHANNEL and set EnableAutoDoh = 2 in Dnscache\Parameters.'; risk = 'Low: automatically encrypts DNS queries when the configured DNS server supports DoH.' }
+    'HOME-SYS-009' = @{ cat = 'Windows Settings';  title = 'Windows Script Host (WSH) disabled against .vbs/.js malware'; rat = 'Disabling WSH blocks automatic execution of VBScript (.vbs) and JScript (.js) malware droppers commonly used in phishing.'; rem = 'Set Enabled = 0 under HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings.'; risk = 'Low: blocks legacy .vbs/.js scripts; does not affect PowerShell.' }
+    'HOME-SEC-009' = @{ cat = 'Advanced Security'; title = 'Secure PowerShell ExecutionPolicy (no Unrestricted or Bypass)'; rat = 'An overly permissive ExecutionPolicy allows unsigned or downloaded PowerShell scripts to run without restriction.'; rem = 'Set PowerShell ExecutionPolicy to RemoteSigned via Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine.'; risk = 'Low: allows local scripts while requiring a digital signature for scripts downloaded from the Internet.' }
 }
 
-# Traduzioni complete in Tedesco (DE) per tutti i 50 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
+# Traduzioni complete in Tedesco (DE) per tutti i 55 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
 $script:TraduzioniControlliDE = @{
     'HOME-FW-001'  = @{ cat = 'Firewall';            title = 'Windows-Firewall auf allen Profilen aktiviert';                  rat = 'Die Firewall ist die erste Verteidigungslinie gegen unbefugte Netzwerkverbindungen.'; rem = 'Aktivieren Sie die Windows Defender Firewall fuer Domaenen-, Privat- und Oeffentliche Profile ueber Windows-Sicherheit oder PowerShell als Administrator.'; risk = 'Gering: Blockiert unerwuenschte eingehende Verbindungen bei normalem ausgehendem Datenverkehr.' }
     'HOME-UAC-001' = @{ cat = 'UAC';                 title = 'Benutzerkontensteuerung (UAC) aktiviert';                        rat = 'UAC schuetzt das System, indem vor Vorgaengen mit Administratorrechten eine Bestaetigung angefordert wird.'; rem = 'Aktivieren Sie UAC (EnableLUA = 1) in den Windows-Einstellungen oder per PowerShell als Administrator. Neustart erforderlich.'; risk = 'Gering: Windows fragt vor administrativen Aenderungen nach.' }
@@ -8019,8 +8631,13 @@ $script:TraduzioniControlliDE = @{
     'HOME-SYS-006' = @{ cat = 'Windows-Einstellungen'; title = 'WDigest-Klartext-Passwortspeicherung im RAM deaktiviert';      rat = 'Wenn WDigest UseLogonCredential aktiviert ist, speichert Windows Benutzerpasswoerter im Klartext im LSASS-Speicher.'; rem = 'Setzen Sie UseLogonCredential = 0 unter HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.'; risk = 'Keines: Schuetzt Passwoerter vor dem Auslesen aus dem Arbeitsspeicher.' }
     'HOME-SYS-007' = @{ cat = 'Windows-Einstellungen'; title = 'Windows-Remoteunterstuetzung deaktiviert';                     rat = 'Das Deaktivieren der Remoteunterstuetzung verhindert unbefugte Fernwartungseinladungen.'; rem = 'Setzen Sie fAllowToGetHelp = 0 unter HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance.'; risk = 'Sehr gering: Deaktiviert die veraltete Windows-Remoteunterstuetzung.' }
     'HOME-SYS-008' = @{ cat = 'Windows-Einstellungen'; title = 'Dienst Remoteregistrierung (Remote Registry) deaktiviert';     rat = 'Der Dienst Remote Registry ermoeglicht Benutzern im Netzwerk das Lesen und Aendern Ihrer Windows-Registrierung aus der Ferne.'; rem = 'Beenden und deaktivieren Sie den Dienst RemoteRegistry (StartupType = Disabled).'; risk = 'Keines auf Heim-PCs und Einzelplatzrechnern.' }
-    'HOME-SEC-004' = @{ cat = 'Erweiterte Sicherheit'; title = 'Datenausfuehrungsverhinderung (DEP) aktiviert';                rat = 'DEP verhindert die Ausfuehrung von Schadcode (Buffer Overflows) in Speicherbereichen, die nur fuer Daten vorgesehen sind.'; rem = 'Aktivieren Sie DEP ueber bcdedit.exe /set "{current}" nx OptIn.'; risk = 'Sehr gering: OptIn ist die sichere Standardeinstellung von Windows 11.' }
-    'HOME-SEC-005' = @{ cat = 'Erweiterte Sicherheit'; title = 'Veraltete PowerShell v2.0-Engine deaktiviert (Anti-Downgrade)'; rat = 'Angreifer starten powershell.exe -Version 2, um AMSI-Virenpruefung und Script Block Logging komplett zu umgehen.'; rem = 'Deaktivieren Sie das optionale Feature MicrosoftWindowsPowerShellV2Root.'; risk = 'Sehr gering: Moderne Skripte nutzen PowerShell 5.1 oder PowerShell 7.' }
+    'HOME-SEC-006' = @{ cat = 'Erweiterte Sicherheit'; title = 'Microsoft-Sperrliste gefaehrdeter Treiber (Anti-BYOVD) aktiv'; rat = 'Blockiert bekannte verwundbare Kernel-Treiber, die bei Bring Your Own Vulnerable Driver (BYOVD)-Angriffen missbraucht werden.'; rem = 'Aktivieren Sie die Sperrliste gefaehrdeter Microsoft-Treiber unter Windows-Sicherheit -> Geraetesicherheit -> Kernisolierung.'; risk = 'Sehr gering: Blockiert nur Kernel-Treiber mit bekannten Sicherheitsluecken.' }
+    'HOME-SEC-007' = @{ cat = 'Erweiterte Sicherheit'; title = 'Smart App Control (SAC) aktiv (Enforced oder Evaluation)';     rat = 'Smart App Control blockiert nicht vertrauenswuerdige, unsignierte oder potenziell schaedliche Anwendungen unter Windows 11.'; rem = 'Pruefen Sie Smart App Control unter Windows-Sicherheit -> App- & Browsersteuerung -> Smart App Control.'; risk = 'Hinweis: Smart App Control kann nur nach einer Neuinstallation von Windows 11 aktiviert werden.' }
+    'HOME-AV-011'  = @{ cat = 'Antivirus';           title = 'Microsoft Defender Attack Surface Reduction (ASR)-Regeln aktiv'; rat = 'ASR-Regeln blockieren haeufige Ransomware- und Malware-Angriffswege wie LSASS-Anmeldedatendiebstahl und verschleierte Skripte.'; rem = 'Aktivieren Sie die wichtigsten ASR-Regeln (LSASS-Schutz und Blockierung verschleierter Skripte) ueber Add-MpPreference.'; risk = 'Gering: Schuetzt den LSASS-Speicher aktiv und blockiert verschleierte Skripte.' }
+    'HOME-SEC-008' = @{ cat = 'Erweiterte Sicherheit'; title = 'TPM 2.0 Hardware-Sicherheitsmodul vorhanden und bereit';       rat = 'TPM 2.0 bildet den Hardware-Vertrauensanker fuer BitLocker, Windows Hello, Secure Boot und Credential Guard.'; rem = 'Aktivieren Sie TPM 2.0 (Intel PTT oder AMD fTPM) in den UEFI/BIOS-Einstellungen Ihres Mainboards.'; risk = 'Sehr gering: Zentrale Hardware-Sicherheitsanforderung von Windows 11.' }
+    'HOME-NET-008' = @{ cat = 'Netzwerk';            title = 'Veraltetes TLS 1.0/1.1 deaktiviert und DNS over HTTPS (DoH) aktiv'; rat = 'Das Deaktivieren von TLS 1.0/1.1 verhindert Downgrade-Angriffe, waehrend DNS over HTTPS DNS-Abfragen gegen Spoofing verschluesselt.'; rem = 'Stellen Sie sicher, dass TLS 1.0/1.1 in SCHANNEL deaktiviert sind und setzen Sie EnableAutoDoh = 2 unter Dnscache\Parameters.'; risk = 'Gering: Verschluesselt DNS-Abfragen automatisch, wenn der DNS-Server DoH unterstuetzt.' }
+    'HOME-SYS-009' = @{ cat = 'Windows-Einstellungen'; title = 'Windows Script Host (WSH) gegen .vbs/.js-Malware deaktiviert'; rat = 'Das Deaktivieren von WSH blockiert die automatische Ausfuehrung von VBScript (.vbs)- und JScript (.js)-Droppern.'; rem = 'Setzen Sie Enabled = 0 unter HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings.'; risk = 'Gering: Blockiert veraltete .vbs/.js-Skripte; hat keinen Einfluss auf PowerShell.' }
+    'HOME-SEC-009' = @{ cat = 'Erweiterte Sicherheit'; title = 'Sichere PowerShell ExecutionPolicy (kein Unrestricted/Bypass)'; rat = 'Eine zu offene ExecutionPolicy ermoeglicht das ungehinderte Starten nicht signierter PowerShell-Skripte aus dem Internet.'; rem = 'Setzen Sie die ExecutionPolicy auf RemoteSigned ueber Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine.'; risk = 'Gering: Erlaubt lokale Skripte, erfordert aber eine digitale Signatur fuer Skripte aus dem Internet.' }
 }
 
 function Get-ValoreProprietaSicuro {

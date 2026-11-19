@@ -12,6 +12,7 @@ Describe 'Controlli SystemSecurity (HOME-UPD-001, HOME-ENC-001, HOME-PRV-001, HO
         $percorsoModulo = Join-Path $PSScriptRoot '..\src\core\Checks\SystemSecurity.ps1'
         . $percorsoModulo
 
+        function Get-Tpm { }
         $controlloDummy = [PSCustomObject]@{ id = 'HOME-SYS-TEST' }
     }
 
@@ -147,11 +148,30 @@ Describe 'Controlli SystemSecurity (HOME-UPD-001, HOME-ENC-001, HOME-PRV-001, HO
             $res.Status | Should -Be 'superato'
         }
 
-        It 'Test-MemoryIntegrityEnabled: superato quando Enabled = 1' {
+        It 'Test-MemoryIntegrityEnabled: superato quando Win32_DeviceGuard riporta VBS=2 e SecurityServicesRunning contiene 2' {
             Mock Test-Path { return $true }
             Mock Get-ItemProperty { return [PSCustomObject]@{ Enabled = 1 } }
+            Mock Get-CimInstance {
+                return [PSCustomObject]@{
+                    VirtualizationBasedSecurityStatus = 2
+                    SecurityServicesRunning           = @(1, 2)
+                }
+            }
             $res = Test-MemoryIntegrityEnabled -Controllo $controlloDummy
             $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-MemoryIntegrityEnabled: fallito quando Win32_DeviceGuard riporta che HVCI non e in esecuzione nonostante Enabled = 1' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ Enabled = 1 } }
+            Mock Get-CimInstance {
+                return [PSCustomObject]@{
+                    VirtualizationBasedSecurityStatus = 1
+                    SecurityServicesRunning           = @()
+                }
+            }
+            $res = Test-MemoryIntegrityEnabled -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
         }
 
         It 'Test-AnonymousSamRestricted: superato quando RestrictAnonymousSAM = 1' {
@@ -166,16 +186,107 @@ Describe 'Controlli SystemSecurity (HOME-UPD-001, HOME-ENC-001, HOME-PRV-001, HO
             $res = Test-WindowsUpdateAuthenticServer -Controllo $controlloDummy
             $res.Status | Should -Be 'superato'
         }
+
+        It 'Test-UacSecureElevation (HOME-UAC-002): superato quando ConsentPromptBehaviorAdmin = 2 e PromptOnSecureDesktop = 1' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ ConsentPromptBehaviorAdmin = 2; PromptOnSecureDesktop = 1 }
+            }
+            $res = Test-UacSecureElevation -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-UacSecureElevation (HOME-UAC-002): fallito quando PromptOnSecureDesktop = 0' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ ConsentPromptBehaviorAdmin = 5; PromptOnSecureDesktop = 0 }
+            }
+            $res = Test-UacSecureElevation -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+        }
+
+        It 'Test-SmartAppControl (HOME-SEC-007): superato quando VerifiedAndReputablePolicyState e 1 (Enforced) o 2 (Evaluation)' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ VerifiedAndReputablePolicyState = 1 } }
+            $res1 = Test-SmartAppControl -Controllo $controlloDummy
+            $res1.Status | Should -Be 'superato'
+
+            Mock Get-ItemProperty { return [PSCustomObject]@{ VerifiedAndReputablePolicyState = 2 } }
+            $res2 = Test-SmartAppControl -Controllo $controlloDummy
+            $res2.Status | Should -Be 'superato'
+        }
+
+        It 'Test-SmartAppControl (HOME-SEC-007): fallito quando VerifiedAndReputablePolicyState = 0' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ VerifiedAndReputablePolicyState = 0 } }
+            $res = Test-SmartAppControl -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+        }
+
+        It 'Test-Tpm20Ready (HOME-SEC-008): superato quando TpmPresent = True e TpmReady = True' {
+            Mock Get-Tpm {
+                return [PSCustomObject]@{ TpmPresent = $true; TpmReady = $true }
+            }
+            $res = Test-Tpm20Ready -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-Tpm20Ready (HOME-SEC-008): fallito quando TpmReady = False' {
+            Mock Get-Tpm {
+                return [PSCustomObject]@{ TpmPresent = $true; TpmReady = $false }
+            }
+            $res = Test-Tpm20Ready -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+        }
+
+        It 'Test-WshDisabled (HOME-SYS-009): superato quando Enabled = 0' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ Enabled = 0 } }
+            $res = Test-WshDisabled -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-WshDisabled (HOME-SYS-009): fallito quando Enabled = 1' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty { return [PSCustomObject]@{ Enabled = 1 } }
+            $res = Test-WshDisabled -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+        }
+
+        It 'Test-PowerShellExecutionPolicySecure (HOME-SEC-009): superato quando gli scope sono RemoteSigned' {
+            Mock Get-ExecutionPolicy {
+                return @(
+                    [PSCustomObject]@{ Scope = 'MachinePolicy'; ExecutionPolicy = 'Undefined' }
+                    [PSCustomObject]@{ Scope = 'UserPolicy';    ExecutionPolicy = 'Undefined' }
+                    [PSCustomObject]@{ Scope = 'Process';       ExecutionPolicy = 'Bypass' }
+                    [PSCustomObject]@{ Scope = 'CurrentUser';   ExecutionPolicy = 'Undefined' }
+                    [PSCustomObject]@{ Scope = 'LocalMachine';  ExecutionPolicy = 'RemoteSigned' }
+                )
+            }
+            $res = Test-PowerShellExecutionPolicySecure -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Test-PowerShellExecutionPolicySecure (HOME-SEC-009): fallito quando LocalMachine o CurrentUser e Unrestricted o Bypass' {
+            Mock Get-ExecutionPolicy {
+                return @(
+                    [PSCustomObject]@{ Scope = 'LocalMachine'; ExecutionPolicy = 'Unrestricted' }
+                    [PSCustomObject]@{ Scope = 'CurrentUser';  ExecutionPolicy = 'Bypass' }
+                )
+            }
+            $res = Test-PowerShellExecutionPolicySecure -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+        }
     }
 }
 
-Describe 'Copertura completa dei 50 controlli e script singolo stile winutil' {
+Describe 'Copertura completa dei 55 controlli e script singolo stile winutil' {
 
-    It 'Tutti i 50 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
+    It 'Tutti i 55 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
         $percorsoJson = Join-Path $PSScriptRoot '..\catalog\home_profile.json'
         $cat = Get-Content -LiteralPath $percorsoJson -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        @($cat.controls).Count | Should -Be 50
+        @($cat.controls).Count | Should -Be 55
         foreach ($c in $cat.controls) {
             $haReg = ($null -ne $c.check.PSObject.Properties['registry'] -and $null -ne $c.check.registry)
             $haCmd = ($null -ne $c.check.PSObject.Properties['command_ref'] -and (-not [string]::IsNullOrWhiteSpace($c.check.command_ref)))

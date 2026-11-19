@@ -753,3 +753,96 @@ function Test-DefenderNetworkProtection {
 
     return $risultato
 }
+
+function Test-DefenderAsrRules {
+    <#
+    .SYNOPSIS
+        Verifica che le regole Attack Surface Reduction (ASR) di Microsoft Defender siano attive
+        in modalita' Block (1) o Warn (6) (in particolare blocco furto credenziali LSASS e script offuscati) (HOME-AV-011).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Regole ASR attive in modalita' Block (1) o Warn (6) (incluso LSASS 9e6c4e1f-... e Script 5beb7efe-...)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $ids = @()
+        if ($null -ne $pref.PSObject.Properties['AttackSurfaceReductionRules_Ids'] -and $null -ne $pref.AttackSurfaceReductionRules_Ids) {
+            $ids = @($pref.AttackSurfaceReductionRules_Ids)
+        }
+        $actions = @()
+        if ($null -ne $pref.PSObject.Properties['AttackSurfaceReductionRules_Actions'] -and $null -ne $pref.AttackSurfaceReductionRules_Actions) {
+            $actions = @($pref.AttackSurfaceReductionRules_Actions)
+        }
+
+        if ($ids.Count -gt 0 -and ([string]$ids[0]) -match 'Must be an administrator|amministratore') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi di amministratore richiesti per leggere le regole ASR di Defender"
+            $risultato.Evidence = @{ RichiedeAdmin = $true }
+            return $risultato
+        }
+
+        $regoleAttive = @()
+        $lsassAttiva  = $false
+        $scriptAttiva = $false
+
+        $maxIdx = [Math]::Min($ids.Count, $actions.Count)
+        for ($i = 0; $i -lt $maxIdx; $i++) {
+            $guid = ([string]$ids[$i]).Trim().ToLowerInvariant()
+            $act  = [int]$actions[$i]
+            if ($act -eq 1 -or $act -eq 6) {
+                $regoleAttive += "$guid=$act"
+                if ($guid -eq '9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2') { $lsassAttiva  = $true }
+                if ($guid -eq '5beb7efe-fd9a-4556-801d-275e5ffc04cc') { $scriptAttiva = $true }
+            }
+        }
+
+        $risultato.Evidence = @{
+            TotaleConfigurate = $ids.Count
+            TotaleAttive      = $regoleAttive.Count
+            LsassProtected    = $lsassAttiva
+            ScriptsProtected  = $scriptAttiva
+            RegoleAttive      = $regoleAttive
+        }
+
+        if ($regoleAttive.Count -gt 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "$($regoleAttive.Count) regole ASR attive in modalita' Block/Warn (LSASS=$lsassAttiva, ObfuscatedScripts=$scriptAttiva)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Nessuna regola Attack Surface Reduction (ASR) attiva in modalita' Block/Warn ($($ids.Count) configurate)"
+        }
+    }
+    catch [System.Management.Automation.CommandNotFoundException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare le regole ASR di Defender"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}

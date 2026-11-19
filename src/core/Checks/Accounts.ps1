@@ -216,17 +216,30 @@ function Test-AccountsPasswordRequired {
     try {
         $utenti = @(Get-LocalUser -ErrorAction Stop)
         $attiviSenzaObbligo = @()
-        $dettaglioAttivi = @()
+        $accountMicrosoft   = @()
+        $dettaglioAttivi    = @()
 
         foreach ($u in $utenti) {
             if ($u.Enabled) {
                 $pwdReq = [bool]$u.PasswordRequired
+                $sorgente = if ($null -ne $u.PSObject.Properties['PrincipalSource'] -and $null -ne $u.PrincipalSource) {
+                    [string]$u.PrincipalSource
+                }
+                else {
+                    'Local'
+                }
+
                 $dettaglioAttivi += @{
                     Nome             = $u.Name
                     SID              = $u.SID.Value
                     PasswordRequired = $pwdReq
+                    PrincipalSource  = $sorgente
                 }
-                if (-not $pwdReq) {
+
+                if ($sorgente -eq 'MicrosoftAccount') {
+                    $accountMicrosoft += $u.Name
+                }
+                elseif (-not $pwdReq) {
                     $attiviSenzaObbligo += $u.Name
                 }
             }
@@ -234,16 +247,22 @@ function Test-AccountsPasswordRequired {
 
         $risultato.Evidence = @{
             AccountAttivi              = $dettaglioAttivi
+            AccountMicrosoft           = $accountMicrosoft
             AccountSenzaPasswordObblig = $attiviSenzaObbligo
         }
 
         if ($attiviSenzaObbligo.Count -eq 0) {
             $risultato.Status = 'superato'
-            $risultato.Observed = "Tutti gli account attivi ($($dettaglioAttivi.Count)) richiedono una password"
+            if ($accountMicrosoft.Count -gt 0) {
+                $risultato.Observed = "Tutti gli account attivi ($($dettaglioAttivi.Count)) richiedono autenticazione (Account Microsoft/Windows Hello: $($accountMicrosoft -join ', '))"
+            }
+            else {
+                $risultato.Observed = "Tutti gli account attivi ($($dettaglioAttivi.Count)) richiedono una password"
+            }
         }
         else {
             $risultato.Status = 'fallito'
-            $risultato.Observed = "Account attivi con PasswordRequired=False: $($attiviSenzaObbligo -join ', ')"
+            $risultato.Observed = "Account locali attivi con PasswordRequired=False: $($attiviSenzaObbligo -join ', ')"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {

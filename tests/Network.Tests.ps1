@@ -96,3 +96,38 @@ Describe 'Test-LlmnrDisabled (HOME-NET-003)' {
         $res.Status | Should -Be 'fallito'
     }
 }
+
+Describe 'Test-LegacyTlsAndDoh (HOME-NET-008)' {
+
+    BeforeAll {
+        $percorsoModulo = Join-Path $PSScriptRoot '..\src\core\Checks\Network.ps1'
+        . $percorsoModulo
+
+        function Get-DnsClientDohServerAddress { }
+        $controllo = [PSCustomObject]@{ id = 'HOME-NET-008' }
+    }
+
+    It 'Restituisce superato quando TLS 1.0/1.1 non sono abilitati e DoH e attivo' {
+        Mock Test-Path { return $true }
+        Mock Get-ItemProperty {
+            return [PSCustomObject]@{ Enabled = 0; EnableAutoDoh = 2 }
+        }
+        Mock Get-DnsClientDohServerAddress {
+            return @([PSCustomObject]@{ ServerAddress = '1.1.1.1' })
+        }
+
+        $res = Test-LegacyTlsAndDoh -Controllo $controllo
+        $res.Status | Should -Be 'superato'
+    }
+
+    It 'Restituisce fallito quando TLS 1.0 o TLS 1.1 e forzatamente abilitato (Enabled = 1)' {
+        Mock Test-Path { return $true }
+        Mock Get-ItemProperty {
+            return [PSCustomObject]@{ Enabled = 1; EnableAutoDoh = 2 }
+        }
+
+        $res = Test-LegacyTlsAndDoh -Controllo $controllo
+        $res.Status | Should -Be 'fallito'
+        $res.Observed | Should -Match 'TLS 1\.0'
+    }
+}

@@ -261,15 +261,40 @@ $script:RimediStaticiFetta = @{
         command = 'Stop-Service -Name "RemoteRegistry" -Force -ErrorAction SilentlyContinue; Set-Service -Name "RemoteRegistry" -StartupType Disabled'
         risk    = "Nessuno su PC domestici o workstation singole."
     }
-    'HOME-SEC-004' = [PSCustomObject]@{
-        text    = "Abilita la Protezione esecuzione programmi (DEP) per i programmi e servizi di Windows tramite bcdedit."
-        command = 'bcdedit.exe /set "{current}" nx OptIn'
-        risk    = "Molto basso: OptIn e' la configurazione predefinita sicura di Windows 11."
+    'HOME-SEC-006' = [PSCustomObject]@{
+        text    = "Abilita l'Elenco di blocco driver vulnerabili Microsoft in Sicurezza di Windows -> Sicurezza dispositivi -> Isolamento core."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config" -Name "VulnerableDriverBlocklistEnable" -Value 1 -Type DWord'
+        risk    = "Molto basso: blocca solo driver di kernel con vulnerabilita' note sfruttate da malware BYOVD."
     }
-    'HOME-SEC-005' = [PSCustomObject]@{
-        text    = "Disabilita la funzionalita' opzionale obsoleta Windows PowerShell 2.0 per impedire attacchi di downgrade."
-        command = 'Disable-WindowsOptionalFeature -Online -FeatureName MicrosoftWindowsPowerShellV2Root -NoRestart'
-        risk    = "Molto basso: tutti gli script moderni usano PowerShell 5.1 o PowerShell 7."
+    'HOME-SEC-007' = [PSCustomObject]@{
+        text    = "Verifica lo stato di Controllo intelligente delle app (Smart App Control) in Sicurezza di Windows -> Controllo delle app e del browser."
+        command = $null
+        risk    = "Nota: su Windows 11 Smart App Control puo' essere attivato in modalita' valutazione o blocco solo da un'installazione pulita o reimpostazione di Windows."
+    }
+    'HOME-AV-011' = [PSCustomObject]@{
+        text    = "Attiva le regole principali Attack Surface Reduction (ASR) di Microsoft Defender (blocco furto credenziali LSASS e blocco script offuscati)."
+        command = 'Add-MpPreference -AttackSurfaceReductionRules_Ids "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2","5beb7efe-fd9a-4556-801d-275e5ffc04cc" -AttackSurfaceReductionRules_Actions Enabled,Enabled'
+        risk    = "Basso: protegge attivamente LSASS e blocca l'esecuzione di script offuscati."
+    }
+    'HOME-SEC-008' = [PSCustomObject]@{
+        text    = "Abilita il chip TPM 2.0 (Intel PTT o AMD fTPM) nelle impostazioni UEFI/BIOS della scheda madre."
+        command = 'Get-Tpm'
+        risk    = "Molto basso: requisito hardware fondamentale di Windows 11 per BitLocker e Windows Hello."
+    }
+    'HOME-NET-008' = [PSCustomObject]@{
+        text    = "Disabilita esplicitamente TLS 1.0/1.1 in SCHANNEL e abilita il supporto automatico DNS over HTTPS (EnableAutoDoh = 2)."
+        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters" -Name "EnableAutoDoh" -Value 2 -Type DWord'
+        risk    = "Basso: cifra automaticamente le query DNS quando il server DNS configurato supporta DoH."
+    }
+    'HOME-SYS-009' = [PSCustomObject]@{
+        text    = "Disabilita Windows Script Host (WSH) nel registro per bloccare l'esecuzione di script .vbs e .js malevoli."
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings" -Force | Out-Null; Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings" -Name "Enabled" -Value 0 -Type DWord'
+        risk    = "Basso: blocca vecchi script VBScript/JScript (.vbs/.js); non influisce su PowerShell."
+    }
+    'HOME-SEC-009' = [PSCustomObject]@{
+        text    = "Imposta la ExecutionPolicy di PowerShell su RemoteSigned (o AllSigned), evitando Unrestricted o Bypass."
+        command = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force'
+        risk    = "Basso: consente gli script locali ma richiede una firma digitale per gli script scaricati da Internet."
     }
 }
 
@@ -323,11 +348,16 @@ $script:TraduzioniControlliEN = @{
     'HOME-SYS-006' = @{ cat = 'Windows Settings';  title = 'WDigest cleartext credential caching in memory disabled';    rat = 'If WDigest UseLogonCredential is enabled, Windows stores user passwords in cleartext inside LSASS memory.'; rem = 'Set UseLogonCredential = 0 under HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.'; risk = 'None: protects user passwords against memory dumping.' }
     'HOME-SYS-007' = @{ cat = 'Windows Settings';  title = 'Windows Remote Assistance disabled';                         rat = 'Disabling Solicited Remote Assistance prevents unauthorized remote assistance invitations and inbound connections.'; rem = 'Set fAllowToGetHelp = 0 under HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance.'; risk = 'Very low: disables legacy Windows Remote Assistance.' }
     'HOME-SYS-008' = @{ cat = 'Windows Settings';  title = 'Remote Registry service disabled and stopped';               rat = 'The Remote Registry service allows remote network users to read and modify your Windows Registry.'; rem = 'Stop and disable the RemoteRegistry service (StartupType = Disabled).'; risk = 'None on home PCs and standalone workstations.' }
-    'HOME-SEC-004' = @{ cat = 'Advanced Security'; title = 'Hardware Data Execution Prevention (DEP) enabled';           rat = 'DEP prevents malicious code execution (buffer overflows/shellcode) from memory pages marked as data-only.'; rem = 'Enable DEP via bcdedit.exe /set "{current}" nx OptIn.'; risk = 'Very low: OptIn is the secure default on Windows 11.' }
-    'HOME-SEC-005' = @{ cat = 'Advanced Security'; title = 'Legacy PowerShell v2.0 engine disabled (anti-downgrade)';    rat = 'Attackers run powershell.exe -Version 2 to completely bypass AMSI antivirus inspection and Script Block Logging.'; rem = 'Disable the legacy MicrosoftWindowsPowerShellV2Root optional feature.'; risk = 'Very low: modern scripts run on PowerShell 5.1 or PowerShell 7.' }
+    'HOME-SEC-006' = @{ cat = 'Advanced Security'; title = 'Microsoft Vulnerable Driver Blocklist (anti-BYOVD) enabled';  rat = 'Blocks known vulnerable signed kernel drivers exploited in Bring Your Own Vulnerable Driver (BYOVD) attacks to disable Defender.'; rem = 'Enable Microsoft Vulnerable Driver Blocklist in Windows Security -> Device security -> Core isolation.'; risk = 'Very low: only blocks kernel drivers with known security vulnerabilities.' }
+    'HOME-SEC-007' = @{ cat = 'Advanced Security'; title = 'Smart App Control (SAC) active (Enforced or Evaluation)';     rat = 'Smart App Control blocks untrusted, unsigned, or potentially malicious applications across Windows 11.'; rem = 'Check Smart App Control status in Windows Security -> App & browser control -> Smart App Control.'; risk = 'Note: Smart App Control can only be enabled in evaluation/enforced mode from a clean Windows 11 install.' }
+    'HOME-AV-011'  = @{ cat = 'Antivirus';         title = 'Microsoft Defender Attack Surface Reduction (ASR) rules active'; rat = 'ASR rules block common ransomware and fileless malware vectors such as LSASS credential theft and obfuscated scripts.'; rem = 'Enable core ASR rules (LSASS credential protection and obfuscated script blocking) via Add-MpPreference.'; risk = 'Low: actively protects LSASS memory and blocks obfuscated script execution.' }
+    'HOME-SEC-008' = @{ cat = 'Advanced Security'; title = 'TPM 2.0 hardware security module present and ready';          rat = 'TPM 2.0 provides the hardware root of trust required for BitLocker, Windows Hello, Secure Boot, and Credential Guard.'; rem = 'Enable TPM 2.0 (Intel PTT or AMD fTPM) in your motherboard UEFI/BIOS settings.'; risk = 'Very low: core Windows 11 hardware security requirement.' }
+    'HOME-NET-008' = @{ cat = 'Network';           title = 'Legacy TLS 1.0/1.1 disabled and DNS over HTTPS (DoH) supported'; rat = 'Disabling TLS 1.0/1.1 prevents cryptographic downgrade attacks, while DNS over HTTPS encrypts DNS queries against spoofing.'; rem = 'Ensure TLS 1.0/1.1 are not enabled in SCHANNEL and set EnableAutoDoh = 2 in Dnscache\Parameters.'; risk = 'Low: automatically encrypts DNS queries when the configured DNS server supports DoH.' }
+    'HOME-SYS-009' = @{ cat = 'Windows Settings';  title = 'Windows Script Host (WSH) disabled against .vbs/.js malware'; rat = 'Disabling WSH blocks automatic execution of VBScript (.vbs) and JScript (.js) malware droppers commonly used in phishing.'; rem = 'Set Enabled = 0 under HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings.'; risk = 'Low: blocks legacy .vbs/.js scripts; does not affect PowerShell.' }
+    'HOME-SEC-009' = @{ cat = 'Advanced Security'; title = 'Secure PowerShell ExecutionPolicy (no Unrestricted or Bypass)'; rat = 'An overly permissive ExecutionPolicy allows unsigned or downloaded PowerShell scripts to run without restriction.'; rem = 'Set PowerShell ExecutionPolicy to RemoteSigned via Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine.'; risk = 'Low: allows local scripts while requiring a digital signature for scripts downloaded from the Internet.' }
 }
 
-# Traduzioni complete in Tedesco (DE) per tutti i 50 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
+# Traduzioni complete in Tedesco (DE) per tutti i 55 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
 $script:TraduzioniControlliDE = @{
     'HOME-FW-001'  = @{ cat = 'Firewall';            title = 'Windows-Firewall auf allen Profilen aktiviert';                  rat = 'Die Firewall ist die erste Verteidigungslinie gegen unbefugte Netzwerkverbindungen.'; rem = 'Aktivieren Sie die Windows Defender Firewall fuer Domaenen-, Privat- und Oeffentliche Profile ueber Windows-Sicherheit oder PowerShell als Administrator.'; risk = 'Gering: Blockiert unerwuenschte eingehende Verbindungen bei normalem ausgehendem Datenverkehr.' }
     'HOME-UAC-001' = @{ cat = 'UAC';                 title = 'Benutzerkontensteuerung (UAC) aktiviert';                        rat = 'UAC schuetzt das System, indem vor Vorgaengen mit Administratorrechten eine Bestaetigung angefordert wird.'; rem = 'Aktivieren Sie UAC (EnableLUA = 1) in den Windows-Einstellungen oder per PowerShell als Administrator. Neustart erforderlich.'; risk = 'Gering: Windows fragt vor administrativen Aenderungen nach.' }
@@ -377,8 +407,13 @@ $script:TraduzioniControlliDE = @{
     'HOME-SYS-006' = @{ cat = 'Windows-Einstellungen'; title = 'WDigest-Klartext-Passwortspeicherung im RAM deaktiviert';      rat = 'Wenn WDigest UseLogonCredential aktiviert ist, speichert Windows Benutzerpasswoerter im Klartext im LSASS-Speicher.'; rem = 'Setzen Sie UseLogonCredential = 0 unter HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest.'; risk = 'Keines: Schuetzt Passwoerter vor dem Auslesen aus dem Arbeitsspeicher.' }
     'HOME-SYS-007' = @{ cat = 'Windows-Einstellungen'; title = 'Windows-Remoteunterstuetzung deaktiviert';                     rat = 'Das Deaktivieren der Remoteunterstuetzung verhindert unbefugte Fernwartungseinladungen.'; rem = 'Setzen Sie fAllowToGetHelp = 0 unter HKLM:\SYSTEM\CurrentControlSet\Control\Remote Assistance.'; risk = 'Sehr gering: Deaktiviert die veraltete Windows-Remoteunterstuetzung.' }
     'HOME-SYS-008' = @{ cat = 'Windows-Einstellungen'; title = 'Dienst Remoteregistrierung (Remote Registry) deaktiviert';     rat = 'Der Dienst Remote Registry ermoeglicht Benutzern im Netzwerk das Lesen und Aendern Ihrer Windows-Registrierung aus der Ferne.'; rem = 'Beenden und deaktivieren Sie den Dienst RemoteRegistry (StartupType = Disabled).'; risk = 'Keines auf Heim-PCs und Einzelplatzrechnern.' }
-    'HOME-SEC-004' = @{ cat = 'Erweiterte Sicherheit'; title = 'Datenausfuehrungsverhinderung (DEP) aktiviert';                rat = 'DEP verhindert die Ausfuehrung von Schadcode (Buffer Overflows) in Speicherbereichen, die nur fuer Daten vorgesehen sind.'; rem = 'Aktivieren Sie DEP ueber bcdedit.exe /set "{current}" nx OptIn.'; risk = 'Sehr gering: OptIn ist die sichere Standardeinstellung von Windows 11.' }
-    'HOME-SEC-005' = @{ cat = 'Erweiterte Sicherheit'; title = 'Veraltete PowerShell v2.0-Engine deaktiviert (Anti-Downgrade)'; rat = 'Angreifer starten powershell.exe -Version 2, um AMSI-Virenpruefung und Script Block Logging komplett zu umgehen.'; rem = 'Deaktivieren Sie das optionale Feature MicrosoftWindowsPowerShellV2Root.'; risk = 'Sehr gering: Moderne Skripte nutzen PowerShell 5.1 oder PowerShell 7.' }
+    'HOME-SEC-006' = @{ cat = 'Erweiterte Sicherheit'; title = 'Microsoft-Sperrliste gefaehrdeter Treiber (Anti-BYOVD) aktiv'; rat = 'Blockiert bekannte verwundbare Kernel-Treiber, die bei Bring Your Own Vulnerable Driver (BYOVD)-Angriffen missbraucht werden.'; rem = 'Aktivieren Sie die Sperrliste gefaehrdeter Microsoft-Treiber unter Windows-Sicherheit -> Geraetesicherheit -> Kernisolierung.'; risk = 'Sehr gering: Blockiert nur Kernel-Treiber mit bekannten Sicherheitsluecken.' }
+    'HOME-SEC-007' = @{ cat = 'Erweiterte Sicherheit'; title = 'Smart App Control (SAC) aktiv (Enforced oder Evaluation)';     rat = 'Smart App Control blockiert nicht vertrauenswuerdige, unsignierte oder potenziell schaedliche Anwendungen unter Windows 11.'; rem = 'Pruefen Sie Smart App Control unter Windows-Sicherheit -> App- & Browsersteuerung -> Smart App Control.'; risk = 'Hinweis: Smart App Control kann nur nach einer Neuinstallation von Windows 11 aktiviert werden.' }
+    'HOME-AV-011'  = @{ cat = 'Antivirus';           title = 'Microsoft Defender Attack Surface Reduction (ASR)-Regeln aktiv'; rat = 'ASR-Regeln blockieren haeufige Ransomware- und Malware-Angriffswege wie LSASS-Anmeldedatendiebstahl und verschleierte Skripte.'; rem = 'Aktivieren Sie die wichtigsten ASR-Regeln (LSASS-Schutz und Blockierung verschleierter Skripte) ueber Add-MpPreference.'; risk = 'Gering: Schuetzt den LSASS-Speicher aktiv und blockiert verschleierte Skripte.' }
+    'HOME-SEC-008' = @{ cat = 'Erweiterte Sicherheit'; title = 'TPM 2.0 Hardware-Sicherheitsmodul vorhanden und bereit';       rat = 'TPM 2.0 bildet den Hardware-Vertrauensanker fuer BitLocker, Windows Hello, Secure Boot und Credential Guard.'; rem = 'Aktivieren Sie TPM 2.0 (Intel PTT oder AMD fTPM) in den UEFI/BIOS-Einstellungen Ihres Mainboards.'; risk = 'Sehr gering: Zentrale Hardware-Sicherheitsanforderung von Windows 11.' }
+    'HOME-NET-008' = @{ cat = 'Netzwerk';            title = 'Veraltetes TLS 1.0/1.1 deaktiviert und DNS over HTTPS (DoH) aktiv'; rat = 'Das Deaktivieren von TLS 1.0/1.1 verhindert Downgrade-Angriffe, waehrend DNS over HTTPS DNS-Abfragen gegen Spoofing verschluesselt.'; rem = 'Stellen Sie sicher, dass TLS 1.0/1.1 in SCHANNEL deaktiviert sind und setzen Sie EnableAutoDoh = 2 unter Dnscache\Parameters.'; risk = 'Gering: Verschluesselt DNS-Abfragen automatisch, wenn der DNS-Server DoH unterstuetzt.' }
+    'HOME-SYS-009' = @{ cat = 'Windows-Einstellungen'; title = 'Windows Script Host (WSH) gegen .vbs/.js-Malware deaktiviert'; rat = 'Das Deaktivieren von WSH blockiert die automatische Ausfuehrung von VBScript (.vbs)- und JScript (.js)-Droppern.'; rem = 'Setzen Sie Enabled = 0 unter HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings.'; risk = 'Gering: Blockiert veraltete .vbs/.js-Skripte; hat keinen Einfluss auf PowerShell.' }
+    'HOME-SEC-009' = @{ cat = 'Erweiterte Sicherheit'; title = 'Sichere PowerShell ExecutionPolicy (kein Unrestricted/Bypass)'; rat = 'Eine zu offene ExecutionPolicy ermoeglicht das ungehinderte Starten nicht signierter PowerShell-Skripte aus dem Internet.'; rem = 'Setzen Sie die ExecutionPolicy auf RemoteSigned ueber Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine.'; risk = 'Gering: Erlaubt lokale Skripte, erfordert aber eine digitale Signatur fuer Skripte aus dem Internet.' }
 }
 
 function Get-ValoreProprietaSicuro {

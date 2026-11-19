@@ -37,6 +37,20 @@ Describe 'Test-FirewallProfiles' {
             $risultato = Test-FirewallProfiles -Controllo $controlloFittizio -Ambiente $ambienteFittizio
             $risultato.Status | Should -Be 'superato'
         }
+
+        It 'Restituisce fallito quando un profilo attivo ha DefaultInboundAction = Allow' {
+            Mock Get-NetFirewallProfile {
+                return @(
+                    [PSCustomObject]@{ Name = 'Domain';  Enabled = $true; DefaultInboundAction = 'Block' }
+                    [PSCustomObject]@{ Name = 'Private'; Enabled = $true; DefaultInboundAction = 'Allow' }
+                    [PSCustomObject]@{ Name = 'Public';  Enabled = $true; DefaultInboundAction = 'Block' }
+                )
+            }
+
+            $risultato = Test-FirewallProfiles -Controllo $controlloFittizio -Ambiente $ambienteFittizio
+            $risultato.Status | Should -Be 'fallito'
+            $risultato.Observed | Should -Match 'Private'
+        }
     }
 
     Context 'Un profilo disattivo (fallito)' {
