@@ -2762,6 +2762,7 @@ $script:XamlIncorporato = @'
                                                             <TextBlock Text="{Binding SeverityLabel}" FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,0,10,0"/>
                                                             <TextBlock Text="{Binding FixModeLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PassFg}" Margin="0,0,10,0"/>
                                                             <TextBlock Text="Admin" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource WarnBannerFg}" Visibility="{Binding AdminBadgeVisibility}" Margin="0,0,10,0"/>
+                                                            <TextBlock Text="{Binding RebootBadgeLabel}" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource ErrorFg}" Visibility="{Binding RebootBadgeVisibility}" Margin="0,0,10,0"/>
                                                             <TextBlock Text="{Binding FixStatusLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
                                                         </WrapPanel>
                                                     </StackPanel>
@@ -10315,7 +10316,7 @@ function Backup-RegistryValueState {
 
         try {
             $regItem = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
-            if ($null -ne $regItem -and $null -ne ($regItem | Get-Member -Name 'GetValueKind' -MemberType Method -ErrorAction SilentlyContinue)) {
+            if ($null -ne $regItem -and $null -ne $regItem.PSObject.Methods['GetValueKind']) {
                 $kind = $regItem.GetValueKind($Name)
                 if ($null -ne $kind) {
                     $valueType = $kind.ToString()
@@ -10351,7 +10352,7 @@ function Backup-RegistryValueState {
 function Backup-DefenderPreferenceState {
     <#
     .SYNOPSIS
-        Captures the current integer state of a supported Microsoft Defender preference property.
+        Captures the current integer or boolean state of a supported Microsoft Defender preference property.
 
     .PARAMETER PropertyName
         Name of the preference property on Get-MpPreference output.
@@ -10367,9 +10368,20 @@ function Backup-DefenderPreferenceState {
         throw "Defender preference property '$PropertyName' was not found on Get-MpPreference output."
     }
 
+    $boolProps = @('DisableRealtimeMonitoring', 'DisableBehaviorMonitoring', 'DisableIOAVProtection')
+    if ($boolProps -contains $PropertyName) {
+        return [PSCustomObject]@{
+            Type          = 'DefenderPreference'
+            PropertyName  = $PropertyName
+            ValueKind     = 'Bool'
+            OriginalValue = [bool]$pref.$PropertyName
+        }
+    }
+
     return [PSCustomObject]@{
         Type          = 'DefenderPreference'
         PropertyName  = $PropertyName
+        ValueKind     = 'Int'
         OriginalValue = [int]$pref.$PropertyName
     }
 }
@@ -10380,8 +10392,9 @@ function Add-RemediationBackupEntry {
         Appends a captured state entry to a backup session while deduplicating identical targets.
 
     .DESCRIPTION
-        Preserves the first captured pre-session state if the same registry value or Defender
-        preference is modified multiple times within a single remediation session.
+        Preserves the first captured pre-session state if the same registry value, Defender
+        preference, service, firewall profile, or user account is modified multiple times within
+        a single remediation session.
     #>
     [CmdletBinding()]
     param(
@@ -10401,14 +10414,34 @@ function Add-RemediationBackupEntry {
             continue
         }
 
-        if ($Entry.Type -eq 'RegistryValue') {
-            if (($existing.Path -eq $Entry.Path) -and ($existing.Name -eq $Entry.Name)) {
-                return
+        switch ($Entry.Type) {
+            'RegistryValue' {
+                if (($existing.Path -eq $Entry.Path) -and ($existing.Name -eq $Entry.Name)) { return }
             }
-        }
-        elseif ($Entry.Type -eq 'DefenderPreference') {
-            if ($existing.PropertyName -eq $Entry.PropertyName) {
-                return
+            'DefenderPreference' {
+                if ($existing.PropertyName -eq $Entry.PropertyName) { return }
+            }
+            'DefenderAsrRules' { return }
+            'FirewallProfile' {
+                if ($existing.ProfileName -eq $Entry.ProfileName) { return }
+            }
+            'ServiceConfig' {
+                if ($existing.ServiceName -eq $Entry.ServiceName) { return }
+            }
+            'ExecutionPolicy' {
+                if ($existing.Scope -eq $Entry.Scope) { return }
+            }
+            'OptionalFeature' {
+                if ($existing.FeatureName -eq $Entry.FeatureName) { return }
+            }
+            'AccountLockoutPolicy' { return }
+            'LocalUser' {
+                $matchSid  = ($existing.SID -and $Entry.SID -and ($existing.SID -eq $Entry.SID))
+                $matchName = ($existing.Name -and $Entry.Name -and ($existing.Name -eq $Entry.Name))
+                if ($matchSid -or $matchName) { return }
+            }
+            'WifiAutoConnect' {
+                if ($existing.ProfileName -eq $Entry.ProfileName) { return }
             }
         }
     }
@@ -10427,24 +10460,6 @@ function Set-RegistryValueWithBackup {
     <#
     .SYNOPSIS
         Safely creates missing parent registry keys, records original state, and sets a registry value.
-
-    .PARAMETER Path
-        Target PowerShell registry path.
-
-    .PARAMETER Name
-        Target registry value name.
-
-    .PARAMETER Value
-        Desired value data.
-
-    .PARAMETER PropertyType
-        Registry value type (defaults to DWord).
-
-    .PARAMETER BackupSession
-        Optional backup session object where pre-change state is captured.
-
-    .PARAMETER ControlId
-        Catalog control ID associated with this change.
     #>
     [CmdletBinding()]
     param(
@@ -10484,27 +10499,22 @@ function Set-DefenderPreferenceWithBackup {
     <#
     .SYNOPSIS
         Records the original Microsoft Defender preference state and applies a supported target mode.
-
-    .PARAMETER PropertyName
-        Supported Defender preference name (PUAProtection or EnableNetworkProtection).
-
-    .PARAMETER TargetValue
-        Desired Defender setting value (e.g., 'Enabled').
-
-    .PARAMETER BackupSession
-        Optional backup session object where pre-change state is captured.
-
-    .PARAMETER ControlId
-        Catalog control ID associated with this change.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('PUAProtection', 'EnableNetworkProtection')]
+        [ValidateSet(
+            'PUAProtection',
+            'EnableNetworkProtection',
+            'EnableControlledFolderAccess',
+            'DisableRealtimeMonitoring',
+            'DisableBehaviorMonitoring',
+            'DisableIOAVProtection'
+        )]
         [string]$PropertyName,
 
         [Parameter(Mandatory = $true)]
-        [string]$TargetValue,
+        [object]$TargetValue,
 
         [Parameter(Mandatory = $false)]
         [PSCustomObject]$BackupSession = $null,
@@ -10518,12 +10528,441 @@ function Set-DefenderPreferenceWithBackup {
         Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry $snapshot
     }
 
-    if ($PropertyName -eq 'PUAProtection') {
-        Set-MpPreference -PUAProtection $TargetValue -ErrorAction Stop
+    switch ($PropertyName) {
+        'PUAProtection'                { Set-MpPreference -PUAProtection ([string]$TargetValue) -ErrorAction Stop }
+        'EnableNetworkProtection'      { Set-MpPreference -EnableNetworkProtection ([string]$TargetValue) -ErrorAction Stop }
+        'EnableControlledFolderAccess' { Set-MpPreference -EnableControlledFolderAccess ([string]$TargetValue) -ErrorAction Stop }
+        'DisableRealtimeMonitoring'    { Set-MpPreference -DisableRealtimeMonitoring ([bool]$TargetValue) -ErrorAction Stop }
+        'DisableBehaviorMonitoring'    { Set-MpPreference -DisableBehaviorMonitoring ([bool]$TargetValue) -ErrorAction Stop }
+        'DisableIOAVProtection'        { Set-MpPreference -DisableIOAVProtection ([bool]$TargetValue) -ErrorAction Stop }
     }
-    elseif ($PropertyName -eq 'EnableNetworkProtection') {
-        Set-MpPreference -EnableNetworkProtection $TargetValue -ErrorAction Stop
+}
+
+function Set-DefenderAsrRulesWithBackup {
+    <#
+    .SYNOPSIS
+        Backs up current Attack Surface Reduction (ASR) rules and enables the specified ASR rule IDs.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$RuleIds,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$Actions,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$BackupSession = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ControlId = ''
+    )
+
+    if ($null -ne $BackupSession) {
+        $pref = Get-MpPreference -ErrorAction Stop
+        $origIds = @(if ($null -ne $pref -and $null -ne $pref.PSObject.Properties['AttackSurfaceReductionRules_Ids'] -and $null -ne $pref.AttackSurfaceReductionRules_Ids) {
+            $pref.AttackSurfaceReductionRules_Ids | ForEach-Object { [string]$_ }
+        })
+        $origActs = @(if ($null -ne $pref -and $null -ne $pref.PSObject.Properties['AttackSurfaceReductionRules_Actions'] -and $null -ne $pref.AttackSurfaceReductionRules_Actions) {
+            $pref.AttackSurfaceReductionRules_Actions | ForEach-Object { [string]$_ }
+        })
+
+        Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry ([PSCustomObject]@{
+            Type            = 'DefenderAsrRules'
+            OriginalIds     = @($origIds)
+            OriginalActions = @($origActs)
+            AppliedIds      = @($RuleIds)
+        })
     }
+
+    Add-MpPreference -AttackSurfaceReductionRules_Ids $RuleIds -AttackSurfaceReductionRules_Actions $Actions -ErrorAction Stop
+}
+
+function Invoke-NetAccounts {
+    <#
+    .SYNOPSIS
+        Thin wrapper around net.exe accounts to allow clean Pester mocking without calling external binaries in unit tests.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string[]]$Arguments = @()
+    )
+
+    $output = & net.exe accounts @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "net.exe accounts exited with code ${LASTEXITCODE}: $($output -join ' ')"
+    }
+    return $output
+}
+
+function Invoke-NetshWlan {
+    <#
+    .SYNOPSIS
+        Thin wrapper around netsh.exe to allow clean Pester mocking for WLAN profile remediation and rollback.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    $output = & netsh.exe @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "netsh.exe failed with exit code ${LASTEXITCODE}: $($output -join ' ')"
+    }
+    return $output
+}
+
+function Set-FirewallProfileWithBackup {
+    <#
+    .SYNOPSIS
+        Captures original firewall profile states and enforces Enabled + DefaultInboundAction per profile.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [string[]]$Profiles = @('Domain', 'Private', 'Public'),
+
+        [Parameter(Mandatory = $false)]
+        [string]$Enabled = 'True',
+
+        [Parameter(Mandatory = $false)]
+        [string]$DefaultInboundAction = 'Block',
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$BackupSession = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ControlId = ''
+    )
+
+    foreach ($profName in $Profiles) {
+        if ($null -ne $BackupSession) {
+            $cur = Get-NetFirewallProfile -Name $profName -ErrorAction Stop
+            $origEnabled = if ($cur.Enabled -is [bool]) { [string]$cur.Enabled } else { [string]$cur.Enabled }
+            $origInbound = if ($null -ne $cur.PSObject.Properties['DefaultInboundAction'] -and $null -ne $cur.DefaultInboundAction) {
+                [string]$cur.DefaultInboundAction
+            }
+            else {
+                'NotConfigured'
+            }
+
+            Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry ([PSCustomObject]@{
+                Type                        = 'FirewallProfile'
+                ProfileName                 = $profName
+                OriginalEnabled             = $origEnabled
+                OriginalDefaultInboundAction = $origInbound
+            })
+        }
+
+        Set-NetFirewallProfile -Name $profName -Enabled $Enabled -DefaultInboundAction $DefaultInboundAction -ErrorAction Stop
+    }
+}
+
+function Set-ServiceStartupWithBackup {
+    <#
+    .SYNOPSIS
+        Records a Windows service Start registry value and runtime status, then sets target Start mode and state.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ServiceName,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet(2, 3, 4)]
+        [int]$TargetStart,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$StopService,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$StartService,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$BackupSession = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ControlId = ''
+    )
+
+    $svcRegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\$ServiceName"
+    if (-not (Test-Path -LiteralPath $svcRegPath)) {
+        throw "Service registry key not found: $svcRegPath"
+    }
+
+    $props = Get-ItemProperty -LiteralPath $svcRegPath -ErrorAction Stop
+    $origStart = if ($null -ne $props -and $null -ne $props.PSObject.Properties['Start'] -and $null -ne $props.Start) {
+        [int]$props.Start
+    }
+    else {
+        3
+    }
+
+    $svcObj = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    $origStatus = if ($null -ne $svcObj) { [string]$svcObj.Status } else { 'Stopped' }
+
+    if ($null -ne $BackupSession) {
+        Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry ([PSCustomObject]@{
+            Type           = 'ServiceConfig'
+            ServiceName    = $ServiceName
+            RegistryPath   = $svcRegPath
+            OriginalStart  = $origStart
+            OriginalStatus = $origStatus
+        })
+    }
+
+    New-ItemProperty -LiteralPath $svcRegPath -Name 'Start' -Value $TargetStart -PropertyType 'DWord' -Force -ErrorAction Stop | Out-Null
+
+    if ($StopService -and $null -ne $svcObj -and [string]$svcObj.Status -eq 'Running') {
+        Stop-Service -Name $ServiceName -Force -ErrorAction Stop
+    }
+    elseif ($StartService -and $null -ne $svcObj -and [string]$svcObj.Status -ne 'Running') {
+        Start-Service -Name $ServiceName -ErrorAction Stop
+    }
+}
+
+function Set-ExecutionPolicyWithBackup {
+    <#
+    .SYNOPSIS
+        Captures the current PowerShell ExecutionPolicy for a scope and applies the target policy.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('CurrentUser', 'LocalMachine')]
+        [string]$Scope,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ExecutionPolicy,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$BackupSession = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ControlId = ''
+    )
+
+    if ($null -ne $BackupSession) {
+        $list = @(Get-ExecutionPolicy -List -ErrorAction Stop)
+        $origPolicy = 'Undefined'
+        foreach ($entry in $list) {
+            if ([string]$entry.Scope -eq $Scope) {
+                $origPolicy = [string]$entry.ExecutionPolicy
+                break
+            }
+        }
+
+        Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry ([PSCustomObject]@{
+            Type           = 'ExecutionPolicy'
+            Scope          = $Scope
+            OriginalPolicy = $origPolicy
+        })
+    }
+
+    Set-ExecutionPolicy -Scope $Scope -ExecutionPolicy $ExecutionPolicy -Force -ErrorAction Stop
+}
+
+function Disable-OptionalFeatureWithBackup {
+    <#
+    .SYNOPSIS
+        Captures the current DISM optional feature state and disables the feature when enabled.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FeatureName,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$BackupSession = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ControlId = ''
+    )
+
+    if ($null -eq (Get-Command -Name 'Get-WindowsOptionalFeature' -ErrorAction SilentlyContinue)) {
+        return
+    }
+
+    $feature = Get-WindowsOptionalFeature -Online -FeatureName $FeatureName -ErrorAction Stop
+    if ($null -eq $feature) {
+        return
+    }
+
+    $stateStr = [string]$feature.State
+    if ($null -ne $BackupSession) {
+        Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry ([PSCustomObject]@{
+            Type          = 'OptionalFeature'
+            FeatureName   = $FeatureName
+            OriginalState = $stateStr
+        })
+    }
+
+    if ($stateStr -eq 'Enabled') {
+        Disable-WindowsOptionalFeature -Online -FeatureName $FeatureName -NoRestart -ErrorAction Stop | Out-Null
+    }
+}
+
+function Set-AccountLockoutPolicyWithBackup {
+    <#
+    .SYNOPSIS
+        Captures current net accounts lockout thresholds and applies brute-force protection limits.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [int]$Threshold = 5,
+
+        [Parameter(Mandatory = $false)]
+        [int]$Duration = 15,
+
+        [Parameter(Mandatory = $false)]
+        [int]$Window = 15,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$BackupSession = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ControlId = ''
+    )
+
+    if ($null -ne $BackupSession) {
+        $lines = @(Invoke-NetAccounts -Arguments @())
+        $origThreshold = 0
+        $origDuration  = 0
+        $origWindow    = 0
+
+        foreach ($line in $lines) {
+            if ($line -match '(?i)(Lockout threshold|Soglia di blocco|Kontosperrungsschwelle)\s*:\s*(.+)$') {
+                $valTxt = $Matches[2].Trim()
+                if ($valTxt -match '^\d+$') { $origThreshold = [int]$valTxt }
+            }
+            elseif ($line -match '(?i)(Lockout duration|Durata del blocco|Sperrdauer)\s*:\s*(\d+)') {
+                $origDuration = [int]$Matches[2]
+            }
+            elseif ($line -match '(?i)(Lockout observation window|Finestra di osservazione|Beobachtungsfenster)\s*:\s*(\d+)') {
+                $origWindow = [int]$Matches[2]
+            }
+        }
+
+        Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry ([PSCustomObject]@{
+            Type              = 'AccountLockoutPolicy'
+            OriginalThreshold = $origThreshold
+            OriginalDuration  = $origDuration
+            OriginalWindow    = $origWindow
+        })
+    }
+
+    [void](Invoke-NetAccounts -Arguments @("/lockoutthreshold:$Threshold", "/lockoutduration:$Duration", "/lockoutwindow:$Window"))
+}
+
+function Disable-LocalUserWithBackup {
+    <#
+    .SYNOPSIS
+        Captures the enabled state of a local user matching the specified SID suffix and disables it.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SidSuffix,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$BackupSession = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ControlId = ''
+    )
+
+    $user = Get-LocalUser -ErrorAction Stop | Where-Object { $_.SID.Value -like "*$SidSuffix" } | Select-Object -First 1
+    if ($null -eq $user) {
+        throw "No local user account matching SID suffix '$SidSuffix' was found."
+    }
+
+    if ($null -ne $BackupSession) {
+        Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry ([PSCustomObject]@{
+            Type            = 'LocalUser'
+            Name            = [string]$user.Name
+            SID             = [string]$user.SID.Value
+            OriginalEnabled = [bool]$user.Enabled
+        })
+    }
+
+    if ([bool]$user.Enabled) {
+        Disable-LocalUser -SID $user.SID.Value -ErrorAction Stop
+    }
+}
+
+function Set-WifiProfileManualWithBackup {
+    <#
+    .SYNOPSIS
+        Validates a WLAN profile SSID strictly, records its AutoConnect state, and switches it to manual.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProfileName,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$BackupSession = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ControlId = ''
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ProfileName)) {
+        throw 'Wi-Fi profile name cannot be empty.'
+    }
+
+    $cleanName = $ProfileName.Trim()
+    if ($cleanName -match '["''`;|&<>$\x00-\x1F\x7F]') {
+        throw "Rejected unsafe characters in Wi-Fi profile name: '$cleanName'."
+    }
+
+    if ($null -ne $BackupSession) {
+        Add-RemediationBackupEntry -Session $BackupSession -ControlId $ControlId -Entry ([PSCustomObject]@{
+            Type                   = 'WifiAutoConnect'
+            ProfileName            = $cleanName
+            OriginalConnectionMode = 'auto'
+        })
+    }
+
+    [void](Invoke-NetshWlan -Arguments @('wlan', 'set', 'profileparameter', "name=$cleanName", 'connectionmode=manual'))
+}
+
+function ConvertTo-QuotedServicePath {
+    <#
+    .SYNOPSIS
+        Wraps an unquoted Windows service executable path containing spaces in double quotes
+        while preserving any trailing command-line arguments outside the quotes.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [string]$PathName = ''
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PathName)) {
+        return $null
+    }
+
+    $trimmed = $PathName.Trim()
+    if ($trimmed.StartsWith('"')) {
+        return $null
+    }
+
+    if ($trimmed -match '^(?i)(.+?\.exe)(\s+.*)?$') {
+        $exePart  = $Matches[1].Trim()
+        $argsPart = if ($null -ne $Matches[2]) { $Matches[2] } else { '' }
+        if ($exePart -notmatch '\s') {
+            return $null
+        }
+        return ('"' + $exePart + '"' + $argsPart)
+    }
+
+    return $null
 }
 
 function Save-RemediationBackupSession {
@@ -10616,12 +11055,9 @@ function Restore-RemediationBackup {
         ''
     }
 
-    $rawEntries = if ($null -ne $data.PSObject.Properties['Entries'] -and $null -ne $data.Entries) {
-        @($data.Entries)
-    }
-    else {
-        @()
-    }
+    $rawEntries = @(if ($null -ne $data.PSObject.Properties['Entries'] -and $null -ne $data.Entries) {
+        $data.Entries
+    })
 
     $filterIds = @()
     if ($null -ne $ControlId) {
@@ -10659,12 +11095,21 @@ function Restore-RemediationBackup {
         2 = 'AuditMode'
     }
 
+    $asrCodeMap = @{
+        '0' = 'Disabled'
+        '1' = 'Enabled'
+        '2' = 'AuditMode'
+        '6' = 'Warn'
+    }
+
     foreach ($entry in $orderedEntries) {
         $entryControlId = if ($null -ne $entry.PSObject.Properties['ControlId']) { [string]$entry.ControlId } else { '' }
         $entryType = if ($null -ne $entry.PSObject.Properties['Type']) { [string]$entry.Type } else { '' }
+        $targetDesc = $entryType
 
         try {
             if ($entryType -eq 'RegistryValue') {
+                $targetDesc = "$($entry.Path)\$($entry.Name)"
                 $valueExisted = ($null -ne $entry.PSObject.Properties['ValueExisted'] -and [bool]$entry.ValueExisted)
                 if ($valueExisted) {
                     if (-not (Test-Path -LiteralPath $entry.Path)) {
@@ -10685,44 +11130,130 @@ function Restore-RemediationBackup {
                         Remove-ItemProperty -LiteralPath $entry.Path -Name $entry.Name -ErrorAction SilentlyContinue
                     }
                 }
-
-                $restoredCount++
-                $results += [PSCustomObject]@{
-                    ControlId = $entryControlId
-                    Type      = $entryType
-                    Target    = "$($entry.Path)\$($entry.Name)"
-                    Restored  = $true
-                    Error     = $null
-                }
             }
             elseif ($entryType -eq 'DefenderPreference') {
-                $origInt = [int]$entry.OriginalValue
-                if (-not $defenderIntMap.ContainsKey($origInt)) {
-                    throw "Unsupported original Defender value '$origInt' for property '$($entry.PropertyName)'."
-                }
-                $targetMode = $defenderIntMap[$origInt]
+                $targetDesc = [string]$entry.PropertyName
+                $isBool = ($null -ne $entry.PSObject.Properties['ValueKind'] -and [string]$entry.ValueKind -eq 'Bool') -or ($entry.OriginalValue -is [bool])
 
-                if ($entry.PropertyName -eq 'PUAProtection') {
-                    Set-MpPreference -PUAProtection $targetMode -ErrorAction Stop
-                }
-                elseif ($entry.PropertyName -eq 'EnableNetworkProtection') {
-                    Set-MpPreference -EnableNetworkProtection $targetMode -ErrorAction Stop
+                if ($isBool) {
+                    $origBool = [bool]$entry.OriginalValue
+                    switch ($entry.PropertyName) {
+                        'DisableRealtimeMonitoring' { Set-MpPreference -DisableRealtimeMonitoring $origBool -ErrorAction Stop }
+                        'DisableBehaviorMonitoring' { Set-MpPreference -DisableBehaviorMonitoring $origBool -ErrorAction Stop }
+                        'DisableIOAVProtection'     { Set-MpPreference -DisableIOAVProtection $origBool -ErrorAction Stop }
+                        default { throw "Unsupported boolean Defender preference property: $($entry.PropertyName)" }
+                    }
                 }
                 else {
-                    throw "Unsupported Defender preference property for rollback: $($entry.PropertyName)"
-                }
+                    $origInt = [int]$entry.OriginalValue
+                    if (-not $defenderIntMap.ContainsKey($origInt)) {
+                        throw "Unsupported original Defender value '$origInt' for property '$($entry.PropertyName)'."
+                    }
+                    $targetMode = $defenderIntMap[$origInt]
 
-                $restoredCount++
-                $results += [PSCustomObject]@{
-                    ControlId = $entryControlId
-                    Type      = $entryType
-                    Target    = [string]$entry.PropertyName
-                    Restored  = $true
-                    Error     = $null
+                    switch ($entry.PropertyName) {
+                        'PUAProtection'                { Set-MpPreference -PUAProtection $targetMode -ErrorAction Stop }
+                        'EnableNetworkProtection'      { Set-MpPreference -EnableNetworkProtection $targetMode -ErrorAction Stop }
+                        'EnableControlledFolderAccess' { Set-MpPreference -EnableControlledFolderAccess $targetMode -ErrorAction Stop }
+                        default { throw "Unsupported Defender preference property for rollback: $($entry.PropertyName)" }
+                    }
                 }
+            }
+            elseif ($entryType -eq 'DefenderAsrRules') {
+                $targetDesc = 'AttackSurfaceReductionRules'
+                $origIds = @(if ($null -ne $entry.PSObject.Properties['OriginalIds'] -and $null -ne $entry.OriginalIds) {
+                    $entry.OriginalIds | ForEach-Object { [string]$_ }
+                })
+
+                $origActs = @(if ($null -ne $entry.PSObject.Properties['OriginalActions'] -and $null -ne $entry.OriginalActions) {
+                    $entry.OriginalActions | ForEach-Object {
+                        $s = [string]$_
+                        if ($asrCodeMap.ContainsKey($s)) { $asrCodeMap[$s] } else { $s }
+                    }
+                })
+
+                if ($origIds.Count -gt 0 -and $origIds.Count -eq $origActs.Count) {
+                    Set-MpPreference -AttackSurfaceReductionRules_Ids $origIds -AttackSurfaceReductionRules_Actions $origActs -ErrorAction Stop
+                }
+                elseif ($null -ne $entry.PSObject.Properties['AppliedIds'] -and $null -ne $entry.AppliedIds) {
+                    $appliedIdList = @($entry.AppliedIds | ForEach-Object { [string]$_ })
+                    if ($appliedIdList.Count -gt 0) {
+                        Remove-MpPreference -AttackSurfaceReductionRules_Ids $appliedIdList -ErrorAction Stop
+                    }
+                }
+            }
+            elseif ($entryType -eq 'FirewallProfile') {
+                $targetDesc = "Firewall:$($entry.ProfileName)"
+                $origIn = if ($null -ne $entry.PSObject.Properties['OriginalDefaultInboundAction'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.OriginalDefaultInboundAction)) {
+                    [string]$entry.OriginalDefaultInboundAction
+                }
+                else { 'NotConfigured' }
+                Set-NetFirewallProfile -Name ([string]$entry.ProfileName) -Enabled ([string]$entry.OriginalEnabled) -DefaultInboundAction $origIn -ErrorAction Stop
+            }
+            elseif ($entryType -eq 'ServiceConfig') {
+                $targetDesc = "Service:$($entry.ServiceName)"
+                $svcRegPath = [string]$entry.RegistryPath
+                if (Test-Path -LiteralPath $svcRegPath) {
+                    New-ItemProperty -LiteralPath $svcRegPath -Name 'Start' -Value ([int]$entry.OriginalStart) -PropertyType 'DWord' -Force -ErrorAction Stop | Out-Null
+                }
+                $origStat = if ($null -ne $entry.PSObject.Properties['OriginalStatus']) { [string]$entry.OriginalStatus } else { '' }
+                if ($origStat -eq 'Running') {
+                    Start-Service -Name ([string]$entry.ServiceName) -ErrorAction SilentlyContinue
+                }
+                elseif ($origStat -eq 'Stopped') {
+                    Stop-Service -Name ([string]$entry.ServiceName) -Force -ErrorAction SilentlyContinue
+                }
+            }
+            elseif ($entryType -eq 'ExecutionPolicy') {
+                $targetDesc = "ExecutionPolicy:$($entry.Scope)"
+                Set-ExecutionPolicy -Scope ([string]$entry.Scope) -ExecutionPolicy ([string]$entry.OriginalPolicy) -Force -ErrorAction Stop
+            }
+            elseif ($entryType -eq 'OptionalFeature') {
+                $targetDesc = "OptionalFeature:$($entry.FeatureName)"
+                if ([string]$entry.OriginalState -eq 'Enabled' -and $null -ne (Get-Command -Name 'Enable-WindowsOptionalFeature' -ErrorAction SilentlyContinue)) {
+                    Enable-WindowsOptionalFeature -Online -FeatureName ([string]$entry.FeatureName) -NoRestart -ErrorAction Stop | Out-Null
+                }
+            }
+            elseif ($entryType -eq 'AccountLockoutPolicy') {
+                $targetDesc = 'AccountLockoutPolicy'
+                $origT = [int]$entry.OriginalThreshold
+                if ($origT -le 0) {
+                    [void](Invoke-NetAccounts -Arguments @('/lockoutthreshold:0'))
+                }
+                else {
+                    $rbArgs = @("/lockoutthreshold:$origT")
+                    $origD = if ($null -ne $entry.PSObject.Properties['OriginalDuration']) { [int]$entry.OriginalDuration } else { 0 }
+                    $origW = if ($null -ne $entry.PSObject.Properties['OriginalWindow'])   { [int]$entry.OriginalWindow }   else { 0 }
+                    if ($origD -gt 0) { $rbArgs += "/lockoutduration:$origD" }
+                    if ($origW -gt 0) { $rbArgs += "/lockoutwindow:$origW" }
+                    [void](Invoke-NetAccounts -Arguments $rbArgs)
+                }
+            }
+            elseif ($entryType -eq 'LocalUser') {
+                $targetDesc = "LocalUser:$($entry.Name)"
+                if ([bool]$entry.OriginalEnabled) {
+                    Enable-LocalUser -SID ([string]$entry.SID) -ErrorAction Stop
+                }
+            }
+            elseif ($entryType -eq 'WifiAutoConnect') {
+                $targetDesc = "Wifi:$($entry.ProfileName)"
+                $origMode = if ($null -ne $entry.PSObject.Properties['OriginalConnectionMode'] -and -not [string]::IsNullOrWhiteSpace([string]$entry.OriginalConnectionMode)) {
+                    [string]$entry.OriginalConnectionMode
+                }
+                else { 'auto' }
+                [void](Invoke-NetshWlan -Arguments @('wlan', 'set', 'profileparameter', "name=$($entry.ProfileName)", "connectionmode=$origMode"))
             }
             else {
                 throw "Unsupported backup entry type: '$entryType'"
+            }
+
+            $restoredCount++
+            $results += [PSCustomObject]@{
+                ControlId = $entryControlId
+                Type      = $entryType
+                Target    = $targetDesc
+                Restored  = $true
+                Error     = $null
             }
         }
         catch {
@@ -10730,7 +11261,7 @@ function Restore-RemediationBackup {
             $results += [PSCustomObject]@{
                 ControlId = $entryControlId
                 Type      = $entryType
-                Target    = if ($entryType -eq 'RegistryValue') { "$($entry.Path)\$($entry.Name)" } else { [string]$entry.PropertyName }
+                Target    = $targetDesc
                 Restored  = $false
                 Error     = $_.Exception.Message
             }
@@ -10756,8 +11287,11 @@ function Restore-RemediationBackup {
 
 .DESCRIPTION
     Defines curated, idempotent, pre-tested PowerShell remediations and manual Windows
-    Settings deep-links keyed by catalog Control ID. Phase 1 registers the first 10
-    zero-risk AutoSafe controls plus Manual guidance entries with native URIs.
+    Settings deep-links keyed by catalog Control ID:
+    - Tier 1 (AutoSafe): 29 safe, immediate controls
+    - Tier 2 (AutoReboot): 11 hardening controls requiring reboot or runtime guardrails
+    - Tier 3 (Guided): 3 evidence-driven surgical controls (Wi-Fi AutoConnect, Built-in Admin, Unquoted Services)
+    - Manual: 7 hardware/UEFI/UI-only controls with native Windows Settings deep-links
 #>
 
 Set-StrictMode -Version 2
@@ -11032,6 +11566,787 @@ function Get-RemediationCatalog {
             }
         }
 
+        # === TIER 1 REMAINING AUTOSAFE CONTROLS (PHASE 3 - TOTAL 29 AUTOSAFE) ===
+        'HOME-FW-001' = [PSCustomObject]@{
+            ControlId         = 'HOME-FW-001'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable Windows Defender Firewall across Domain, Private, and Public profiles with DefaultInboundAction Block.'
+            PreviewCommands   = @(
+                'Set-NetFirewallProfile -Name Domain,Private,Public -Enabled True -DefaultInboundAction Block'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-FirewallProfileWithBackup `
+                    -Profiles @('Domain', 'Private', 'Public') `
+                    -Enabled 'True' `
+                    -DefaultInboundAction 'Block' `
+                    -BackupSession $BackupSession `
+                    -ControlId 'HOME-FW-001'
+            }
+        }
+
+        'HOME-UAC-001' = [PSCustomObject]@{
+            ControlId         = 'HOME-UAC-001'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable User Account Control (EnableLUA = 1).'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'' -Name ''EnableLUA'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup `
+                    -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
+                    -Name 'EnableLUA' `
+                    -Value 1 `
+                    -PropertyType 'DWord' `
+                    -BackupSession $BackupSession `
+                    -ControlId 'HOME-UAC-001'
+            }
+        }
+
+        'HOME-UAC-002' = [PSCustomObject]@{
+            ControlId         = 'HOME-UAC-002'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Require UAC elevation prompts on Secure Desktop (ConsentPromptBehaviorAdmin = 5, PromptOnSecureDesktop = 1).'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'' -Name ''ConsentPromptBehaviorAdmin'' -Value 5 -PropertyType DWord -Force',
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'' -Name ''PromptOnSecureDesktop'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                $uacKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+                Set-RegistryValueWithBackup -Path $uacKey -Name 'ConsentPromptBehaviorAdmin' -Value 5 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-UAC-002'
+                Set-RegistryValueWithBackup -Path $uacKey -Name 'PromptOnSecureDesktop' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-UAC-002'
+            }
+        }
+
+        'HOME-UAC-003' = [PSCustomObject]@{
+            ControlId         = 'HOME-UAC-003'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable UAC application installer detection (EnableInstallerDetection = 1).'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'' -Name ''EnableInstallerDetection'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup `
+                    -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' `
+                    -Name 'EnableInstallerDetection' `
+                    -Value 1 `
+                    -PropertyType 'DWord' `
+                    -BackupSession $BackupSession `
+                    -ControlId 'HOME-UAC-003'
+            }
+        }
+
+        'HOME-ACC-001' = [PSCustomObject]@{
+            ControlId         = 'HOME-ACC-001'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Disable the built-in Guest account (SID -501).'
+            PreviewCommands   = @(
+                'Get-LocalUser | Where-Object { $_.SID.Value -like ''*-501'' } | Disable-LocalUser'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Disable-LocalUserWithBackup -SidSuffix '-501' -BackupSession $BackupSession -ControlId 'HOME-ACC-001'
+            }
+        }
+
+        'HOME-ACC-004' = [PSCustomObject]@{
+            ControlId         = 'HOME-ACC-004'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable account lockout threshold (5 attempts, 15 minute lockout duration/window).'
+            PreviewCommands   = @(
+                'net.exe accounts /lockoutthreshold:5 /lockoutduration:15 /lockoutwindow:15'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-AccountLockoutPolicyWithBackup -Threshold 5 -Duration 15 -Window 15 -BackupSession $BackupSession -ControlId 'HOME-ACC-004'
+            }
+        }
+
+        'HOME-UPD-001' = [PSCustomObject]@{
+            ControlId         = 'HOME-UPD-001'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Ensure Windows Update service (wuauserv) is Manual (Start = 3) and NoAutoUpdate policy is disabled.'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Services\wuauserv'' -Name ''Start'' -Value 3 -PropertyType DWord -Force',
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU'' -Name ''NoAutoUpdate'' -Value 0 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-ServiceStartupWithBackup -ServiceName 'wuauserv' -TargetStart 3 -BackupSession $BackupSession -ControlId 'HOME-UPD-001'
+                Set-RegistryValueWithBackup -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU' -Name 'NoAutoUpdate' -Value 0 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-UPD-001'
+            }
+        }
+
+        'HOME-AV-001' = [PSCustomObject]@{
+            ControlId         = 'HOME-AV-001'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable Microsoft Defender real-time antivirus protection (DisableRealtimeMonitoring = $false).'
+            PreviewCommands   = @(
+                'Set-MpPreference -DisableRealtimeMonitoring $false'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-DefenderPreferenceWithBackup -PropertyName 'DisableRealtimeMonitoring' -TargetValue $false -BackupSession $BackupSession -ControlId 'HOME-AV-001'
+            }
+        }
+
+        'HOME-AV-002' = [PSCustomObject]@{
+            ControlId         = 'HOME-AV-002'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $false
+            Summary           = 'Update Windows Defender antivirus threat signatures via Update-MpSignature.'
+            PreviewCommands   = @(
+                'Update-MpSignature'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Update-MpSignature -ErrorAction Stop
+            }
+        }
+
+        'HOME-AV-004' = [PSCustomObject]@{
+            ControlId         = 'HOME-AV-004'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable Windows Defender Behavior Monitoring and Downloaded File Scanning (IOAV).'
+            PreviewCommands   = @(
+                'Set-MpPreference -DisableBehaviorMonitoring $false',
+                'Set-MpPreference -DisableIOAVProtection $false'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-DefenderPreferenceWithBackup -PropertyName 'DisableBehaviorMonitoring' -TargetValue $false -BackupSession $BackupSession -ControlId 'HOME-AV-004'
+                Set-DefenderPreferenceWithBackup -PropertyName 'DisableIOAVProtection' -TargetValue $false -BackupSession $BackupSession -ControlId 'HOME-AV-004'
+            }
+        }
+
+        'HOME-SYS-003' = [PSCustomObject]@{
+            ControlId         = 'HOME-SYS-003'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable Microsoft Defender SmartScreen for Explorer apps/files and Web Content Evaluation.'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer'' -Name ''SmartScreenEnabled'' -Value ''Warn'' -PropertyType String -Force',
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost'' -Name ''EnableWebContentEvaluation'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer' -Name 'SmartScreenEnabled' -Value 'Warn' -PropertyType 'String' -BackupSession $BackupSession -ControlId 'HOME-SYS-003'
+                Set-RegistryValueWithBackup -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost' -Name 'EnableWebContentEvaluation' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SYS-003'
+            }
+        }
+
+        'HOME-SYS-005' = [PSCustomObject]@{
+            ControlId         = 'HOME-SYS-005'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Restrict anonymous enumeration of SAM accounts (RestrictAnonymousSAM = 1).'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'' -Name ''RestrictAnonymousSAM'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa' -Name 'RestrictAnonymousSAM' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SYS-005'
+            }
+        }
+
+        'HOME-SYS-006' = [PSCustomObject]@{
+            ControlId         = 'HOME-SYS-006'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Disable WDigest cleartext credential caching in memory (UseLogonCredential = 0).'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest'' -Name ''UseLogonCredential'' -Value 0 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest' -Name 'UseLogonCredential' -Value 0 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SYS-006'
+            }
+        }
+
+        'HOME-SYS-008' = [PSCustomObject]@{
+            ControlId         = 'HOME-SYS-008'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Stop and disable the Remote Registry service (RemoteRegistry Start = 4).'
+            PreviewCommands   = @(
+                'Stop-Service -Name ''RemoteRegistry'' -Force -ErrorAction SilentlyContinue',
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Services\RemoteRegistry'' -Name ''Start'' -Value 4 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-ServiceStartupWithBackup -ServiceName 'RemoteRegistry' -TargetStart 4 -StopService -BackupSession $BackupSession -ControlId 'HOME-SYS-008'
+            }
+        }
+
+        'HOME-SYS-009' = [PSCustomObject]@{
+            ControlId         = 'HOME-SYS-009'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Disable Windows Script Host (WSH) execution of .vbs/.js scripts (Enabled = 0).'
+            PreviewCommands   = @(
+                'New-Item -Path ''HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings'' -Force | Out-Null',
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings'' -Name ''Enabled'' -Value 0 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings' -Name 'Enabled' -Value 0 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SYS-009'
+            }
+        }
+
+        'HOME-SYS-010' = [PSCustomObject]@{
+            ControlId         = 'HOME-SYS-010'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enforce PrintNightmare administrator-only printer driver installation (RestrictDriverInstallationToAdministrators = 1).'
+            PreviewCommands   = @(
+                'New-Item -Path ''HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint'' -Force | Out-Null',
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint'' -Name ''RestrictDriverInstallationToAdministrators'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint' -Name 'RestrictDriverInstallationToAdministrators' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SYS-010'
+            }
+        }
+
+        'HOME-NET-005' = [PSCustomObject]@{
+            ControlId         = 'HOME-NET-005'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enforce mandatory SMB digital signing on both SMB Server and SMB Client.'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'' -Name ''RequireSecuritySignature'' -Value 1 -PropertyType DWord -Force',
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters'' -Name ''RequireSecuritySignature'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters' -Name 'RequireSecuritySignature' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-NET-005'
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters' -Name 'RequireSecuritySignature' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-NET-005'
+            }
+        }
+
+        'HOME-NET-008' = [PSCustomObject]@{
+            ControlId         = 'HOME-NET-008'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Disable legacy TLS 1.0/1.1 protocols in SCHANNEL and enable automatic DNS over HTTPS (EnableAutoDoh = 2).'
+            PreviewCommands   = @(
+                'foreach ($sub in ''TLS 1.0\Client'',''TLS 1.0\Server'',''TLS 1.1\Client'',''TLS 1.1\Server'') { $p = "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$sub"; New-Item -Path $p -Force | Out-Null; New-ItemProperty -LiteralPath $p -Name Enabled -Value 0 -PropertyType DWord -Force; New-ItemProperty -LiteralPath $p -Name DisabledByDefault -Value 1 -PropertyType DWord -Force }',
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters'' -Name ''EnableAutoDoh'' -Value 2 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                $schannelBase = 'HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols'
+                foreach ($sub in @('TLS 1.0\Client', 'TLS 1.0\Server', 'TLS 1.1\Client', 'TLS 1.1\Server')) {
+                    $subPath = "$schannelBase\$sub"
+                    Set-RegistryValueWithBackup -Path $subPath -Name 'Enabled' -Value 0 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-NET-008'
+                    Set-RegistryValueWithBackup -Path $subPath -Name 'DisabledByDefault' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-NET-008'
+                }
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters' -Name 'EnableAutoDoh' -Value 2 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-NET-008'
+            }
+        }
+
+        'HOME-SEC-009' = [PSCustomObject]@{
+            ControlId         = 'HOME-SEC-009'
+            FixMode           = 'AutoSafe'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Replace insecure Unrestricted/Bypass ExecutionPolicy scopes with RemoteSigned.'
+            PreviewCommands   = @(
+                'Set-ExecutionPolicy -Scope LocalMachine -ExecutionPolicy RemoteSigned -Force',
+                'Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                $policies = @(Get-ExecutionPolicy -List -ErrorAction Stop)
+                $policyMap = @{}
+                foreach ($entry in $policies) {
+                    $policyMap[[string]$entry.Scope] = [string]$entry.ExecutionPolicy
+                }
+
+                foreach ($gpoScope in @('MachinePolicy', 'UserPolicy')) {
+                    if ($policyMap.ContainsKey($gpoScope) -and $policyMap[$gpoScope] -in @('Unrestricted', 'Bypass')) {
+                        throw "ExecutionPolicy scope '$gpoScope=$($policyMap[$gpoScope])' is enforced by Group Policy and cannot be overridden locally."
+                    }
+                }
+
+                $updatedAny = $false
+                foreach ($targetScope in @('LocalMachine', 'CurrentUser')) {
+                    if ($policyMap.ContainsKey($targetScope) -and $policyMap[$targetScope] -in @('Unrestricted', 'Bypass')) {
+                        Set-ExecutionPolicyWithBackup -Scope $targetScope -ExecutionPolicy 'RemoteSigned' -BackupSession $BackupSession -ControlId 'HOME-SEC-009'
+                        $updatedAny = $true
+                    }
+                }
+
+                if (-not $updatedAny) {
+                    Set-ExecutionPolicyWithBackup -Scope 'LocalMachine' -ExecutionPolicy 'RemoteSigned' -BackupSession $BackupSession -ControlId 'HOME-SEC-009'
+                }
+            }
+        }
+
+        # === TIER 2 AUTOREBOOT / GUARDRAIL CONTROLS (PHASE 3 - 11 CONTROLS) ===
+        'HOME-SEC-002' = [PSCustomObject]@{
+            ControlId         = 'HOME-SEC-002'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $true
+            RollbackSupported = $true
+            Summary           = 'Enable Local Security Authority (LSA) Protection (RunAsPPL = 1). Requires reboot.'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'' -Name ''RunAsPPL'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa' -Name 'RunAsPPL' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SEC-002'
+            }
+        }
+
+        'HOME-SEC-006' = [PSCustomObject]@{
+            ControlId         = 'HOME-SEC-006'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $true
+            RollbackSupported = $true
+            Summary           = 'Enable Microsoft Vulnerable Driver Blocklist against BYOVD attacks. Requires reboot.'
+            PreviewCommands   = @(
+                'New-Item -Path ''HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config'' -Force | Out-Null',
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config'' -Name ''VulnerableDriverBlocklistEnable'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\CI\Config' -Name 'VulnerableDriverBlocklistEnable' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SEC-006'
+            }
+        }
+
+        'HOME-NET-001' = [PSCustomObject]@{
+            ControlId         = 'HOME-NET-001'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $true
+            RollbackSupported = $true
+            Summary           = 'Disable legacy SMBv1 protocol and optional feature. Requires reboot.'
+            PreviewCommands   = @(
+                'Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force',
+                'Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters' -Name 'SMB1' -Value 0 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-NET-001'
+                Disable-OptionalFeatureWithBackup -FeatureName 'SMB1Protocol' -BackupSession $BackupSession -ControlId 'HOME-NET-001'
+                if ($null -ne (Get-Command -Name 'Set-SmbServerConfiguration' -ErrorAction SilentlyContinue)) {
+                    Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
+
+        'HOME-SYS-004' = [PSCustomObject]@{
+            ControlId         = 'HOME-SYS-004'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $true
+            RollbackSupported = $true
+            Summary           = 'Enable Core Isolation / Memory Integrity (HVCI = 1). Guarded by hardware VBS check; requires reboot.'
+            PreviewCommands   = @(
+                'New-Item -Path ''HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity'' -Force | Out-Null',
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity'' -Name ''Enabled'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity' -Name 'Enabled' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SYS-004'
+            }
+        }
+
+        'HOME-AV-009' = [PSCustomObject]@{
+            ControlId         = 'HOME-AV-009'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable Controlled Folder Access ransomware protection (verify third-party app access).'
+            PreviewCommands   = @(
+                'Set-MpPreference -EnableControlledFolderAccess Enabled'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-DefenderPreferenceWithBackup -PropertyName 'EnableControlledFolderAccess' -TargetValue 'Enabled' -BackupSession $BackupSession -ControlId 'HOME-AV-009'
+            }
+        }
+
+        'HOME-AV-011' = [PSCustomObject]@{
+            ControlId         = 'HOME-AV-011'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Enable core Attack Surface Reduction (ASR) rules blocking LSASS credential theft and obfuscated scripts.'
+            PreviewCommands   = @(
+                'Add-MpPreference -AttackSurfaceReductionRules_Ids ''9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2'',''5beb7efe-fd9a-4556-801d-275e5ffc04cc'' -AttackSurfaceReductionRules_Actions Enabled,Enabled'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-DefenderAsrRulesWithBackup `
+                    -RuleIds @('9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2', '5beb7efe-fd9a-4556-801d-275e5ffc04cc') `
+                    -Actions @('Enabled', 'Enabled') `
+                    -BackupSession $BackupSession `
+                    -ControlId 'HOME-AV-011'
+            }
+        }
+
+        'HOME-RDP-001' = [PSCustomObject]@{
+            ControlId         = 'HOME-RDP-001'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Disable Remote Desktop connections (fDenyTSConnections = 1). Guarded against locking out active RDP sessions.'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server'' -Name ''fDenyTSConnections'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server' -Name 'fDenyTSConnections' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-RDP-001'
+            }
+        }
+
+        'HOME-NET-006' = [PSCustomObject]@{
+            ControlId         = 'HOME-NET-006'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Stop and disable WinRM service (ports 5985/5986). Guarded against interrupting active WinRM remote sessions.'
+            PreviewCommands   = @(
+                'Stop-Service -Name ''WinRM'' -Force',
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Services\WinRM'' -Name ''Start'' -Value 4 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-ServiceStartupWithBackup -ServiceName 'WinRM' -TargetStart 4 -StopService -BackupSession $BackupSession -ControlId 'HOME-NET-006'
+            }
+        }
+
+        'HOME-UAC-004' = [PSCustomObject]@{
+            ControlId         = 'HOME-UAC-004'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $true
+            RollbackSupported = $true
+            Summary           = 'Enable Windows 11 24H2/25H2+ just-in-time Administrator Protection (TypeOfAdminApprovalMode = 2). Requires reboot.'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'' -Name ''TypeOfAdminApprovalMode'' -Value 2 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'TypeOfAdminApprovalMode' -Value 2 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-UAC-004'
+            }
+        }
+
+        'HOME-SEC-011' = [PSCustomObject]@{
+            ControlId         = 'HOME-SEC-011'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $true
+            RollbackSupported = $true
+            Summary           = 'Remove insecure Kernel DMA Protection override (DeviceEnumerationPolicy = 1). Hardware IOMMU must also be enabled in BIOS.'
+            PreviewCommands   = @(
+                'New-Item -Path ''HKLM:\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection'' -Force | Out-Null',
+                'New-ItemProperty -LiteralPath ''HKLM:\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection'' -Name ''DeviceEnumerationPolicy'' -Value 1 -PropertyType DWord -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-RegistryValueWithBackup -Path 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection' -Name 'DeviceEnumerationPolicy' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SEC-011'
+                $dmaKey = 'HKLM:\SYSTEM\CurrentControlSet\Control\DmaSecurity'
+                if (Test-Path -LiteralPath $dmaKey) {
+                    $dmaProps = Get-ItemProperty -LiteralPath $dmaKey -ErrorAction SilentlyContinue
+                    if ($null -ne $dmaProps -and $null -ne $dmaProps.PSObject.Properties['DeviceEnumerationPolicy'] -and [int]$dmaProps.DeviceEnumerationPolicy -eq 2) {
+                        Set-RegistryValueWithBackup -Path $dmaKey -Name 'DeviceEnumerationPolicy' -Value 1 -PropertyType 'DWord' -BackupSession $BackupSession -ControlId 'HOME-SEC-011'
+                    }
+                }
+            }
+        }
+
+        'HOME-SEC-010' = [PSCustomObject]@{
+            ControlId         = 'HOME-SEC-010'
+            FixMode           = 'AutoReboot'
+            Phase             = 3
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Restore EventLog service Automatic startup (Start = 2) and start the service (historical Event 1102 alerts remain audit evidence).'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Services\EventLog'' -Name ''Start'' -Value 2 -PropertyType DWord -Force',
+                'Start-Service -Name ''EventLog'''
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Set-ServiceStartupWithBackup -ServiceName 'EventLog' -TargetStart 2 -StartService -BackupSession $BackupSession -ControlId 'HOME-SEC-010'
+            }
+        }
+
+        # === TIER 3 EVIDENCE-DRIVEN DYNAMIC CONTROLS (PHASE 4 - 3 GUIDED CONTROLS) ===
+        'HOME-NET-009' = [PSCustomObject]@{
+            ControlId         = 'HOME-NET-009'
+            FixMode           = 'Guided'
+            Phase             = 4
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Switch detected insecure Wi-Fi profiles from AutoConnect to manual connection mode using scan Evidence.'
+            PreviewCommands   = @(
+                'netsh.exe wlan set profileparameter name="<InsecureSSID>" connectionmode=manual'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                $ev = if ($null -ne $Context -and $null -ne $Context.PSObject.Properties['Evidence']) { $Context.Evidence } else { $null }
+                $profiles = @()
+                if ($ev -is [hashtable] -and $ev.ContainsKey('InsecureProfiles')) {
+                    $profiles = @($ev['InsecureProfiles'])
+                }
+                elseif ($null -ne $ev -and $null -ne $ev.PSObject.Properties['InsecureProfiles']) {
+                    $profiles = @($ev.InsecureProfiles)
+                }
+
+                $ssids = @()
+                foreach ($p in $profiles) {
+                    if ($null -eq $p) { continue }
+                    $ssid = ''
+                    if ($p -is [string]) {
+                        $ssid = $p
+                    }
+                    elseif ($p -is [hashtable]) {
+                        if ($p.ContainsKey('ProfileName')) { $ssid = [string]$p['ProfileName'] }
+                        elseif ($p.ContainsKey('Name')) { $ssid = [string]$p['Name'] }
+                        elseif ($p.ContainsKey('SSID')) { $ssid = [string]$p['SSID'] }
+                    }
+                    elseif ($null -ne $p.PSObject.Properties['ProfileName'] -and -not [string]::IsNullOrWhiteSpace([string]$p.ProfileName)) {
+                        $ssid = [string]$p.ProfileName
+                    }
+                    elseif ($null -ne $p.PSObject.Properties['Name'] -and -not [string]::IsNullOrWhiteSpace([string]$p.Name)) {
+                        $ssid = [string]$p.Name
+                    }
+                    elseif ($null -ne $p.PSObject.Properties['SSID'] -and -not [string]::IsNullOrWhiteSpace([string]$p.SSID)) {
+                        $ssid = [string]$p.SSID
+                    }
+
+                    $trimmedSsid = $ssid.Trim()
+                    if ($trimmedSsid -ne '' -and ($ssids -notcontains $trimmedSsid)) {
+                        $ssids += $trimmedSsid
+                    }
+                }
+
+                if ($ssids.Count -eq 0) {
+                    throw 'No insecure AutoConnect Wi-Fi profile names found in scan Evidence.'
+                }
+
+                foreach ($ssidName in $ssids) {
+                    Set-WifiProfileManualWithBackup -ProfileName $ssidName -BackupSession $BackupSession -ControlId 'HOME-NET-009'
+                }
+            }
+        }
+
+        'HOME-ACC-002' = [PSCustomObject]@{
+            ControlId         = 'HOME-ACC-002'
+            FixMode           = 'Guided'
+            Phase             = 4
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Disable the built-in local Administrator account (SID -500) only after verifying another enabled local admin exists.'
+            PreviewCommands   = @(
+                'Get-LocalUser | Where-Object { $_.SID.Value -like ''*-500'' } | Disable-LocalUser'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                Disable-LocalUserWithBackup -SidSuffix '-500' -BackupSession $BackupSession -ControlId 'HOME-ACC-002'
+            }
+        }
+
+        'HOME-FIL-009' = [PSCustomObject]@{
+            ControlId         = 'HOME-FIL-009'
+            FixMode           = 'Guided'
+            Phase             = 4
+            RequiresAdmin     = $true
+            RequiresReboot    = $false
+            RollbackSupported = $true
+            Summary           = 'Quote unquoted third-party Windows service executable paths reported in scan Evidence while keeping arguments outside quotes.'
+            PreviewCommands   = @(
+                'New-ItemProperty -LiteralPath ''HKLM:\SYSTEM\CurrentControlSet\Services\<ServiceName>'' -Name ''ImagePath'' -Value ''"C:\Program Files\...\service.exe" -args'' -PropertyType ExpandString -Force'
+            )
+            SettingsUri       = $null
+            Apply             = {
+                param($BackupSession, $Context)
+                $ev = if ($null -ne $Context -and $null -ne $Context.PSObject.Properties['Evidence']) { $Context.Evidence } else { $null }
+                $vulnList = @()
+                if ($ev -is [hashtable] -and $ev.ContainsKey('VulnerableServices')) {
+                    $vulnList = @($ev['VulnerableServices'])
+                }
+                elseif ($null -ne $ev -and $null -ne $ev.PSObject.Properties['VulnerableServices']) {
+                    $vulnList = @($ev.VulnerableServices)
+                }
+
+                if ($vulnList.Count -eq 0) {
+                    throw 'No vulnerable unquoted service entries found in scan Evidence.'
+                }
+
+                $fixedAny = $false
+                foreach ($entry in $vulnList) {
+                    $svcName = ''
+                    $rawPath = ''
+
+                    if ($entry -is [string]) {
+                        if ($entry -match '^([^\s(]+)\s*\((.+)\)$') {
+                            $svcName = $Matches[1].Trim()
+                            $rawPath = $Matches[2].Trim()
+                        }
+                    }
+                    elseif ($null -ne $entry) {
+                        if ($entry -is [hashtable]) {
+                            $svcName = [string]$entry['Name']
+                            $rawPath = [string]$entry['PathName']
+                        }
+                        else {
+                            if ($null -ne $entry.PSObject.Properties['Name']) { $svcName = [string]$entry.Name }
+                            if ($null -ne $entry.PSObject.Properties['PathName']) { $rawPath = [string]$entry.PathName }
+                        }
+                    }
+
+                    if ([string]::IsNullOrWhiteSpace($svcName) -or ($svcName -notmatch '^[A-Za-z0-9_\-\.\s]+$')) {
+                        continue
+                    }
+
+                    $quotedPath = ConvertTo-QuotedServicePath -PathName $rawPath
+                    if ([string]::IsNullOrWhiteSpace($quotedPath)) {
+                        continue
+                    }
+
+                    $svcRegPath = "HKLM:\SYSTEM\CurrentControlSet\Services\$svcName"
+                    $snap = Backup-RegistryValueState -Path $svcRegPath -Name 'ImagePath'
+                    $propType = if ($snap.ValueExisted -and (-not [string]::IsNullOrWhiteSpace([string]$snap.ValueType))) {
+                        [string]$snap.ValueType
+                    }
+                    else {
+                        'ExpandString'
+                    }
+
+                    Set-RegistryValueWithBackup -Path $svcRegPath -Name 'ImagePath' -Value $quotedPath -PropertyType $propType -BackupSession $BackupSession -ControlId 'HOME-FIL-009'
+                    $fixedAny = $true
+                }
+
+                if (-not $fixedAny) {
+                    throw 'No unquoted service paths matched safe executable quoting rules.'
+                }
+            }
+        }
+
         # === MANUAL / DEEP-LINK CONTROLS ===
         'HOME-ACC-003' = [PSCustomObject]@{
             ControlId         = 'HOME-ACC-003'
@@ -11172,6 +12487,46 @@ function Get-AutoSafeControlIds {
     return @($ids)
 }
 
+function Get-AutoRebootControlIds {
+    <#
+    .SYNOPSIS
+        Returns all Control IDs currently registered with FixMode = 'AutoReboot'.
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param()
+
+    $catalog = Get-RemediationCatalog
+    $ids = @()
+    foreach ($entry in $catalog.Values) {
+        if ($entry.FixMode -eq 'AutoReboot') {
+            $ids += [string]$entry.ControlId
+        }
+    }
+
+    return @($ids)
+}
+
+function Get-GuidedControlIds {
+    <#
+    .SYNOPSIS
+        Returns all Control IDs currently registered with FixMode = 'Guided'.
+    #>
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param()
+
+    $catalog = Get-RemediationCatalog
+    $ids = @()
+    foreach ($entry in $catalog.Values) {
+        if ($entry.FixMode -eq 'Guided') {
+            $ids += [string]$entry.ControlId
+        }
+    }
+
+    return @($ids)
+}
+
 # =============================================================================
 # MODULE: src\remediation\FixRunner.ps1
 # =============================================================================
@@ -11203,6 +12558,128 @@ function Test-IsAdministrator {
     }
     catch {
         return $false
+    }
+}
+
+function Test-IsRdpSession {
+    <#
+    .SYNOPSIS
+        Returns $true when executing inside an active Remote Desktop (RDP) session.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+
+    return (([string]$env:SESSIONNAME) -like 'RDP-*')
+}
+
+function Test-IsWinRmSession {
+    <#
+    .SYNOPSIS
+        Returns $true when executing inside a remote PowerShell / WinRM session.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+
+    $senderInfo = Get-Variable -Name 'PSSenderInfo' -ValueOnly -ErrorAction SilentlyContinue
+    return (($null -ne $senderInfo) -or ($Host.Name -eq 'ServerRemoteHost'))
+}
+
+function Test-HvciSupported {
+    <#
+    .SYNOPSIS
+        Checks whether hardware virtualization / VBS capability is available to support HVCI.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param()
+
+    try {
+        $dg = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace 'root\Microsoft\Windows\DeviceGuard' -ErrorAction SilentlyContinue
+        if ($null -ne $dg -and $null -ne $dg.PSObject.Properties['AvailableSecurityProperties'] -and $null -ne $dg.AvailableSecurityProperties) {
+            $props = @($dg.AvailableSecurityProperties | ForEach-Object { [int]$_ })
+            if (($props -contains 1) -or ($props -contains 2)) {
+                return $true
+            }
+        }
+
+        $cs = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction SilentlyContinue
+        if ($null -ne $cs -and $null -ne $cs.PSObject.Properties['HypervisorPresent'] -and [bool]$cs.HypervisorPresent) {
+            return $true
+        }
+
+        return $false
+    }
+    catch {
+        return $false
+    }
+}
+
+function Test-BuiltInAdminSafeToDisable {
+    <#
+    .SYNOPSIS
+        Verifies at least one other enabled local Administrator exists before disabling SID -500.
+    #>
+    [CmdletBinding()]
+    param()
+
+    try {
+        try {
+            $currSid = ([Security.Principal.WindowsIdentity]::GetCurrent()).User.Value
+            if ($currSid -like '*-500') {
+                return [PSCustomObject]@{
+                    Safe   = $false
+                    Reason = 'Currently signed in as the built-in Administrator (-500) account.'
+                }
+            }
+        }
+        catch { }
+
+        $localUsers = @(Get-LocalUser -ErrorAction Stop)
+        $disabledSids = @{}
+        $disabledNames = @{}
+        foreach ($u in $localUsers) {
+            if (-not [bool]$u.Enabled) {
+                $disabledSids[[string]$u.SID.Value] = $true
+                $disabledNames[([string]$u.Name).ToLowerInvariant()] = $true
+            }
+        }
+
+        $members = @(Get-LocalGroupMember -SID 'S-1-5-32-544' -ErrorAction Stop)
+        $otherEnabledAdmins = 0
+        foreach ($m in $members) {
+            if ($null -ne $m.PSObject.Properties['ObjectClass'] -and [string]$m.ObjectClass -ne 'User') {
+                continue
+            }
+            $sidVal = if ($null -ne $m.PSObject.Properties['SID'] -and $null -ne $m.SID) { [string]$m.SID.Value } else { '' }
+            if ($sidVal -like '*-500') {
+                continue
+            }
+            $shortName = (([string]$m.Name -split '\\')[-1]).ToLowerInvariant()
+            if (($sidVal -and $disabledSids.ContainsKey($sidVal)) -or ($shortName -and $disabledNames.ContainsKey($shortName))) {
+                continue
+            }
+            $otherEnabledAdmins++
+        }
+
+        if ($otherEnabledAdmins -ge 1) {
+            return [PSCustomObject]@{
+                Safe   = $true
+                Reason = "$otherEnabledAdmins other enabled local Administrator account(s) verified."
+            }
+        }
+
+        return [PSCustomObject]@{
+            Safe   = $false
+            Reason = 'No other enabled Administrator account found in S-1-5-32-544.'
+        }
+    }
+    catch {
+        return [PSCustomObject]@{
+            Safe   = $false
+            Reason = "Unable to verify alternate Administrator accounts ($($_.Exception.Message))."
+        }
     }
 }
 
@@ -11282,6 +12759,9 @@ function Invoke-SecurityRemediation {
     .PARAMETER CartellaChecks
         Optional path to src/core/Checks used by Invoke-Controlli during re-check.
 
+    .PARAMETER ScanResults
+        Optional array of latest scan results providing live Evidence for Tier 3 Guided fixes.
+
     .PARAMETER BackupDirectory
         Optional directory where the rollback_*.json file is written.
 
@@ -11307,6 +12787,10 @@ function Invoke-SecurityRemediation {
 
         [Parameter(Mandatory = $false)]
         [string]$CartellaChecks = '',
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [array]$ScanResults = @(),
 
         [Parameter(Mandatory = $false)]
         [string]$BackupDirectory = '',
@@ -11415,6 +12899,36 @@ function Invoke-SecurityRemediation {
 
     $canRecheck = ($null -ne $Catalogo -and $null -ne $Ambiente -and $null -ne (Get-Command -Name 'Invoke-Controlli' -ErrorAction SilentlyContinue))
 
+    $evidenceById = @{}
+    if ($null -ne $ScanResults) {
+        foreach ($sr in $ScanResults) {
+            if ($null -eq $sr) { continue }
+            $srId = if ($null -ne $sr.PSObject.Properties['control_id']) {
+                [string]$sr.control_id
+            }
+            elseif ($null -ne $sr.PSObject.Properties['ControlId']) {
+                [string]$sr.ControlId
+            }
+            else {
+                ''
+            }
+            if ([string]::IsNullOrWhiteSpace($srId)) { continue }
+
+            $srEv = if ($null -ne $sr.PSObject.Properties['evidence']) {
+                $sr.evidence
+            }
+            elseif ($null -ne $sr.PSObject.Properties['Evidence']) {
+                $sr.Evidence
+            }
+            else {
+                $null
+            }
+            if ($null -ne $srEv) {
+                $evidenceById[$srId.Trim().ToUpperInvariant()] = $srEv
+            }
+        }
+    }
+
     foreach ($id in $normalizedIds) {
         $currentIndex++
         $def = Get-RemediationDefinition -ControlId $id
@@ -11469,137 +12983,206 @@ function Invoke-SecurityRemediation {
             }
         }
         else {
-            try {
-                $context = [PSCustomObject]@{
-                    ControlId = $id
-                    Ambiente  = $Ambiente
+            # Runtime safety guardrails prior to mutating system state
+            $guardrailMsg = $null
+            if ($id -eq 'HOME-RDP-001' -and (Test-IsRdpSession)) {
+                $guardrailMsg = 'Guardrail triggered: cannot disable RDP while connected inside an active RDP session.'
+            }
+            elseif ($id -eq 'HOME-NET-006' -and (Test-IsWinRmSession)) {
+                $guardrailMsg = 'Guardrail triggered: cannot stop WinRM from inside an active WinRM/PowerShell remote session.'
+            }
+            elseif ($id -eq 'HOME-SYS-004' -and (-not (Test-HvciSupported))) {
+                $guardrailMsg = 'Guardrail triggered: hardware virtualization / VBS capability required for HVCI is not supported on this host.'
+            }
+            elseif ($id -eq 'HOME-ACC-002') {
+                $adminGuard = Test-BuiltInAdminSafeToDisable
+                if (-not [bool]$adminGuard.Safe) {
+                    $guardrailMsg = "Lockout prevention: $($adminGuard.Reason)"
                 }
-                & $def.Apply $session $context
+            }
 
-                if ([bool]$def.RequiresReboot) {
-                    $rebootRequiredCount++
-                    $itemResult = [PSCustomObject]@{
-                        ControlId         = $id
-                        Status            = 'RebootRequired'
-                        Verified          = $false
-                        RequiresAdmin     = [bool]$def.RequiresAdmin
-                        RequiresReboot    = $true
-                        RollbackSupported = [bool]$def.RollbackSupported
-                        SettingsUri       = $def.SettingsUri
-                        Message           = 'Remediation applied; system restart required to verify.'
-                        PostCheckStatus   = $null
-                        PostCheckObserved = $null
-                        Error             = $null
+            if ($null -ne $guardrailMsg) {
+                $blockedCount++
+                $itemResult = [PSCustomObject]@{
+                    ControlId         = $id
+                    Status            = 'Blocked'
+                    Verified          = $false
+                    RequiresAdmin     = [bool]$def.RequiresAdmin
+                    RequiresReboot    = [bool]$def.RequiresReboot
+                    RollbackSupported = [bool]$def.RollbackSupported
+                    SettingsUri       = $def.SettingsUri
+                    Message           = $guardrailMsg
+                    PostCheckStatus   = $null
+                    PostCheckObserved = $null
+                    Error             = $guardrailMsg
+                }
+            }
+            else {
+                try {
+                    $ctrlEvidence = if ($evidenceById.ContainsKey($id)) { $evidenceById[$id] } else { $null }
+                    if ($null -eq $ctrlEvidence -and $def.FixMode -eq 'Guided' -and $canRecheck) {
+                        $preCheckArr = @(Invoke-Controlli -Catalogo $Catalogo -Ambiente $Ambiente -ControlId @($id) -CartellaChecks $CartellaChecks)
+                        if ($preCheckArr.Count -gt 0 -and $null -ne $preCheckArr[0].PSObject.Properties['evidence']) {
+                            $ctrlEvidence = $preCheckArr[0].evidence
+                        }
                     }
-                }
-                elseif ($canRecheck) {
-                    $recheckArr = @(Invoke-Controlli -Catalogo $Catalogo -Ambiente $Ambiente -ControlId @($id) -CartellaChecks $CartellaChecks)
-                    $recheck = if ($recheckArr.Count -gt 0) { $recheckArr[0] } else { $null }
 
-                    if ($null -ne $recheck -and $recheck.status -eq 'superato') {
-                        $fixedCount++
+                    $context = [PSCustomObject]@{
+                        ControlId = $id
+                        Ambiente  = $Ambiente
+                        Evidence  = $ctrlEvidence
+                    }
+                    & $def.Apply $session $context
+
+                    if ($canRecheck) {
+                        $recheckArr = @(Invoke-Controlli -Catalogo $Catalogo -Ambiente $Ambiente -ControlId @($id) -CartellaChecks $CartellaChecks)
+                        $recheck = if ($recheckArr.Count -gt 0) { $recheckArr[0] } else { $null }
+
+                        if ($null -ne $recheck -and $recheck.status -eq 'superato') {
+                            $fixedCount++
+                            $okMsg = if ([bool]$def.RequiresReboot) {
+                                'Remediation applied and compliant (restart Windows to ensure full runtime enforcement).'
+                            }
+                            else {
+                                'Remediation applied and verified as compliant.'
+                            }
+                            $itemResult = [PSCustomObject]@{
+                                ControlId         = $id
+                                Status            = 'Fixed'
+                                Verified          = $true
+                                RequiresAdmin     = [bool]$def.RequiresAdmin
+                                RequiresReboot    = [bool]$def.RequiresReboot
+                                RollbackSupported = [bool]$def.RollbackSupported
+                                SettingsUri       = $def.SettingsUri
+                                Message           = $okMsg
+                                PostCheckStatus   = [string]$recheck.status
+                                PostCheckObserved = $recheck.observed
+                                Error             = $null
+                            }
+                        }
+                        elseif ([bool]$def.RequiresReboot) {
+                            $rebootRequiredCount++
+                            $postStatus = if ($null -ne $recheck) { [string]$recheck.status } else { 'sconosciuto' }
+                            $postObs    = if ($null -ne $recheck) { $recheck.observed } else { $null }
+                            $itemResult = [PSCustomObject]@{
+                                ControlId         = $id
+                                Status            = 'RebootRequired'
+                                Verified          = $false
+                                RequiresAdmin     = [bool]$def.RequiresAdmin
+                                RequiresReboot    = $true
+                                RollbackSupported = [bool]$def.RollbackSupported
+                                SettingsUri       = $def.SettingsUri
+                                Message           = 'Remediation applied; restart Windows to activate and verify.'
+                                PostCheckStatus   = $postStatus
+                                PostCheckObserved = $postObs
+                                Error             = $null
+                            }
+                        }
+                        else {
+                            $failedCount++
+                            $postStatus = if ($null -ne $recheck) { [string]$recheck.status } else { 'sconosciuto' }
+                            $postObs    = if ($null -ne $recheck) { $recheck.observed } else { $null }
+                            $itemResult = [PSCustomObject]@{
+                                ControlId         = $id
+                                Status            = 'VerificationFailed'
+                                Verified          = $false
+                                RequiresAdmin     = [bool]$def.RequiresAdmin
+                                RequiresReboot    = $false
+                                RollbackSupported = [bool]$def.RollbackSupported
+                                SettingsUri       = $def.SettingsUri
+                                Message           = "Remediation ran, but post-check returned status '$postStatus'."
+                                PostCheckStatus   = $postStatus
+                                PostCheckObserved = $postObs
+                                Error             = if ($null -ne $recheck) { $recheck.error } else { $null }
+                            }
+                        }
+                    }
+                    elseif ([bool]$def.RequiresReboot) {
+                        $rebootRequiredCount++
                         $itemResult = [PSCustomObject]@{
                             ControlId         = $id
-                            Status            = 'Fixed'
-                            Verified          = $true
+                            Status            = 'RebootRequired'
+                            Verified          = $false
                             RequiresAdmin     = [bool]$def.RequiresAdmin
-                            RequiresReboot    = $false
+                            RequiresReboot    = $true
                             RollbackSupported = [bool]$def.RollbackSupported
                             SettingsUri       = $def.SettingsUri
-                            Message           = 'Remediation applied and verified as compliant.'
-                            PostCheckStatus   = [string]$recheck.status
-                            PostCheckObserved = $recheck.observed
+                            Message           = 'Remediation applied; system restart required to verify.'
+                            PostCheckStatus   = $null
+                            PostCheckObserved = $null
                             Error             = $null
                         }
                     }
                     else {
-                        $failedCount++
-                        $postStatus = if ($null -ne $recheck) { [string]$recheck.status } else { 'sconosciuto' }
-                        $postObs    = if ($null -ne $recheck) { $recheck.observed } else { $null }
+                        $appliedCount++
                         $itemResult = [PSCustomObject]@{
                             ControlId         = $id
-                            Status            = 'VerificationFailed'
+                            Status            = 'Applied'
                             Verified          = $false
                             RequiresAdmin     = [bool]$def.RequiresAdmin
                             RequiresReboot    = $false
                             RollbackSupported = [bool]$def.RollbackSupported
                             SettingsUri       = $def.SettingsUri
-                            Message           = "Remediation ran, but post-check returned status '$postStatus'."
-                            PostCheckStatus   = $postStatus
-                            PostCheckObserved = $postObs
-                            Error             = if ($null -ne $recheck) { $recheck.error } else { $null }
+                            Message           = 'Remediation applied (post-fix verification skipped: no catalog/environment supplied).'
+                            PostCheckStatus   = $null
+                            PostCheckObserved = $null
+                            Error             = $null
                         }
                     }
                 }
-                else {
-                    $appliedCount++
-                    $itemResult = [PSCustomObject]@{
-                        ControlId         = $id
-                        Status            = 'Applied'
-                        Verified          = $false
-                        RequiresAdmin     = [bool]$def.RequiresAdmin
-                        RequiresReboot    = $false
-                        RollbackSupported = [bool]$def.RollbackSupported
-                        SettingsUri       = $def.SettingsUri
-                        Message           = 'Remediation applied (post-fix verification skipped: no catalog/environment supplied).'
-                        PostCheckStatus   = $null
-                        PostCheckObserved = $null
-                        Error             = $null
+                catch {
+                    $ex = $_.Exception
+                    if ($ex -is [System.Management.Automation.CommandNotFoundException]) {
+                        $skippedCount++
+                        $itemResult = [PSCustomObject]@{
+                            ControlId         = $id
+                            Status            = 'Skipped'
+                            Verified          = $false
+                            RequiresAdmin     = [bool]$def.RequiresAdmin
+                            RequiresReboot    = [bool]$def.RequiresReboot
+                            RollbackSupported = [bool]$def.RollbackSupported
+                            SettingsUri       = $def.SettingsUri
+                            Message           = 'Required Windows command or module is unavailable on this host.'
+                            PostCheckStatus   = $null
+                            PostCheckObserved = $null
+                            Error             = $ex.Message
+                        }
                     }
-                }
-            }
-            catch {
-                $ex = $_.Exception
-                if ($ex -is [System.Management.Automation.CommandNotFoundException]) {
-                    $skippedCount++
-                    $itemResult = [PSCustomObject]@{
-                        ControlId         = $id
-                        Status            = 'Skipped'
-                        Verified          = $false
-                        RequiresAdmin     = [bool]$def.RequiresAdmin
-                        RequiresReboot    = [bool]$def.RequiresReboot
-                        RollbackSupported = [bool]$def.RollbackSupported
-                        SettingsUri       = $def.SettingsUri
-                        Message           = 'Required Windows command or module is unavailable on this host.'
-                        PostCheckStatus   = $null
-                        PostCheckObserved = $null
-                        Error             = $ex.Message
+                    elseif (
+                        ($ex -is [System.UnauthorizedAccessException]) -or
+                        ($ex -is [System.Security.SecurityException]) -or
+                        ($ex.Message -match '(?i)access.*denied|accesso negato|tamper|group policy|managed by your organization|0x80070005')
+                    ) {
+                        $blockedCount++
+                        $itemResult = [PSCustomObject]@{
+                            ControlId         = $id
+                            Status            = 'Blocked'
+                            Verified          = $false
+                            RequiresAdmin     = [bool]$def.RequiresAdmin
+                            RequiresReboot    = [bool]$def.RequiresReboot
+                            RollbackSupported = [bool]$def.RollbackSupported
+                            SettingsUri       = $def.SettingsUri
+                            Message           = 'Remediation blocked by Tamper Protection, Group Policy, or system permissions.'
+                            PostCheckStatus   = $null
+                            PostCheckObserved = $null
+                            Error             = $ex.Message
+                        }
                     }
-                }
-                elseif (
-                    ($ex -is [System.UnauthorizedAccessException]) -or
-                    ($ex -is [System.Security.SecurityException]) -or
-                    ($ex.Message -match '(?i)access.*denied|accesso negato|tamper|group policy|managed by your organization|0x80070005')
-                ) {
-                    $blockedCount++
-                    $itemResult = [PSCustomObject]@{
-                        ControlId         = $id
-                        Status            = 'Blocked'
-                        Verified          = $false
-                        RequiresAdmin     = [bool]$def.RequiresAdmin
-                        RequiresReboot    = [bool]$def.RequiresReboot
-                        RollbackSupported = [bool]$def.RollbackSupported
-                        SettingsUri       = $def.SettingsUri
-                        Message           = 'Remediation blocked by Tamper Protection, Group Policy, or system permissions.'
-                        PostCheckStatus   = $null
-                        PostCheckObserved = $null
-                        Error             = $ex.Message
-                    }
-                }
-                else {
-                    $failedCount++
-                    $itemResult = [PSCustomObject]@{
-                        ControlId         = $id
-                        Status            = 'Failed'
-                        Verified          = $false
-                        RequiresAdmin     = [bool]$def.RequiresAdmin
-                        RequiresReboot    = [bool]$def.RequiresReboot
-                        RollbackSupported = [bool]$def.RollbackSupported
-                        SettingsUri       = $def.SettingsUri
-                        Message           = 'Remediation failed with an unexpected error.'
-                        PostCheckStatus   = $null
-                        PostCheckObserved = $null
-                        Error             = $ex.Message
+                    else {
+                        $failedCount++
+                        $itemResult = [PSCustomObject]@{
+                            ControlId         = $id
+                            Status            = 'Failed'
+                            Verified          = $false
+                            RequiresAdmin     = [bool]$def.RequiresAdmin
+                            RequiresReboot    = [bool]$def.RequiresReboot
+                            RollbackSupported = [bool]$def.RollbackSupported
+                            SettingsUri       = $def.SettingsUri
+                            Message           = 'Remediation failed with an unexpected error.'
+                            PostCheckStatus   = $null
+                            PostCheckObserved = $null
+                            Error             = $ex.Message
+                        }
                     }
                 }
             }
@@ -11660,9 +13243,9 @@ Set-StrictMode -Version 2
 # (usati se il controllo nel catalogo non definisce gia' un blocco remediation)
 $script:RimediStaticiFetta = @{
     'HOME-FW-001' = [PSCustomObject]@{
-        text    = "Attiva Windows Defender Firewall per tutti i profili (Dominio, Privato e Pubblico) tramite Sicurezza di Windows -> Firewall e protezione di rete, oppure eseguendo il comando seguente in una console PowerShell avviata come amministratore."
-        command = "Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True"
-        risk    = "Basso: il firewall blocca le connessioni in ingresso non sollicitate ma consente il normale traffico in uscita delle applicazioni domestiche."
+        text    = "Attiva Windows Defender Firewall per tutti i profili (Dominio, Privato e Pubblico) con blocco connessioni in ingresso predefinito (DefaultInboundAction = Block)."
+        command = "Set-NetFirewallProfile -Name Domain,Private,Public -Enabled True -DefaultInboundAction Block"
+        risk    = "Basso: il firewall blocca le connessioni in ingresso non sollecitate ma consente il normale traffico in uscita delle applicazioni domestiche."
     }
     'HOME-UAC-001' = [PSCustomObject]@{
         text    = "Abilita il Controllo dell'account utente (UAC) dalle Impostazioni di Windows (Modifica le impostazioni di Controllo dell'account utente) oppure impostando il valore di registro EnableLUA a 1 da PowerShell come amministratore. E' necessario riavviare il computer."
@@ -11670,9 +13253,9 @@ $script:RimediStaticiFetta = @{
         risk    = "Basso: Windows chiedera' conferma prima di consentire a programmi di apportare modifiche amministrative al sistema. Richiede il riavvio."
     }
     'HOME-UAC-002' = [PSCustomObject]@{
-        text    = "Configura UAC affinche' chieda sempre conferma sul desktop sicuro per le operazioni amministrative (ConsentPromptBehaviorAdmin = 2 o 5)."
-        command = "Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'ConsentPromptBehaviorAdmin' -Value 2"
-        risk    = "Basso: verra' mostrata una finestra di conferma UAC quando un programma richiede privilegi di amministratore."
+        text    = "Configura UAC affinche' chieda sempre conferma sul desktop sicuro per le operazioni amministrative (ConsentPromptBehaviorAdmin = 5, PromptOnSecureDesktop = 1)."
+        command = "New-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'ConsentPromptBehaviorAdmin' -Value 5 -PropertyType DWord -Force; New-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'PromptOnSecureDesktop' -Value 1 -PropertyType DWord -Force"
+        risk    = "Basso: verra' mostrata una finestra di conferma UAC sul desktop sicuro quando un programma richiede privilegi di amministratore."
     }
     'HOME-UAC-003' = [PSCustomObject]@{
         text    = "Abilita il rilevamento delle installazioni di applicazioni per UAC impostando EnableInstallerDetection a 1."
@@ -11730,8 +13313,8 @@ $script:RimediStaticiFetta = @{
         risk    = "Medio: conserva sempre una copia della chiave di ripristino BitLocker su un supporto esterno o nell'account Microsoft per evitare la perdita dei dati."
     }
     'HOME-PRV-001' = [PSCustomObject]@{
-        text    = "Riduci la telemetria di Windows al livello minimo consentito (solo dati obbligatori) da Impostazioni -> Privacy e sicurezza -> Diagnostica e feedback."
-        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -Value 1 -Type DWord'
+        text    = "Riduci la telemetria di Windows al livello minimo consentito (solo dati obbligatori) creando se necessario la chiave di policy DataCollection."
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Force | Out-Null; New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -Value 1 -PropertyType DWord -Force'
         risk    = "Molto basso: disattiva l'invio dei dati diagnostici facoltativi."
     }
     'HOME-SEC-001' = [PSCustomObject]@{
@@ -11746,7 +13329,7 @@ $script:RimediStaticiFetta = @{
     }
     'HOME-SEC-003' = [PSCustomObject]@{
         text    = "Abilita il logging degli script block di PowerShell per registrare nel Registro Eventi (Microsoft-Windows-PowerShell/Operational) i blocchi di codice eseguiti."
-        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Name "EnableScriptBlockLogging" -Value 1 -Type DWord'
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Force | Out-Null; New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Name "EnableScriptBlockLogging" -Value 1 -PropertyType DWord -Force'
         risk    = "Molto basso: aumenta leggermente il volume dei log nel Visualizzatore eventi in cambio di una maggiore tracciabilita'."
     }
     'HOME-UPD-002' = [PSCustomObject]@{
@@ -11810,8 +13393,8 @@ $script:RimediStaticiFetta = @{
         risk    = "Molto basso: quando inserisci una chiavetta USB dovrai aprirla manualmente da Esplora file."
     }
     'HOME-SYS-003' = [PSCustomObject]@{
-        text    = "Attiva SmartScreen in Sicurezza di Windows -> Controllo delle app e del browser -> Impostazioni di protezione basata sulla reputazione."
-        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" -Name "EnableWebContentEvaluation" -Value 1 -Type DWord'
+        text    = "Attiva SmartScreen sia in Explorer che per la valutazione dei contenuti web (SmartScreenEnabled = Warn e EnableWebContentEvaluation = 1)."
+        command = 'New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name "SmartScreenEnabled" -Value "Warn" -PropertyType String -Force; New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" -Name "EnableWebContentEvaluation" -Value 1 -PropertyType DWord -Force'
         risk    = "Molto basso: protegge da applicazioni e siti di phishing noti."
     }
     'HOME-SYS-004' = [PSCustomObject]@{
@@ -11826,7 +13409,7 @@ $script:RimediStaticiFetta = @{
     }
     'HOME-NET-003' = [PSCustomObject]@{
         text    = "Disabilita il protocollo multicast LLMNR impostando EnableMulticast = 0 nella policy DNSClient."
-        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Name "EnableMulticast" -Value 0 -Type DWord'
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Force | Out-Null; New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Name "EnableMulticast" -Value 0 -PropertyType DWord -Force'
         risk    = "Basso: le reti moderne utilizzano DNS standard anziche' LLMNR."
     }
     'HOME-AV-009' = [PSCustomObject]@{
@@ -11920,9 +13503,9 @@ $script:RimediStaticiFetta = @{
         risk    = "Molto basso: requisito hardware fondamentale di Windows 11 per BitLocker e Windows Hello."
     }
     'HOME-NET-008' = [PSCustomObject]@{
-        text    = "Disabilita esplicitamente TLS 1.0/1.1 in SCHANNEL e abilita il supporto automatico DNS over HTTPS (EnableAutoDoh = 2)."
-        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters" -Name "EnableAutoDoh" -Value 2 -Type DWord'
-        risk    = "Basso: cifra automaticamente le query DNS quando il server DNS configurato supporta DoH."
+        text    = "Disabilita esplicitamente TLS 1.0/1.1 in SCHANNEL (Client/Server) e abilita il supporto automatico DNS over HTTPS (EnableAutoDoh = 2)."
+        command = 'foreach ($sub in ''TLS 1.0\Client'',''TLS 1.0\Server'',''TLS 1.1\Client'',''TLS 1.1\Server'') { $p = "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$sub"; New-Item -Path $p -Force | Out-Null; New-ItemProperty -LiteralPath $p -Name Enabled -Value 0 -PropertyType DWord -Force; New-ItemProperty -LiteralPath $p -Name DisabledByDefault -Value 1 -PropertyType DWord -Force }; New-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters" -Name "EnableAutoDoh" -Value 2 -PropertyType DWord -Force'
+        risk    = "Basso: disabilita i vecchi protocolli TLS vulnerabili e cifra le query DNS con DoH."
     }
     'HOME-SYS-009' = [PSCustomObject]@{
         text    = "Disabilita Windows Script Host (WSH) nel registro per bloccare l'esecuzione di script .vbs e .js malevoli."
@@ -11930,8 +13513,8 @@ $script:RimediStaticiFetta = @{
         risk    = "Basso: blocca vecchi script VBScript/JScript (.vbs/.js); non influisce su PowerShell."
     }
     'HOME-SEC-009' = [PSCustomObject]@{
-        text    = "Imposta la ExecutionPolicy di PowerShell su RemoteSigned (o AllSigned), evitando Unrestricted o Bypass."
-        command = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force'
+        text    = "Imposta la ExecutionPolicy di PowerShell su RemoteSigned negli ambiti LocalMachine/CurrentUser se impostati a Unrestricted o Bypass."
+        command = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force; Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force'
         risk    = "Basso: consente gli script locali ma richiede una firma digitale per gli script scaricati da Internet."
     }
     'HOME-UAC-004' = [PSCustomObject]@{
@@ -12759,6 +14342,18 @@ function Format-DettaglioControllo {
         }
     }
 
+    # Se il controllo non definisce una proprieta' command esplicita nel catalogo,
+    # allinea il comando mostrato con il catalogo deterministico di RemediationCatalog.ps1
+    if ((-not $haProprietaCommandEsplicita) -and ($null -ne (Get-Command -Name 'Get-RemediationDefinition' -ErrorAction SilentlyContinue))) {
+        $remDef = Get-RemediationDefinition -ControlId $id
+        if ($null -ne $remDef) {
+            $remCmds = @(Get-ValoreProprietaSicuro -Oggetto $remDef -NomeProprieta 'PreviewCommands' -ValorePredefinito @())
+            if ($remCmds.Count -gt 0) {
+                $comandoRimedio = ($remCmds -join "`n")
+            }
+        }
+    }
+
     # Se command e' null o stringa vuota, HaComando = $false (mostra solo il testo)
     $haComando = (-not [string]::IsNullOrWhiteSpace([string]$comandoRimedio))
     if (-not $haComando) {
@@ -12896,29 +14491,52 @@ function ConvertTo-AutoFixItems {
             $null
         }
 
-        $fixMode       = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'FixMode' -ValorePredefinito 'Manual') } else { 'Manual' }
-        $applyBlock    = if ($null -ne $def) { Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Apply' -ValorePredefinito $null } else { $null }
-        $canAutoFix    = ($null -ne $def -and $fixMode -eq 'AutoSafe' -and $null -ne $applyBlock)
-        $requiresAdmin = if ($null -ne $def) { [bool](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'RequiresAdmin' -ValorePredefinito $false) } else { $false }
+        $fixMode        = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'FixMode' -ValorePredefinito 'Manual') } else { 'Manual' }
+        $applyBlock     = if ($null -ne $def) { Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Apply' -ValorePredefinito $null } else { $null }
+        $isAutoSafe     = ($null -ne $def -and $fixMode -eq 'AutoSafe' -and $null -ne $applyBlock)
+        $canAutoFix     = ($null -ne $def -and ($fixMode -in @('AutoSafe', 'AutoReboot', 'Guided')) -and $null -ne $applyBlock)
+        $requiresAdmin  = if ($null -ne $def) { [bool](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'RequiresAdmin' -ValorePredefinito $false) } else { $false }
         $requiresReboot = if ($null -ne $def) { [bool](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'RequiresReboot' -ValorePredefinito $false) } else { $false }
-        $summary       = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Summary' -ValorePredefinito '') } else { '' }
-        $rawUri        = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'SettingsUri' -ValorePredefinito '') } else { '' }
-        $settingsUri   = if (Test-SafeSettingsUri -Uri $rawUri) { $rawUri.Trim() } else { $null }
-        $hasUri        = (-not [string]::IsNullOrWhiteSpace($settingsUri))
+        $summary        = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Summary' -ValorePredefinito '') } else { '' }
+        $rawUri         = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'SettingsUri' -ValorePredefinito '') } else { '' }
+        $settingsUri    = if (Test-SafeSettingsUri -Uri $rawUri) { $rawUri.Trim() } else { $null }
+        $hasUri         = (-not [string]::IsNullOrWhiteSpace($settingsUri))
 
-        $fixModeLabel = if ($canAutoFix) {
-            switch ($Lingua) {
-                'EN' { 'Safe Auto-Fix' }
-                'DE' { 'Sicherer Auto-Fix' }
-                default { 'Auto-Fix Sicuro' }
+        $fixModeLabel = switch ($fixMode) {
+            'AutoSafe' {
+                switch ($Lingua) {
+                    'EN' { 'Safe Auto-Fix' }
+                    'DE' { 'Sicherer Auto-Fix' }
+                    default { 'Auto-Fix Sicuro' }
+                }
+            }
+            'AutoReboot' {
+                switch ($Lingua) {
+                    'EN' { 'Hardening Auto-Fix' }
+                    'DE' { 'Hardening Auto-Fix' }
+                    default { 'Auto-Fix Hardening' }
+                }
+            }
+            'Guided' {
+                switch ($Lingua) {
+                    'EN' { 'Guided Evidence Fix' }
+                    'DE' { 'Gefuehrte Korrektur' }
+                    default { 'Fix Guidato (Evidence)' }
+                }
+            }
+            default {
+                switch ($Lingua) {
+                    'EN' { 'Manual' }
+                    'DE' { 'Manuell' }
+                    default { 'Manuale' }
+                }
             }
         }
-        else {
-            switch ($Lingua) {
-                'EN' { 'Manual' }
-                'DE' { 'Manuell' }
-                default { 'Manuale' }
-            }
+
+        $rebootBadgeLabel = switch ($Lingua) {
+            'EN' { 'Requires reboot' }
+            'DE' { 'Neustart erforderlich' }
+            default { 'Richiede riavvio' }
         }
 
         $settingsBtnLabel = switch ($Lingua) {
@@ -12951,6 +14569,13 @@ function ConvertTo-AutoFixItems {
             default              { switch ($Lingua) { 'EN' { 'Ready' }            'DE' { 'Bereit' }             default { 'Pronto' } } }
         }
 
+        $autoRank = switch ($fixMode) {
+            'AutoSafe'   { if ($canAutoFix) { 0 } else { 4 } }
+            'AutoReboot' { if ($canAutoFix) { 1 } else { 4 } }
+            'Guided'     { if ($canAutoFix) { 2 } else { 4 } }
+            default      { if ($hasUri) { 3 } else { 4 } }
+        }
+
         $items += [PSCustomObject]@{
             ControlId             = $cid
             Title                 = $title
@@ -12959,12 +14584,15 @@ function ConvertTo-AutoFixItems {
             SeverityRank          = $sevRank
             FixMode               = $fixMode
             FixModeLabel          = $fixModeLabel
+            IsAutoSafe            = $isAutoSafe
             CanAutoFix            = $canAutoFix
-            AutoRank              = if ($canAutoFix) { 0 } else { 1 }
+            AutoRank              = $autoRank
             UriRank               = if ($hasUri) { 0 } else { 1 }
             RequiresAdmin         = $requiresAdmin
             RequiresReboot        = $requiresReboot
             AdminBadgeVisibility  = if ($requiresAdmin -and $canAutoFix) { 'Visible' } else { 'Collapsed' }
+            RebootBadgeVisibility = if ($requiresReboot -and $canAutoFix) { 'Visible' } else { 'Collapsed' }
+            RebootBadgeLabel      = $rebootBadgeLabel
             Summary               = $summary
             SettingsUri           = $settingsUri
             HasSettingsUri        = $hasUri
@@ -14054,7 +15682,7 @@ function Start-ScannerUI {
                 $defDet = Get-RemediationDefinition -ControlId $dettaglio.ControlId
             }
 
-            if ($null -ne $defDet -and $dettaglio.Status -eq 'fallito' -and $defDet.FixMode -eq 'AutoSafe' -and $null -ne $defDet.Apply) {
+            if ($null -ne $defDet -and $dettaglio.Status -eq 'fallito' -and ($defDet.FixMode -in @('AutoSafe', 'AutoReboot', 'Guided')) -and $null -ne $defDet.Apply) {
                 $mostraRipara = $true
             }
 
@@ -14082,15 +15710,16 @@ function Start-ScannerUI {
 
     $aggiornaConteggioAutoFix = {
         $langAuto = $statoUI.LinguaCorrente
-        $itemsAuto = @($statoUI.ElementiAutoFix)
-        $selAuto   = @($itemsAuto | Where-Object { $_.CanAutoFix -and $_.IsSelected })
-        $nSel      = $selAuto.Count
-        $nDispon   = @($itemsAuto | Where-Object { $_.CanAutoFix }).Count
+        $itemsAuto  = @($statoUI.ElementiAutoFix)
+        $selAuto    = @($itemsAuto | Where-Object { $_.CanAutoFix -and $_.IsSelected })
+        $nSel       = $selAuto.Count
+        $nDispon    = @($itemsAuto | Where-Object { $_.CanAutoFix }).Count
+        $nAutoSafe  = @($itemsAuto | Where-Object { $_.IsAutoSafe }).Count
 
         $ctrl.TxtConteggioSelezionati.Text = switch ($langAuto) {
-            'EN' { "Selected: $nSel / $nDispon safe auto-fixes" }
-            'DE' { "Ausgewaehlt: $nSel / $nDispon sichere Auto-Fixes" }
-            default { "Selezionati: $nSel / $nDispon fix automatici sicuri" }
+            'EN' { "Selected: $nSel / $nDispon fixable ($nAutoSafe AutoSafe)" }
+            'DE' { "Ausgewaehlt: $nSel / $nDispon behebbar ($nAutoSafe AutoSafe)" }
+            default { "Selezionati: $nSel / $nDispon riparabili ($nAutoSafe AutoSafe)" }
         }
 
         $ctrl.BtnApplicaFixSelezionati.Content = switch ($langAuto) {
@@ -14103,7 +15732,7 @@ function Start-ScannerUI {
         $ctrl.BtnApplicaFixSelezionati.IsEnabled = (-not $occupato) -and ($nSel -gt 0)
         $ctrl.BtnAnteprimaComandi.IsEnabled      = (-not $occupato) -and ($nSel -gt 0 -or $nDispon -gt 0)
         $ctrl.BtnEsportaScriptFix.IsEnabled      = (-not $occupato) -and ($nSel -gt 0 -or $nDispon -gt 0)
-        $ctrl.BtnSelezionaFixSicuri.IsEnabled    = (-not $occupato) -and ($nDispon -gt 0)
+        $ctrl.BtnSelezionaFixSicuri.IsEnabled    = (-not $occupato) -and ($nAutoSafe -gt 0)
         $ctrl.BtnDeselezionaTuttiFix.IsEnabled   = (-not $occupato) -and ($itemsAuto.Count -gt 0)
         $ctrl.BtnRollbackUltimo.IsEnabled        = (-not $occupato) -and (-not [string]::IsNullOrWhiteSpace($statoUI.UltimoBackupPath)) -and ([System.IO.File]::Exists($statoUI.UltimoBackupPath))
 
@@ -14760,8 +16389,8 @@ function Start-ScannerUI {
 
     $ctrl.BtnSelezionaFixSicuri.Add_Click({
         foreach ($item in @($statoUI.ElementiAutoFix)) {
-            if ($null -ne $item -and $item.CanAutoFix) {
-                $item.IsSelected = $true
+            if ($null -ne $item) {
+                $item.IsSelected = [bool]$item.IsAutoSafe
             }
         }
         $ctrl.ListAutoFixControlli.Items.Refresh()
@@ -14841,7 +16470,7 @@ function Start-ScannerUI {
         $previews = @(Get-RemediationPreview -ControlIds $idsClean)
         $richiedeAdminBatch = $false
         foreach ($p in $previews) {
-            if ($p.RequiresAdmin -and $p.FixMode -eq 'AutoSafe') {
+            if ($p.RequiresAdmin -and ($p.FixMode -in @('AutoSafe', 'AutoReboot', 'Guided'))) {
                 $richiedeAdminBatch = $true
                 break
             }
@@ -14954,9 +16583,9 @@ function Start-ScannerUI {
                 $ctrl.TxtLogAutoFix.ScrollToEnd()
 
                 $ctrl.TxtStatoAutoFix.Text = switch ($langNow) {
-                    'EN' { "Completed: $($repFix.FixedCount) fixed & verified, $($repFix.BlockedCount) blocked, $($repFix.FailedCount) failed" }
-                    'DE' { "Abgeschlossen: $($repFix.FixedCount) behoben, $($repFix.BlockedCount) blockiert, $($repFix.FailedCount) fehlgeschlagen" }
-                    default { "Completato: $($repFix.FixedCount) riparati e verificati, $($repFix.BlockedCount) bloccati, $($repFix.FailedCount) falliti" }
+                    'EN' { "Completed: $($repFix.FixedCount) fixed, $($repFix.RebootRequiredCount) reboot needed, $($repFix.BlockedCount) blocked, $($repFix.FailedCount) failed" }
+                    'DE' { "Abgeschlossen: $($repFix.FixedCount) behoben, $($repFix.RebootRequiredCount) Neustart, $($repFix.BlockedCount) blockiert, $($repFix.FailedCount) fehlgeschlagen" }
+                    default { "Completato: $($repFix.FixedCount) riparati, $($repFix.RebootRequiredCount) riavvio richiesto, $($repFix.BlockedCount) bloccati, $($repFix.FailedCount) falliti" }
                 }
             }
 
@@ -14970,10 +16599,15 @@ function Start-ScannerUI {
         $nomiFnRem = @(
             'Get-DefaultBackupDirectory', 'New-RemediationBackupSession', 'Backup-RegistryValueState',
             'Backup-DefenderPreferenceState', 'Add-RemediationBackupEntry', 'Set-RegistryValueWithBackup',
-            'Set-DefenderPreferenceWithBackup', 'Save-RemediationBackupSession', 'New-ScannerRestorePoint',
-            'Restore-RemediationBackup', 'Get-RemediationCatalog', 'Get-RemediationDefinition',
-            'Get-AutoSafeControlIds', 'Test-IsAdministrator', 'Get-RemediationPreview',
-            'Invoke-SecurityRemediation', 'Invoke-Controlli', 'Test-RegistryValue'
+            'Set-DefenderPreferenceWithBackup', 'Set-DefenderAsrRulesWithBackup', 'Invoke-NetAccounts',
+            'Invoke-NetshWlan', 'Set-FirewallProfileWithBackup', 'Set-ServiceStartupWithBackup',
+            'Set-ExecutionPolicyWithBackup', 'Disable-OptionalFeatureWithBackup', 'Set-AccountLockoutPolicyWithBackup',
+            'Disable-LocalUserWithBackup', 'Set-WifiProfileManualWithBackup', 'ConvertTo-QuotedServicePath',
+            'Save-RemediationBackupSession', 'New-ScannerRestorePoint', 'Restore-RemediationBackup',
+            'Get-RemediationCatalog', 'Get-RemediationDefinition', 'Get-AutoSafeControlIds',
+            'Get-AutoRebootControlIds', 'Get-GuidedControlIds', 'Test-IsAdministrator',
+            'Test-IsRdpSession', 'Test-IsWinRmSession', 'Test-HvciSupported', 'Test-BuiltInAdminSafeToDisable',
+            'Get-RemediationPreview', 'Invoke-SecurityRemediation', 'Invoke-Controlli', 'Test-RegistryValue'
         )
         foreach ($nomeFn in $nomiFnRem) {
             $fnObj = Get-Command -Name $nomeFn -ErrorAction SilentlyContinue
@@ -15001,6 +16635,7 @@ function Start-ScannerUI {
             PercorsoChecks      = $percorsoChecks
             PercorsoCore        = $percorsoCore
             PercorsoRemediation = $percorsoRemediation
+            ScanResults         = @($statoUI.RisultatiGrezzi)
             CreateRestorePoint  = $creaRp
             CallbackProgresso   = $cbProgressoFix
             CallbackFine        = $cbFineFix
@@ -15048,6 +16683,7 @@ function Start-ScannerUI {
                     Catalogo       = $SyncFix.Catalogo
                     Ambiente       = $SyncFix.Ambiente
                     CartellaChecks = $SyncFix.PercorsoChecks
+                    ScanResults    = $SyncFix.ScanResults
                     OnProgress     = $onProgRem
                 }
                 if ($SyncFix.CreateRestorePoint) {
@@ -15176,7 +16812,7 @@ function Start-ScannerUI {
         }
 
         $issRb = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-        foreach ($nomeFn in @('Restore-RemediationBackup', 'Invoke-Controlli', 'Test-RegistryValue')) {
+        foreach ($nomeFn in @('Restore-RemediationBackup', 'Invoke-NetAccounts', 'Invoke-NetshWlan', 'Invoke-Controlli', 'Test-RegistryValue')) {
             $fnObj = Get-Command -Name $nomeFn -ErrorAction SilentlyContinue
             if ($null -ne $fnObj) {
                 [void]$issRb.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fnObj.Name, $fnObj.Definition)))

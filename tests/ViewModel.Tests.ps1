@@ -297,33 +297,65 @@ Describe 'ViewModel — Funzioni pure (senza WPF)' {
             Test-SafeSettingsUri -Uri $null | Should -Be $false
         }
 
-        It 'ConvertTo-AutoFixItems filters failed items, sorts AutoSafe before Manual deep-links, and localizes labels' {
+        It 'ConvertTo-AutoFixItems filters failed items, sorts AutoSafe -> AutoReboot -> Guided -> Manual, and localizes badges' {
             $vistaSample = @(
                 [PSCustomObject]@{ ControlId = 'HOME-UAC-001'; Title = 'UAC';         Category = 'UAC';      SeverityLabel = 'Critical'; SeverityRank = 1; Status = 'superato' }
                 [PSCustomObject]@{ ControlId = 'HOME-ACC-003'; Title = 'No Password'; Category = 'Accounts'; SeverityLabel = 'High';     SeverityRank = 2; Status = 'fallito'  }
+                [PSCustomObject]@{ ControlId = 'HOME-SEC-002'; Title = 'LSA PPL';     Category = 'Security'; SeverityLabel = 'High';     SeverityRank = 2; Status = 'fallito'  }
+                [PSCustomObject]@{ ControlId = 'HOME-NET-009'; Title = 'Weak Wi-Fi';  Category = 'Network';  SeverityLabel = 'Medium';   SeverityRank = 3; Status = 'fallito'  }
                 [PSCustomObject]@{ ControlId = 'HOME-PRV-001'; Title = 'Telemetry';   Category = 'Privacy';  SeverityLabel = 'Medium';   SeverityRank = 3; Status = 'fallito'  }
                 [PSCustomObject]@{ ControlId = 'HOME-SEC-001'; Title = 'Secure Boot'; Category = 'Security'; SeverityLabel = 'High';     SeverityRank = 2; Status = 'fallito'  }
             )
 
             $itemsEn = @(ConvertTo-AutoFixItems -ElementiVista $vistaSample -Lingua 'EN')
-            $itemsEn.Count | Should -Be 3
+            $itemsEn.Count | Should -Be 5
 
-            # AutoSafe comes first, then Manual with SettingsUri, then Manual without URI
+            # Order: AutoSafe (PRV-001) -> AutoReboot (SEC-002) -> Guided (NET-009) -> Manual+URI (ACC-003) -> Manual (SEC-001)
             $itemsEn[0].ControlId             | Should -Be 'HOME-PRV-001'
+            $itemsEn[0].IsAutoSafe            | Should -Be $true
             $itemsEn[0].CanAutoFix            | Should -Be $true
             $itemsEn[0].FixModeLabel          | Should -Be 'Safe Auto-Fix'
-            $itemsEn[0].SettingsBtnVisibility | Should -Be 'Collapsed'
+            $itemsEn[0].RebootBadgeVisibility | Should -Be 'Collapsed'
 
-            $itemsEn[1].ControlId             | Should -Be 'HOME-ACC-003'
-            $itemsEn[1].CanAutoFix            | Should -Be $false
-            $itemsEn[1].SettingsUri           | Should -Be 'ms-settings:signinoptions'
-            $itemsEn[1].SettingsBtnVisibility | Should -Be 'Visible'
+            $itemsEn[1].ControlId             | Should -Be 'HOME-SEC-002'
+            $itemsEn[1].IsAutoSafe            | Should -Be $false
+            $itemsEn[1].CanAutoFix            | Should -Be $true
+            $itemsEn[1].FixModeLabel          | Should -Be 'Hardening Auto-Fix'
+            $itemsEn[1].RebootBadgeVisibility | Should -Be 'Visible'
+            $itemsEn[1].RebootBadgeLabel      | Should -Be 'Requires reboot'
 
-            $itemsEn[2].ControlId             | Should -Be 'HOME-SEC-001'
-            $itemsEn[2].SettingsBtnVisibility | Should -Be 'Collapsed'
+            $itemsEn[2].ControlId             | Should -Be 'HOME-NET-009'
+            $itemsEn[2].IsAutoSafe            | Should -Be $false
+            $itemsEn[2].CanAutoFix            | Should -Be $true
+            $itemsEn[2].FixModeLabel          | Should -Be 'Guided Evidence Fix'
+
+            $itemsEn[3].ControlId             | Should -Be 'HOME-ACC-003'
+            $itemsEn[3].CanAutoFix            | Should -Be $false
+            $itemsEn[3].SettingsUri           | Should -Be 'ms-settings:signinoptions'
+            $itemsEn[3].SettingsBtnVisibility | Should -Be 'Visible'
+
+            $itemsEn[4].ControlId             | Should -Be 'HOME-SEC-001'
+            $itemsEn[4].SettingsBtnVisibility | Should -Be 'Collapsed'
 
             $itemsDe = @(ConvertTo-AutoFixItems -ElementiVista $vistaSample -Lingua 'DE')
-            $itemsDe[0].FixModeLabel | Should -Be 'Sicherer Auto-Fix'
+            $itemsDe[0].FixModeLabel     | Should -Be 'Sicherer Auto-Fix'
+            $itemsDe[1].RebootBadgeLabel | Should -Be 'Neustart erforderlich'
+        }
+
+        It 'Format-DettaglioControllo aligns commands with RemediationCatalog PreviewCommands (e.g., HOME-FW-001)' {
+            $fwItem = [PSCustomObject]@{
+                ControlId   = 'HOME-FW-001'
+                Title       = 'Firewall'
+                Category    = 'Firewall'
+                Severity    = 'critico'
+                Status      = 'fallito'
+                Observed    = 'Allow'
+                Expected    = 'Block'
+                ControlMeta = [PSCustomObject]@{ id = 'HOME-FW-001'; description = 'Firewall desc'; rationale = 'Firewall rat' }
+            }
+            $detFw = Format-DettaglioControllo -Elemento $fwItem -Lingua 'EN'
+            $detFw.HaComando      | Should -Be $true
+            $detFw.ComandoRimedio | Should -Match 'DefaultInboundAction Block'
         }
 
         It 'Format-RemediationScriptExport emits #Requires -RunAsAdministrator only when admin fixes are included' {

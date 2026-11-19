@@ -904,7 +904,7 @@ function Start-ScannerUI {
                 $defDet = Get-RemediationDefinition -ControlId $dettaglio.ControlId
             }
 
-            if ($null -ne $defDet -and $dettaglio.Status -eq 'fallito' -and $defDet.FixMode -eq 'AutoSafe' -and $null -ne $defDet.Apply) {
+            if ($null -ne $defDet -and $dettaglio.Status -eq 'fallito' -and ($defDet.FixMode -in @('AutoSafe', 'AutoReboot', 'Guided')) -and $null -ne $defDet.Apply) {
                 $mostraRipara = $true
             }
 
@@ -932,15 +932,16 @@ function Start-ScannerUI {
 
     $aggiornaConteggioAutoFix = {
         $langAuto = $statoUI.LinguaCorrente
-        $itemsAuto = @($statoUI.ElementiAutoFix)
-        $selAuto   = @($itemsAuto | Where-Object { $_.CanAutoFix -and $_.IsSelected })
-        $nSel      = $selAuto.Count
-        $nDispon   = @($itemsAuto | Where-Object { $_.CanAutoFix }).Count
+        $itemsAuto  = @($statoUI.ElementiAutoFix)
+        $selAuto    = @($itemsAuto | Where-Object { $_.CanAutoFix -and $_.IsSelected })
+        $nSel       = $selAuto.Count
+        $nDispon    = @($itemsAuto | Where-Object { $_.CanAutoFix }).Count
+        $nAutoSafe  = @($itemsAuto | Where-Object { $_.IsAutoSafe }).Count
 
         $ctrl.TxtConteggioSelezionati.Text = switch ($langAuto) {
-            'EN' { "Selected: $nSel / $nDispon safe auto-fixes" }
-            'DE' { "Ausgewaehlt: $nSel / $nDispon sichere Auto-Fixes" }
-            default { "Selezionati: $nSel / $nDispon fix automatici sicuri" }
+            'EN' { "Selected: $nSel / $nDispon fixable ($nAutoSafe AutoSafe)" }
+            'DE' { "Ausgewaehlt: $nSel / $nDispon behebbar ($nAutoSafe AutoSafe)" }
+            default { "Selezionati: $nSel / $nDispon riparabili ($nAutoSafe AutoSafe)" }
         }
 
         $ctrl.BtnApplicaFixSelezionati.Content = switch ($langAuto) {
@@ -953,7 +954,7 @@ function Start-ScannerUI {
         $ctrl.BtnApplicaFixSelezionati.IsEnabled = (-not $occupato) -and ($nSel -gt 0)
         $ctrl.BtnAnteprimaComandi.IsEnabled      = (-not $occupato) -and ($nSel -gt 0 -or $nDispon -gt 0)
         $ctrl.BtnEsportaScriptFix.IsEnabled      = (-not $occupato) -and ($nSel -gt 0 -or $nDispon -gt 0)
-        $ctrl.BtnSelezionaFixSicuri.IsEnabled    = (-not $occupato) -and ($nDispon -gt 0)
+        $ctrl.BtnSelezionaFixSicuri.IsEnabled    = (-not $occupato) -and ($nAutoSafe -gt 0)
         $ctrl.BtnDeselezionaTuttiFix.IsEnabled   = (-not $occupato) -and ($itemsAuto.Count -gt 0)
         $ctrl.BtnRollbackUltimo.IsEnabled        = (-not $occupato) -and (-not [string]::IsNullOrWhiteSpace($statoUI.UltimoBackupPath)) -and ([System.IO.File]::Exists($statoUI.UltimoBackupPath))
 
@@ -1610,8 +1611,8 @@ function Start-ScannerUI {
 
     $ctrl.BtnSelezionaFixSicuri.Add_Click({
         foreach ($item in @($statoUI.ElementiAutoFix)) {
-            if ($null -ne $item -and $item.CanAutoFix) {
-                $item.IsSelected = $true
+            if ($null -ne $item) {
+                $item.IsSelected = [bool]$item.IsAutoSafe
             }
         }
         $ctrl.ListAutoFixControlli.Items.Refresh()
@@ -1691,7 +1692,7 @@ function Start-ScannerUI {
         $previews = @(Get-RemediationPreview -ControlIds $idsClean)
         $richiedeAdminBatch = $false
         foreach ($p in $previews) {
-            if ($p.RequiresAdmin -and $p.FixMode -eq 'AutoSafe') {
+            if ($p.RequiresAdmin -and ($p.FixMode -in @('AutoSafe', 'AutoReboot', 'Guided'))) {
                 $richiedeAdminBatch = $true
                 break
             }
@@ -1804,9 +1805,9 @@ function Start-ScannerUI {
                 $ctrl.TxtLogAutoFix.ScrollToEnd()
 
                 $ctrl.TxtStatoAutoFix.Text = switch ($langNow) {
-                    'EN' { "Completed: $($repFix.FixedCount) fixed & verified, $($repFix.BlockedCount) blocked, $($repFix.FailedCount) failed" }
-                    'DE' { "Abgeschlossen: $($repFix.FixedCount) behoben, $($repFix.BlockedCount) blockiert, $($repFix.FailedCount) fehlgeschlagen" }
-                    default { "Completato: $($repFix.FixedCount) riparati e verificati, $($repFix.BlockedCount) bloccati, $($repFix.FailedCount) falliti" }
+                    'EN' { "Completed: $($repFix.FixedCount) fixed, $($repFix.RebootRequiredCount) reboot needed, $($repFix.BlockedCount) blocked, $($repFix.FailedCount) failed" }
+                    'DE' { "Abgeschlossen: $($repFix.FixedCount) behoben, $($repFix.RebootRequiredCount) Neustart, $($repFix.BlockedCount) blockiert, $($repFix.FailedCount) fehlgeschlagen" }
+                    default { "Completato: $($repFix.FixedCount) riparati, $($repFix.RebootRequiredCount) riavvio richiesto, $($repFix.BlockedCount) bloccati, $($repFix.FailedCount) falliti" }
                 }
             }
 
@@ -1820,10 +1821,15 @@ function Start-ScannerUI {
         $nomiFnRem = @(
             'Get-DefaultBackupDirectory', 'New-RemediationBackupSession', 'Backup-RegistryValueState',
             'Backup-DefenderPreferenceState', 'Add-RemediationBackupEntry', 'Set-RegistryValueWithBackup',
-            'Set-DefenderPreferenceWithBackup', 'Save-RemediationBackupSession', 'New-ScannerRestorePoint',
-            'Restore-RemediationBackup', 'Get-RemediationCatalog', 'Get-RemediationDefinition',
-            'Get-AutoSafeControlIds', 'Test-IsAdministrator', 'Get-RemediationPreview',
-            'Invoke-SecurityRemediation', 'Invoke-Controlli', 'Test-RegistryValue'
+            'Set-DefenderPreferenceWithBackup', 'Set-DefenderAsrRulesWithBackup', 'Invoke-NetAccounts',
+            'Invoke-NetshWlan', 'Set-FirewallProfileWithBackup', 'Set-ServiceStartupWithBackup',
+            'Set-ExecutionPolicyWithBackup', 'Disable-OptionalFeatureWithBackup', 'Set-AccountLockoutPolicyWithBackup',
+            'Disable-LocalUserWithBackup', 'Set-WifiProfileManualWithBackup', 'ConvertTo-QuotedServicePath',
+            'Save-RemediationBackupSession', 'New-ScannerRestorePoint', 'Restore-RemediationBackup',
+            'Get-RemediationCatalog', 'Get-RemediationDefinition', 'Get-AutoSafeControlIds',
+            'Get-AutoRebootControlIds', 'Get-GuidedControlIds', 'Test-IsAdministrator',
+            'Test-IsRdpSession', 'Test-IsWinRmSession', 'Test-HvciSupported', 'Test-BuiltInAdminSafeToDisable',
+            'Get-RemediationPreview', 'Invoke-SecurityRemediation', 'Invoke-Controlli', 'Test-RegistryValue'
         )
         foreach ($nomeFn in $nomiFnRem) {
             $fnObj = Get-Command -Name $nomeFn -ErrorAction SilentlyContinue
@@ -1851,6 +1857,7 @@ function Start-ScannerUI {
             PercorsoChecks      = $percorsoChecks
             PercorsoCore        = $percorsoCore
             PercorsoRemediation = $percorsoRemediation
+            ScanResults         = @($statoUI.RisultatiGrezzi)
             CreateRestorePoint  = $creaRp
             CallbackProgresso   = $cbProgressoFix
             CallbackFine        = $cbFineFix
@@ -1898,6 +1905,7 @@ function Start-ScannerUI {
                     Catalogo       = $SyncFix.Catalogo
                     Ambiente       = $SyncFix.Ambiente
                     CartellaChecks = $SyncFix.PercorsoChecks
+                    ScanResults    = $SyncFix.ScanResults
                     OnProgress     = $onProgRem
                 }
                 if ($SyncFix.CreateRestorePoint) {
@@ -2026,7 +2034,7 @@ function Start-ScannerUI {
         }
 
         $issRb = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-        foreach ($nomeFn in @('Restore-RemediationBackup', 'Invoke-Controlli', 'Test-RegistryValue')) {
+        foreach ($nomeFn in @('Restore-RemediationBackup', 'Invoke-NetAccounts', 'Invoke-NetshWlan', 'Invoke-Controlli', 'Test-RegistryValue')) {
             $fnObj = Get-Command -Name $nomeFn -ErrorAction SilentlyContinue
             if ($null -ne $fnObj) {
                 [void]$issRb.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fnObj.Name, $fnObj.Definition)))

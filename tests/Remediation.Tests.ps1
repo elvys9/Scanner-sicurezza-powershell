@@ -149,26 +149,45 @@ Describe 'RemediationCatalog' {
         $script:mainIds = @($script:mainCatalog.controls | ForEach-Object { $_.id })
     }
 
-    It 'Registers all 10 Phase 1 AutoSafe controls with valid catalog IDs, Rollback support, and Apply scriptblocks' {
-        $autoSafeIds = @(Get-AutoSafeControlIds)
-        $autoSafeIds.Count | Should -Be 10
+    It 'Registers all 29 AutoSafe, 11 AutoReboot, and 3 Guided controls with valid catalog IDs and metadata' {
+        $autoSafeIds   = @(Get-AutoSafeControlIds)
+        $autoRebootIds = @(Get-AutoRebootControlIds)
+        $guidedIds     = @(Get-GuidedControlIds)
 
-        $expectedPhase1 = @(
-            'HOME-SYS-001', 'HOME-SYS-002', 'HOME-SYS-007',
-            'HOME-NET-002', 'HOME-NET-003', 'HOME-NET-007',
-            'HOME-SEC-003', 'HOME-AV-005', 'HOME-AV-010', 'HOME-PRV-001'
+        $autoSafeIds.Count   | Should -Be 29
+        $autoRebootIds.Count | Should -Be 11
+        $guidedIds.Count     | Should -Be 3
+
+        $expectedTier1 = @(
+            'HOME-SYS-001', 'HOME-SYS-002', 'HOME-SYS-007', 'HOME-NET-002', 'HOME-NET-003',
+            'HOME-NET-007', 'HOME-SEC-003', 'HOME-AV-005', 'HOME-AV-010', 'HOME-PRV-001',
+            'HOME-FW-001', 'HOME-UAC-001', 'HOME-UAC-002', 'HOME-UAC-003', 'HOME-ACC-001',
+            'HOME-ACC-004', 'HOME-UPD-001', 'HOME-AV-001', 'HOME-AV-002', 'HOME-AV-004',
+            'HOME-SYS-003', 'HOME-SYS-005', 'HOME-SYS-006', 'HOME-SYS-008', 'HOME-SYS-009',
+            'HOME-SYS-010', 'HOME-NET-005', 'HOME-NET-008', 'HOME-SEC-009'
         )
-        foreach ($expectedId in $expectedPhase1) {
+        foreach ($expectedId in $expectedTier1) {
             ($autoSafeIds -contains $expectedId) | Should -Be $true
+        }
+
+        $expectedTier2 = @(
+            'HOME-SEC-002', 'HOME-SEC-006', 'HOME-NET-001', 'HOME-SYS-004', 'HOME-AV-009',
+            'HOME-AV-011', 'HOME-RDP-001', 'HOME-NET-006', 'HOME-UAC-004', 'HOME-SEC-011', 'HOME-SEC-010'
+        )
+        foreach ($expectedId in $expectedTier2) {
+            ($autoRebootIds -contains $expectedId) | Should -Be $true
+        }
+
+        $expectedTier3 = @('HOME-NET-009', 'HOME-ACC-002', 'HOME-FIL-009')
+        foreach ($expectedId in $expectedTier3) {
+            ($guidedIds -contains $expectedId) | Should -Be $true
         }
 
         foreach ($id in $autoSafeIds) {
             ($script:mainIds -contains $id) | Should -Be $true
             $def = Get-RemediationDefinition -ControlId $id
-            $def.FixMode           | Should -Be 'AutoSafe'
-            $def.Phase             | Should -Be 1
-            $def.RollbackSupported | Should -Be $true
-            $def.RequiresReboot    | Should -Be $false
+            $def.FixMode        | Should -Be 'AutoSafe'
+            $def.RequiresReboot | Should -Be $false
             @($def.PreviewCommands).Count | Should -BeGreaterThan 0
             ($def.Apply -is [scriptblock]) | Should -Be $true
 
@@ -178,6 +197,13 @@ Describe 'RemediationCatalog' {
             else {
                 $def.RequiresAdmin | Should -Be $true
             }
+        }
+
+        foreach ($id in (@($autoRebootIds) + @($guidedIds))) {
+            ($script:mainIds -contains $id) | Should -Be $true
+            $def = Get-RemediationDefinition -ControlId $id
+            @($def.PreviewCommands).Count | Should -BeGreaterThan 0
+            ($def.Apply -is [scriptblock]) | Should -Be $true
         }
     }
 
@@ -486,5 +512,436 @@ Describe 'FixRunner' {
         $failRpRes = Invoke-SecurityRemediation -ControlIds @('HOME-SYS-001') -BackupDirectory $backupDir -CreateRestorePoint
         $failRpRes.RestorePointCreated | Should -Be $false
         $failRpRes.AppliedCount        | Should -Be 1
+    }
+}
+
+Describe 'Phase 3 Tier 1 & Tier 2 Remediations + Guardrails' {
+    BeforeAll {
+        . (Join-Path $PSScriptRoot '..\src\remediation\BackupManager.ps1')
+        . (Join-Path $PSScriptRoot '..\src\remediation\RemediationCatalog.ps1')
+        . (Join-Path $PSScriptRoot '..\src\remediation\FixRunner.ps1')
+
+        function Invoke-Controlli { param($Catalogo, $Ambiente, $ControlId, $CartellaChecks) }
+        if (-not (Get-Command -Name 'Get-NetFirewallProfile' -ErrorAction SilentlyContinue)) {
+            function Get-NetFirewallProfile { param($Name, $ErrorAction) }
+            function Set-NetFirewallProfile { param($Name, $Enabled, $DefaultInboundAction, $ErrorAction) }
+        }
+        if (-not (Get-Command -Name 'Get-MpPreference' -ErrorAction SilentlyContinue)) {
+            function Get-MpPreference { param($ErrorAction) }
+            function Set-MpPreference { param($PUAProtection, $EnableNetworkProtection, $EnableControlledFolderAccess, $DisableRealtimeMonitoring, $DisableBehaviorMonitoring, $DisableIOAVProtection, $AttackSurfaceReductionRules_Ids, $AttackSurfaceReductionRules_Actions, $ErrorAction) }
+            function Add-MpPreference { param($AttackSurfaceReductionRules_Ids, $AttackSurfaceReductionRules_Actions, $ErrorAction) }
+            function Remove-MpPreference { param($AttackSurfaceReductionRules_Ids, $ErrorAction) }
+            function Update-MpSignature { param($ErrorAction) }
+        }
+        if (-not (Get-Command -Name 'Get-LocalUser' -ErrorAction SilentlyContinue)) {
+            function Get-LocalUser { param($ErrorAction) }
+            function Disable-LocalUser { param($SID, $ErrorAction) }
+            function Enable-LocalUser { param($SID, $ErrorAction) }
+            function Get-LocalGroupMember { param($SID, $ErrorAction) }
+        }
+        if (-not (Get-Command -Name 'Get-WindowsOptionalFeature' -ErrorAction SilentlyContinue)) {
+            function Get-WindowsOptionalFeature { param($Online, $FeatureName, $ErrorAction) }
+            function Disable-WindowsOptionalFeature { param($Online, $FeatureName, $NoRestart, $ErrorAction) }
+            function Enable-WindowsOptionalFeature { param($Online, $FeatureName, $NoRestart, $ErrorAction) }
+        }
+        if (-not (Get-Command -Name 'Set-SmbServerConfiguration' -ErrorAction SilentlyContinue)) {
+            function Set-SmbServerConfiguration { param($EnableSMB1Protocol, $Force, $ErrorAction) }
+        }
+    }
+
+    It 'HOME-FW-001 enables all 3 firewall profiles with DefaultInboundAction Block and rolls back' {
+        $backupDir = Join-Path $TestDrive 'fw001'
+        Mock Test-IsAdministrator { return $true }
+        Mock Get-NetFirewallProfile {
+            param($Name)
+            return [PSCustomObject]@{ Name = $Name; Enabled = $false; DefaultInboundAction = 'Allow' }
+        }
+        Mock Set-NetFirewallProfile { }
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-FW-001') -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 1
+        Should -Invoke Set-NetFirewallProfile -Times 3 -ParameterFilter {
+            $Enabled -eq 'True' -and $DefaultInboundAction -eq 'Block'
+        }
+
+        $rb = Restore-RemediationBackup -BackupPath $res.BackupPath
+        $rb.RestoredCount | Should -Be 3
+        Should -Invoke Set-NetFirewallProfile -Times 3 -ParameterFilter {
+            $Enabled -eq 'False' -and $DefaultInboundAction -eq 'Allow'
+        }
+    }
+
+    It 'HOME-UAC-001, HOME-UAC-002, and HOME-UAC-003 enforce complete UAC elevation settings' {
+        $backupDir = Join-Path $TestDrive 'uac_all'
+        Mock Test-IsAdministrator { return $true }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $true }
+        Mock Get-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } {
+            return [PSCustomObject]@{ EnableLUA = 0; ConsentPromptBehaviorAdmin = 0; PromptOnSecureDesktop = 0; EnableInstallerDetection = 0 }
+        }
+        Mock Get-Item -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $null }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-UAC-001', 'HOME-UAC-002', 'HOME-UAC-003') -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 3
+
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter { $Name -eq 'EnableLUA' -and [int]$Value -eq 1 }
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter { $Name -eq 'ConsentPromptBehaviorAdmin' -and [int]$Value -eq 5 }
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter { $Name -eq 'PromptOnSecureDesktop' -and [int]$Value -eq 1 }
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter { $Name -eq 'EnableInstallerDetection' -and [int]$Value -eq 1 }
+    }
+
+    It 'HOME-SYS-003 configures both Explorer SmartScreenEnabled String and AppHost EnableWebContentEvaluation DWord' {
+        $backupDir = Join-Path $TestDrive 'sys003'
+        Mock Test-IsAdministrator { return $true }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $false }
+        Mock New-Item -ParameterFilter { $Path -like 'HK*' } { }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-SYS-003') -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 1
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter {
+            $Name -eq 'SmartScreenEnabled' -and $Value -eq 'Warn' -and $PropertyType -eq 'String'
+        }
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter {
+            $Name -eq 'EnableWebContentEvaluation' -and [int]$Value -eq 1 -and $PropertyType -eq 'DWord'
+        }
+    }
+
+    It 'HOME-NET-008 disables TLS 1.0/1.1 SCHANNEL keys and enables Dnscache EnableAutoDoh = 2' {
+        $backupDir = Join-Path $TestDrive 'net008'
+        Mock Test-IsAdministrator { return $true }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $false }
+        Mock New-Item -ParameterFilter { $Path -like 'HK*' } { }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-NET-008') -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 1
+        Should -Invoke New-ItemProperty -Times 4 -ParameterFilter {
+            $LiteralPath -like '*SCHANNEL\Protocols\TLS 1.*' -and $Name -eq 'Enabled' -and [int]$Value -eq 0
+        }
+        Should -Invoke New-ItemProperty -Times 4 -ParameterFilter {
+            $LiteralPath -like '*SCHANNEL\Protocols\TLS 1.*' -and $Name -eq 'DisabledByDefault' -and [int]$Value -eq 1
+        }
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter {
+            $LiteralPath -eq 'HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters' -and $Name -eq 'EnableAutoDoh' -and [int]$Value -eq 2
+        }
+    }
+
+    It 'HOME-SEC-009 remediates permissive ExecutionPolicy scopes and restores original policies on rollback' {
+        $backupDir = Join-Path $TestDrive 'sec009'
+        Mock Test-IsAdministrator { return $true }
+        Mock Get-ExecutionPolicy {
+            return @(
+                [PSCustomObject]@{ Scope = 'MachinePolicy'; ExecutionPolicy = 'Undefined' },
+                [PSCustomObject]@{ Scope = 'UserPolicy';    ExecutionPolicy = 'Undefined' },
+                [PSCustomObject]@{ Scope = 'CurrentUser';   ExecutionPolicy = 'Bypass' },
+                [PSCustomObject]@{ Scope = 'LocalMachine';  ExecutionPolicy = 'Unrestricted' }
+            )
+        }
+        Mock Set-ExecutionPolicy { }
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-SEC-009') -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 1
+        Should -Invoke Set-ExecutionPolicy -Times 1 -ParameterFilter { $Scope -eq 'LocalMachine' -and $ExecutionPolicy -eq 'RemoteSigned' }
+        Should -Invoke Set-ExecutionPolicy -Times 1 -ParameterFilter { $Scope -eq 'CurrentUser'  -and $ExecutionPolicy -eq 'RemoteSigned' }
+
+        $rb = Restore-RemediationBackup -BackupPath $res.BackupPath
+        $rb.RestoredCount | Should -Be 2
+        Should -Invoke Set-ExecutionPolicy -Times 1 -ParameterFilter { $Scope -eq 'LocalMachine' -and $ExecutionPolicy -eq 'Unrestricted' }
+        Should -Invoke Set-ExecutionPolicy -Times 1 -ParameterFilter { $Scope -eq 'CurrentUser'  -and $ExecutionPolicy -eq 'Bypass' }
+    }
+
+    It 'HOME-ACC-001 and HOME-ACC-004 disable Guest account and enforce lockout threshold with full rollback' {
+        $backupDir = Join-Path $TestDrive 'acc_safe'
+        Mock Test-IsAdministrator { return $true }
+        Mock Get-LocalUser {
+            return @([PSCustomObject]@{ Name = 'Guest'; SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-501' }; Enabled = $true })
+        }
+        Mock Disable-LocalUser { }
+        Mock Enable-LocalUser { }
+        Mock Invoke-NetAccounts {
+            param($Arguments)
+            if ($null -eq $Arguments -or $Arguments.Count -eq 0) {
+                return @(
+                    'Lockout threshold:                    Never',
+                    'Lockout duration (minutes):           30',
+                    'Lockout observation window (minutes): 30'
+                )
+            }
+            return @()
+        }
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-ACC-001', 'HOME-ACC-004') -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 2
+        Should -Invoke Disable-LocalUser -Times 1 -ParameterFilter { $SID -eq 'S-1-5-21-100-501' }
+        Should -Invoke Invoke-NetAccounts -Times 1 -ParameterFilter { $Arguments -contains '/lockoutthreshold:5' }
+
+        $rb = Restore-RemediationBackup -BackupPath $res.BackupPath
+        $rb.RestoredCount | Should -Be 2
+        Should -Invoke Enable-LocalUser -Times 1 -ParameterFilter { $SID -eq 'S-1-5-21-100-501' }
+        Should -Invoke Invoke-NetAccounts -Times 1 -ParameterFilter { $Arguments -contains '/lockoutthreshold:0' }
+    }
+
+    It 'HOME-UPD-001, HOME-SYS-008, HOME-NET-005, HOME-AV-001, and HOME-AV-004 configure services, SMB signing, and Defender cleanly' {
+        $backupDir = Join-Path $TestDrive 'tier1_misc'
+        Mock Test-IsAdministrator { return $true }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $true }
+        Mock Get-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } {
+            return [PSCustomObject]@{ Start = 4; RequireSecuritySignature = 0; NoAutoUpdate = 1 }
+        }
+        Mock Get-Item -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $null }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+        Mock Get-Service { return [PSCustomObject]@{ Name = 'RemoteRegistry'; Status = 'Running' } }
+        Mock Stop-Service { }
+        Mock Get-MpPreference {
+            return [PSCustomObject]@{ DisableRealtimeMonitoring = $true; DisableBehaviorMonitoring = $true; DisableIOAVProtection = $true }
+        }
+        Mock Set-MpPreference { }
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-UPD-001', 'HOME-SYS-008', 'HOME-NET-005', 'HOME-AV-001', 'HOME-AV-004') -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 5
+        Should -Invoke Stop-Service -Times 1 -ParameterFilter { $Name -eq 'RemoteRegistry' }
+        Should -Invoke New-ItemProperty -Times 2 -ParameterFilter { $Name -eq 'RequireSecuritySignature' -and [int]$Value -eq 1 }
+        Should -Invoke Set-MpPreference -Times 1 -ParameterFilter { $DisableRealtimeMonitoring -eq $false }
+        Should -Invoke Set-MpPreference -Times 1 -ParameterFilter { $DisableBehaviorMonitoring -eq $false }
+        Should -Invoke Set-MpPreference -Times 1 -ParameterFilter { $DisableIOAVProtection -eq $false }
+    }
+
+    It 'Guardrails block HOME-RDP-001 during active RDP sessions and apply when outside RDP' {
+        $backupDir = Join-Path $TestDrive 'rdp_guard'
+        Mock Test-IsAdministrator { return $true }
+
+        Mock Test-IsRdpSession { return $true }
+        $blocked = Invoke-SecurityRemediation -ControlIds @('HOME-RDP-001') -BackupDirectory $backupDir
+        $blocked.BlockedCount      | Should -Be 1
+        $blocked.Results[0].Status | Should -Be 'Blocked'
+        $blocked.Results[0].Message | Should -Match 'RDP session'
+
+        Mock Test-IsRdpSession { return $false }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $true }
+        Mock Get-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return [PSCustomObject]@{ fDenyTSConnections = 0 } }
+        Mock Get-Item -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $null }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+
+        $applied = Invoke-SecurityRemediation -ControlIds @('HOME-RDP-001') -BackupDirectory $backupDir
+        $applied.AppliedCount | Should -Be 1
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter { $Name -eq 'fDenyTSConnections' -and [int]$Value -eq 1 }
+    }
+
+    It 'Guardrails block HOME-NET-006 during active WinRM sessions and apply when outside WinRM' {
+        $backupDir = Join-Path $TestDrive 'winrm_guard'
+        Mock Test-IsAdministrator { return $true }
+
+        Mock Test-IsWinRmSession { return $true }
+        $blocked = Invoke-SecurityRemediation -ControlIds @('HOME-NET-006') -BackupDirectory $backupDir
+        $blocked.BlockedCount      | Should -Be 1
+        $blocked.Results[0].Status | Should -Be 'Blocked'
+        $blocked.Results[0].Message | Should -Match 'WinRM'
+
+        Mock Test-IsWinRmSession { return $false }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $true }
+        Mock Get-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return [PSCustomObject]@{ Start = 2 } }
+        Mock Get-Item -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $null }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+        Mock Get-Service { return [PSCustomObject]@{ Name = 'WinRM'; Status = 'Running' } }
+        Mock Stop-Service { }
+
+        $applied = Invoke-SecurityRemediation -ControlIds @('HOME-NET-006') -BackupDirectory $backupDir
+        $applied.AppliedCount | Should -Be 1
+        Should -Invoke Stop-Service -Times 1 -ParameterFilter { $Name -eq 'WinRM' }
+    }
+
+    It 'HOME-SYS-004 enforces Test-HvciSupported guardrail and returns RebootRequired (not VerificationFailed) before reboot' {
+        $backupDir = Join-Path $TestDrive 'hvci_guard'
+        $fakeCatalog  = [PSCustomObject]@{ controls = @() }
+        $fakeAmbiente = [PSCustomObject]@{ Edition = 'Pro' }
+
+        Mock Test-IsAdministrator { return $true }
+        Mock Test-HvciSupported { return $false }
+        $blocked = Invoke-SecurityRemediation -ControlIds @('HOME-SYS-004') -Catalogo $fakeCatalog -Ambiente $fakeAmbiente -BackupDirectory $backupDir
+        $blocked.Results[0].Status  | Should -Be 'Blocked'
+        $blocked.Results[0].Message | Should -Match 'HVCI'
+
+        Mock Test-HvciSupported { return $true }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $false }
+        Mock New-Item -ParameterFilter { $Path -like 'HK*' } { }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+        Mock Invoke-Controlli {
+            return @([PSCustomObject]@{ control_id = 'HOME-SYS-004'; status = 'fallito'; observed = 'HVCI not running until reboot'; expected = ''; evidence = $null; error = $null; duration_ms = 2 })
+        }
+
+        $rebootRes = Invoke-SecurityRemediation -ControlIds @('HOME-SYS-004') -Catalogo $fakeCatalog -Ambiente $fakeAmbiente -BackupDirectory $backupDir
+        $rebootRes.RebootRequiredCount | Should -Be 1
+        $rebootRes.FailedCount         | Should -Be 0
+        $rebootRes.Results[0].Status   | Should -Be 'RebootRequired'
+    }
+
+    It 'HOME-NET-001 and HOME-AV-011 apply SMBv1 removal and ASR rules with rollback support' {
+        $backupDir = Join-Path $TestDrive 'tier2_net_asr'
+        Mock Test-IsAdministrator { return $true }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $false }
+        Mock New-Item -ParameterFilter { $Path -like 'HK*' } { }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+        Mock Get-WindowsOptionalFeature { return [PSCustomObject]@{ FeatureName = 'SMB1Protocol'; State = 'Enabled' } }
+        Mock Disable-WindowsOptionalFeature { }
+        Mock Enable-WindowsOptionalFeature { }
+        Mock Set-SmbServerConfiguration { }
+        Mock Get-MpPreference { return [PSCustomObject]@{ AttackSurfaceReductionRules_Ids = @(); AttackSurfaceReductionRules_Actions = @() } }
+        Mock Add-MpPreference { }
+        Mock Remove-MpPreference { }
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-NET-001', 'HOME-AV-011') -BackupDirectory $backupDir
+        $res.RebootRequiredCount | Should -Be 1
+        $res.AppliedCount        | Should -Be 1
+        Should -Invoke Disable-WindowsOptionalFeature -Times 1 -ParameterFilter { $FeatureName -eq 'SMB1Protocol' }
+        Should -Invoke Add-MpPreference -Times 1
+
+        $rb = Restore-RemediationBackup -BackupPath $res.BackupPath
+        $rb.RestoredCount | Should -Be 3
+        Should -Invoke Remove-MpPreference -Times 1
+        Should -Invoke Enable-WindowsOptionalFeature -Times 1 -ParameterFilter { $FeatureName -eq 'SMB1Protocol' }
+    }
+}
+
+Describe 'Phase 4 Tier 3 Evidence-Driven Dynamic Fixes' {
+    BeforeAll {
+        . (Join-Path $PSScriptRoot '..\src\remediation\BackupManager.ps1')
+        . (Join-Path $PSScriptRoot '..\src\remediation\RemediationCatalog.ps1')
+        . (Join-Path $PSScriptRoot '..\src\remediation\FixRunner.ps1')
+
+        function Invoke-Controlli { param($Catalogo, $Ambiente, $ControlId, $CartellaChecks) }
+        if (-not (Get-Command -Name 'Get-LocalUser' -ErrorAction SilentlyContinue)) {
+            function Get-LocalUser { param($ErrorAction) }
+            function Disable-LocalUser { param($SID, $ErrorAction) }
+            function Enable-LocalUser { param($SID, $ErrorAction) }
+            function Get-LocalGroupMember { param($SID, $ErrorAction) }
+        }
+    }
+
+    It 'HOME-NET-009 switches insecure SSIDs from ScanResults Evidence to manual, rejects unsafe SSIDs, and rolls back to auto' {
+        $backupDir = Join-Path $TestDrive 'net009_dyn'
+        Mock Test-IsAdministrator { return $true }
+        Mock Invoke-NetshWlan { }
+
+        $scanResults = @(
+            [PSCustomObject]@{
+                control_id = 'HOME-NET-009'
+                status     = 'fallito'
+                evidence   = @{
+                    InsecureProfiles = @(
+                        [PSCustomObject]@{ ProfileName = 'CafeFree'; ConnectionMode = 'auto' }
+                    )
+                }
+            }
+        )
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-NET-009') -ScanResults $scanResults -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 1
+        Should -Invoke Invoke-NetshWlan -Times 1 -ParameterFilter {
+            ($Arguments -contains 'name=CafeFree') -and ($Arguments -contains 'connectionmode=manual')
+        }
+
+        $rb = Restore-RemediationBackup -BackupPath $res.BackupPath
+        $rb.RestoredCount | Should -Be 1
+        Should -Invoke Invoke-NetshWlan -Times 1 -ParameterFilter {
+            ($Arguments -contains 'name=CafeFree') -and ($Arguments -contains 'connectionmode=auto')
+        }
+
+        { Set-WifiProfileManualWithBackup -ProfileName 'Bad";whoami' } | Should -Throw '*unsafe characters*'
+    }
+
+    It 'HOME-ACC-002 blocks when only the built-in admin exists and disables SID -500 when another enabled admin is present' {
+        $backupDir = Join-Path $TestDrive 'acc002_dyn'
+        Mock Test-IsAdministrator { return $true }
+
+        # Single-admin case: only built-in -500 enabled
+        Mock Get-LocalUser {
+            return @(
+                [PSCustomObject]@{ Name = 'Administrator'; SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-500' }; Enabled = $true },
+                [PSCustomObject]@{ Name = 'BackupAdmin';   SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-1001' }; Enabled = $false }
+            )
+        }
+        Mock Get-LocalGroupMember {
+            return @(
+                [PSCustomObject]@{ Name = 'PC\Administrator'; SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-500' }; ObjectClass = 'User' },
+                [PSCustomObject]@{ Name = 'PC\BackupAdmin';   SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-1001' }; ObjectClass = 'User' }
+            )
+        }
+
+        $blockedRes = Invoke-SecurityRemediation -ControlIds @('HOME-ACC-002') -BackupDirectory $backupDir
+        $blockedRes.BlockedCount      | Should -Be 1
+        $blockedRes.Results[0].Status | Should -Be 'Blocked'
+        $blockedRes.Results[0].Message | Should -Match 'Lockout prevention'
+
+        # Two-admin case: built-in -500 plus another enabled admin -1001
+        Mock Get-LocalUser {
+            return @(
+                [PSCustomObject]@{ Name = 'Administrator'; SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-500' }; Enabled = $true },
+                [PSCustomObject]@{ Name = 'PersonalAdmin'; SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-1001' }; Enabled = $true }
+            )
+        }
+        Mock Get-LocalGroupMember {
+            return @(
+                [PSCustomObject]@{ Name = 'PC\Administrator'; SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-500' }; ObjectClass = 'User' },
+                [PSCustomObject]@{ Name = 'PC\PersonalAdmin'; SID = [PSCustomObject]@{ Value = 'S-1-5-21-100-1001' }; ObjectClass = 'User' }
+            )
+        }
+        Mock Disable-LocalUser { }
+        Mock Enable-LocalUser { }
+
+        $okRes = Invoke-SecurityRemediation -ControlIds @('HOME-ACC-002') -BackupDirectory $backupDir
+        $okRes.AppliedCount | Should -Be 1
+        Should -Invoke Disable-LocalUser -Times 1 -ParameterFilter { $SID -eq 'S-1-5-21-100-500' }
+
+        $rb = Restore-RemediationBackup -BackupPath $okRes.BackupPath
+        $rb.RestoredCount | Should -Be 1
+        Should -Invoke Enable-LocalUser -Times 1 -ParameterFilter { $SID -eq 'S-1-5-21-100-500' }
+    }
+
+    It 'HOME-FIL-009 quotes only the executable path up to .exe, preserves arguments and ExpandString, and rolls back' {
+        ConvertTo-QuotedServicePath -PathName 'C:\Program Files\My App\svc.exe -run helper.exe' | Should -Be '"C:\Program Files\My App\svc.exe" -run helper.exe'
+        ConvertTo-QuotedServicePath -PathName '"C:\Program Files\My App\svc.exe" -run' | Should -Be $null
+        ConvertTo-QuotedServicePath -PathName 'C:\Windows\System32\svchost.exe -k netsvcs' | Should -Be $null
+
+        $backupDir = Join-Path $TestDrive 'fil009_dyn'
+        Mock Test-IsAdministrator { return $true }
+        Mock Test-Path -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } { return $true }
+        Mock Get-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } {
+            return [PSCustomObject]@{ ImagePath = 'C:\Program Files\My App\svc.exe -run' }
+        }
+        Mock Get-Item -ParameterFilter { $LiteralPath -like 'HK*' -or $Path -like 'HK*' } {
+            $mockReg = [PSCustomObject]@{}
+            Add-Member -InputObject $mockReg -MemberType ScriptMethod -Name 'GetValueKind' -Value { param($n) return 'ExpandString' }
+            return $mockReg
+        }
+        Mock New-ItemProperty -ParameterFilter { $LiteralPath -like 'HK*' } { }
+
+        $scanResults = @(
+            [PSCustomObject]@{
+                control_id = 'HOME-FIL-009'
+                status     = 'fallito'
+                evidence   = @{
+                    VulnerableServices = @('MyAppSvc (C:\Program Files\My App\svc.exe -run)')
+                }
+            }
+        )
+
+        $res = Invoke-SecurityRemediation -ControlIds @('HOME-FIL-009') -ScanResults $scanResults -BackupDirectory $backupDir
+        $res.AppliedCount | Should -Be 1
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter {
+            $LiteralPath -eq 'HKLM:\SYSTEM\CurrentControlSet\Services\MyAppSvc' -and
+            $Name -eq 'ImagePath' -and
+            $Value -eq '"C:\Program Files\My App\svc.exe" -run' -and
+            $PropertyType -eq 'ExpandString'
+        }
+
+        $rb = Restore-RemediationBackup -BackupPath $res.BackupPath
+        $rb.RestoredCount | Should -Be 1
+        Should -Invoke New-ItemProperty -Times 1 -ParameterFilter {
+            $LiteralPath -eq 'HKLM:\SYSTEM\CurrentControlSet\Services\MyAppSvc' -and
+            $Name -eq 'ImagePath' -and
+            $Value -eq 'C:\Program Files\My App\svc.exe -run' -and
+            $PropertyType -eq 'ExpandString'
+        }
     }
 }

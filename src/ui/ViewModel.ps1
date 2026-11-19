@@ -20,9 +20,9 @@ Set-StrictMode -Version 2
 # (usati se il controllo nel catalogo non definisce gia' un blocco remediation)
 $script:RimediStaticiFetta = @{
     'HOME-FW-001' = [PSCustomObject]@{
-        text    = "Attiva Windows Defender Firewall per tutti i profili (Dominio, Privato e Pubblico) tramite Sicurezza di Windows -> Firewall e protezione di rete, oppure eseguendo il comando seguente in una console PowerShell avviata come amministratore."
-        command = "Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True"
-        risk    = "Basso: il firewall blocca le connessioni in ingresso non sollicitate ma consente il normale traffico in uscita delle applicazioni domestiche."
+        text    = "Attiva Windows Defender Firewall per tutti i profili (Dominio, Privato e Pubblico) con blocco connessioni in ingresso predefinito (DefaultInboundAction = Block)."
+        command = "Set-NetFirewallProfile -Name Domain,Private,Public -Enabled True -DefaultInboundAction Block"
+        risk    = "Basso: il firewall blocca le connessioni in ingresso non sollecitate ma consente il normale traffico in uscita delle applicazioni domestiche."
     }
     'HOME-UAC-001' = [PSCustomObject]@{
         text    = "Abilita il Controllo dell'account utente (UAC) dalle Impostazioni di Windows (Modifica le impostazioni di Controllo dell'account utente) oppure impostando il valore di registro EnableLUA a 1 da PowerShell come amministratore. E' necessario riavviare il computer."
@@ -30,9 +30,9 @@ $script:RimediStaticiFetta = @{
         risk    = "Basso: Windows chiedera' conferma prima di consentire a programmi di apportare modifiche amministrative al sistema. Richiede il riavvio."
     }
     'HOME-UAC-002' = [PSCustomObject]@{
-        text    = "Configura UAC affinche' chieda sempre conferma sul desktop sicuro per le operazioni amministrative (ConsentPromptBehaviorAdmin = 2 o 5)."
-        command = "Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'ConsentPromptBehaviorAdmin' -Value 2"
-        risk    = "Basso: verra' mostrata una finestra di conferma UAC quando un programma richiede privilegi di amministratore."
+        text    = "Configura UAC affinche' chieda sempre conferma sul desktop sicuro per le operazioni amministrative (ConsentPromptBehaviorAdmin = 5, PromptOnSecureDesktop = 1)."
+        command = "New-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'ConsentPromptBehaviorAdmin' -Value 5 -PropertyType DWord -Force; New-ItemProperty -LiteralPath 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'PromptOnSecureDesktop' -Value 1 -PropertyType DWord -Force"
+        risk    = "Basso: verra' mostrata una finestra di conferma UAC sul desktop sicuro quando un programma richiede privilegi di amministratore."
     }
     'HOME-UAC-003' = [PSCustomObject]@{
         text    = "Abilita il rilevamento delle installazioni di applicazioni per UAC impostando EnableInstallerDetection a 1."
@@ -90,8 +90,8 @@ $script:RimediStaticiFetta = @{
         risk    = "Medio: conserva sempre una copia della chiave di ripristino BitLocker su un supporto esterno o nell'account Microsoft per evitare la perdita dei dati."
     }
     'HOME-PRV-001' = [PSCustomObject]@{
-        text    = "Riduci la telemetria di Windows al livello minimo consentito (solo dati obbligatori) da Impostazioni -> Privacy e sicurezza -> Diagnostica e feedback."
-        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -Value 1 -Type DWord'
+        text    = "Riduci la telemetria di Windows al livello minimo consentito (solo dati obbligatori) creando se necessario la chiave di policy DataCollection."
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Force | Out-Null; New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection" -Name "AllowTelemetry" -Value 1 -PropertyType DWord -Force'
         risk    = "Molto basso: disattiva l'invio dei dati diagnostici facoltativi."
     }
     'HOME-SEC-001' = [PSCustomObject]@{
@@ -106,7 +106,7 @@ $script:RimediStaticiFetta = @{
     }
     'HOME-SEC-003' = [PSCustomObject]@{
         text    = "Abilita il logging degli script block di PowerShell per registrare nel Registro Eventi (Microsoft-Windows-PowerShell/Operational) i blocchi di codice eseguiti."
-        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Name "EnableScriptBlockLogging" -Value 1 -Type DWord'
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Force | Out-Null; New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -Name "EnableScriptBlockLogging" -Value 1 -PropertyType DWord -Force'
         risk    = "Molto basso: aumenta leggermente il volume dei log nel Visualizzatore eventi in cambio di una maggiore tracciabilita'."
     }
     'HOME-UPD-002' = [PSCustomObject]@{
@@ -170,8 +170,8 @@ $script:RimediStaticiFetta = @{
         risk    = "Molto basso: quando inserisci una chiavetta USB dovrai aprirla manualmente da Esplora file."
     }
     'HOME-SYS-003' = [PSCustomObject]@{
-        text    = "Attiva SmartScreen in Sicurezza di Windows -> Controllo delle app e del browser -> Impostazioni di protezione basata sulla reputazione."
-        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" -Name "EnableWebContentEvaluation" -Value 1 -Type DWord'
+        text    = "Attiva SmartScreen sia in Explorer che per la valutazione dei contenuti web (SmartScreenEnabled = Warn e EnableWebContentEvaluation = 1)."
+        command = 'New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer" -Name "SmartScreenEnabled" -Value "Warn" -PropertyType String -Force; New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\AppHost" -Name "EnableWebContentEvaluation" -Value 1 -PropertyType DWord -Force'
         risk    = "Molto basso: protegge da applicazioni e siti di phishing noti."
     }
     'HOME-SYS-004' = [PSCustomObject]@{
@@ -186,7 +186,7 @@ $script:RimediStaticiFetta = @{
     }
     'HOME-NET-003' = [PSCustomObject]@{
         text    = "Disabilita il protocollo multicast LLMNR impostando EnableMulticast = 0 nella policy DNSClient."
-        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Name "EnableMulticast" -Value 0 -Type DWord'
+        command = 'New-Item -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Force | Out-Null; New-ItemProperty -LiteralPath "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient" -Name "EnableMulticast" -Value 0 -PropertyType DWord -Force'
         risk    = "Basso: le reti moderne utilizzano DNS standard anziche' LLMNR."
     }
     'HOME-AV-009' = [PSCustomObject]@{
@@ -280,9 +280,9 @@ $script:RimediStaticiFetta = @{
         risk    = "Molto basso: requisito hardware fondamentale di Windows 11 per BitLocker e Windows Hello."
     }
     'HOME-NET-008' = [PSCustomObject]@{
-        text    = "Disabilita esplicitamente TLS 1.0/1.1 in SCHANNEL e abilita il supporto automatico DNS over HTTPS (EnableAutoDoh = 2)."
-        command = 'Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters" -Name "EnableAutoDoh" -Value 2 -Type DWord'
-        risk    = "Basso: cifra automaticamente le query DNS quando il server DNS configurato supporta DoH."
+        text    = "Disabilita esplicitamente TLS 1.0/1.1 in SCHANNEL (Client/Server) e abilita il supporto automatico DNS over HTTPS (EnableAutoDoh = 2)."
+        command = 'foreach ($sub in ''TLS 1.0\Client'',''TLS 1.0\Server'',''TLS 1.1\Client'',''TLS 1.1\Server'') { $p = "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\$sub"; New-Item -Path $p -Force | Out-Null; New-ItemProperty -LiteralPath $p -Name Enabled -Value 0 -PropertyType DWord -Force; New-ItemProperty -LiteralPath $p -Name DisabledByDefault -Value 1 -PropertyType DWord -Force }; New-ItemProperty -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters" -Name "EnableAutoDoh" -Value 2 -PropertyType DWord -Force'
+        risk    = "Basso: disabilita i vecchi protocolli TLS vulnerabili e cifra le query DNS con DoH."
     }
     'HOME-SYS-009' = [PSCustomObject]@{
         text    = "Disabilita Windows Script Host (WSH) nel registro per bloccare l'esecuzione di script .vbs e .js malevoli."
@@ -290,8 +290,8 @@ $script:RimediStaticiFetta = @{
         risk    = "Basso: blocca vecchi script VBScript/JScript (.vbs/.js); non influisce su PowerShell."
     }
     'HOME-SEC-009' = [PSCustomObject]@{
-        text    = "Imposta la ExecutionPolicy di PowerShell su RemoteSigned (o AllSigned), evitando Unrestricted o Bypass."
-        command = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force'
+        text    = "Imposta la ExecutionPolicy di PowerShell su RemoteSigned negli ambiti LocalMachine/CurrentUser se impostati a Unrestricted o Bypass."
+        command = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force; Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force'
         risk    = "Basso: consente gli script locali ma richiede una firma digitale per gli script scaricati da Internet."
     }
     'HOME-UAC-004' = [PSCustomObject]@{
@@ -1119,6 +1119,18 @@ function Format-DettaglioControllo {
         }
     }
 
+    # Se il controllo non definisce una proprieta' command esplicita nel catalogo,
+    # allinea il comando mostrato con il catalogo deterministico di RemediationCatalog.ps1
+    if ((-not $haProprietaCommandEsplicita) -and ($null -ne (Get-Command -Name 'Get-RemediationDefinition' -ErrorAction SilentlyContinue))) {
+        $remDef = Get-RemediationDefinition -ControlId $id
+        if ($null -ne $remDef) {
+            $remCmds = @(Get-ValoreProprietaSicuro -Oggetto $remDef -NomeProprieta 'PreviewCommands' -ValorePredefinito @())
+            if ($remCmds.Count -gt 0) {
+                $comandoRimedio = ($remCmds -join "`n")
+            }
+        }
+    }
+
     # Se command e' null o stringa vuota, HaComando = $false (mostra solo il testo)
     $haComando = (-not [string]::IsNullOrWhiteSpace([string]$comandoRimedio))
     if (-not $haComando) {
@@ -1256,29 +1268,52 @@ function ConvertTo-AutoFixItems {
             $null
         }
 
-        $fixMode       = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'FixMode' -ValorePredefinito 'Manual') } else { 'Manual' }
-        $applyBlock    = if ($null -ne $def) { Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Apply' -ValorePredefinito $null } else { $null }
-        $canAutoFix    = ($null -ne $def -and $fixMode -eq 'AutoSafe' -and $null -ne $applyBlock)
-        $requiresAdmin = if ($null -ne $def) { [bool](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'RequiresAdmin' -ValorePredefinito $false) } else { $false }
+        $fixMode        = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'FixMode' -ValorePredefinito 'Manual') } else { 'Manual' }
+        $applyBlock     = if ($null -ne $def) { Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Apply' -ValorePredefinito $null } else { $null }
+        $isAutoSafe     = ($null -ne $def -and $fixMode -eq 'AutoSafe' -and $null -ne $applyBlock)
+        $canAutoFix     = ($null -ne $def -and ($fixMode -in @('AutoSafe', 'AutoReboot', 'Guided')) -and $null -ne $applyBlock)
+        $requiresAdmin  = if ($null -ne $def) { [bool](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'RequiresAdmin' -ValorePredefinito $false) } else { $false }
         $requiresReboot = if ($null -ne $def) { [bool](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'RequiresReboot' -ValorePredefinito $false) } else { $false }
-        $summary       = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Summary' -ValorePredefinito '') } else { '' }
-        $rawUri        = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'SettingsUri' -ValorePredefinito '') } else { '' }
-        $settingsUri   = if (Test-SafeSettingsUri -Uri $rawUri) { $rawUri.Trim() } else { $null }
-        $hasUri        = (-not [string]::IsNullOrWhiteSpace($settingsUri))
+        $summary        = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Summary' -ValorePredefinito '') } else { '' }
+        $rawUri         = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'SettingsUri' -ValorePredefinito '') } else { '' }
+        $settingsUri    = if (Test-SafeSettingsUri -Uri $rawUri) { $rawUri.Trim() } else { $null }
+        $hasUri         = (-not [string]::IsNullOrWhiteSpace($settingsUri))
 
-        $fixModeLabel = if ($canAutoFix) {
-            switch ($Lingua) {
-                'EN' { 'Safe Auto-Fix' }
-                'DE' { 'Sicherer Auto-Fix' }
-                default { 'Auto-Fix Sicuro' }
+        $fixModeLabel = switch ($fixMode) {
+            'AutoSafe' {
+                switch ($Lingua) {
+                    'EN' { 'Safe Auto-Fix' }
+                    'DE' { 'Sicherer Auto-Fix' }
+                    default { 'Auto-Fix Sicuro' }
+                }
+            }
+            'AutoReboot' {
+                switch ($Lingua) {
+                    'EN' { 'Hardening Auto-Fix' }
+                    'DE' { 'Hardening Auto-Fix' }
+                    default { 'Auto-Fix Hardening' }
+                }
+            }
+            'Guided' {
+                switch ($Lingua) {
+                    'EN' { 'Guided Evidence Fix' }
+                    'DE' { 'Gefuehrte Korrektur' }
+                    default { 'Fix Guidato (Evidence)' }
+                }
+            }
+            default {
+                switch ($Lingua) {
+                    'EN' { 'Manual' }
+                    'DE' { 'Manuell' }
+                    default { 'Manuale' }
+                }
             }
         }
-        else {
-            switch ($Lingua) {
-                'EN' { 'Manual' }
-                'DE' { 'Manuell' }
-                default { 'Manuale' }
-            }
+
+        $rebootBadgeLabel = switch ($Lingua) {
+            'EN' { 'Requires reboot' }
+            'DE' { 'Neustart erforderlich' }
+            default { 'Richiede riavvio' }
         }
 
         $settingsBtnLabel = switch ($Lingua) {
@@ -1311,6 +1346,13 @@ function ConvertTo-AutoFixItems {
             default              { switch ($Lingua) { 'EN' { 'Ready' }            'DE' { 'Bereit' }             default { 'Pronto' } } }
         }
 
+        $autoRank = switch ($fixMode) {
+            'AutoSafe'   { if ($canAutoFix) { 0 } else { 4 } }
+            'AutoReboot' { if ($canAutoFix) { 1 } else { 4 } }
+            'Guided'     { if ($canAutoFix) { 2 } else { 4 } }
+            default      { if ($hasUri) { 3 } else { 4 } }
+        }
+
         $items += [PSCustomObject]@{
             ControlId             = $cid
             Title                 = $title
@@ -1319,12 +1361,15 @@ function ConvertTo-AutoFixItems {
             SeverityRank          = $sevRank
             FixMode               = $fixMode
             FixModeLabel          = $fixModeLabel
+            IsAutoSafe            = $isAutoSafe
             CanAutoFix            = $canAutoFix
-            AutoRank              = if ($canAutoFix) { 0 } else { 1 }
+            AutoRank              = $autoRank
             UriRank               = if ($hasUri) { 0 } else { 1 }
             RequiresAdmin         = $requiresAdmin
             RequiresReboot        = $requiresReboot
             AdminBadgeVisibility  = if ($requiresAdmin -and $canAutoFix) { 'Visible' } else { 'Collapsed' }
+            RebootBadgeVisibility = if ($requiresReboot -and $canAutoFix) { 'Visible' } else { 'Collapsed' }
+            RebootBadgeLabel      = $rebootBadgeLabel
             Summary               = $summary
             SettingsUri           = $settingsUri
             HasSettingsUri        = $hasUri
