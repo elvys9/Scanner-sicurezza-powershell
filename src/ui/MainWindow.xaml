@@ -368,7 +368,7 @@
                             </Border>
                         </StackPanel>
                         <TextBlock x:Name="TxtSottotitoloApp"
-                                   Text="62 Controlli Deterministici + Assistente IA Locale (Ollama)"
+                                   Text="64 Controlli Deterministici + Assistente IA Locale (Ollama)"
                                    FontSize="11.5"
                                    Foreground="#94A3B8"
                                    Margin="0,2,0,0"/>

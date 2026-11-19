@@ -1,4 +1,4 @@
-# Security controls catalog - extended Home/Pro profile (62 controls)
+# Security controls catalog - extended Home/Pro profile (64 controls)
 # Schema version 0.2
 # This file is the source of truth; the runtime reads home_profile.json (generated).
 
@@ -790,3 +790,27 @@ controls:
       command_ref: "SystemSecurity.ps1#Test-KernelDmaProtection"
     references:
       - "Microsoft Secured-core PC - Kernel DMA Protection"
+  - id: "HOME-NET-009"
+    title: "No insecure Wi-Fi profiles configured for AutoConnect"
+    category: "Network"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Parses saved WLAN XML profiles under C:\\ProgramData\\Microsoft\\Wlansvc\\Profiles\\Interfaces in read-only mode to ensure no open, shared, WEP, WPA, WPAPSK, or TKIP network is configured with connectionMode set to auto."
+    rationale: "Automatic connection to open, WEP, or legacy WPA/TKIP wireless networks exposes traffic to passive eavesdropping and Evil Twin / Adversary-in-the-Middle attacks whenever an attacker broadcasts a matching SSID."
+    check:
+      command_ref: "Network.ps1#Test-InsecureWifiProfiles"
+    references:
+      - "NIST SP 800-153 - Guidelines for Securing Wireless Local Area Networks"
+      - "MITRE ATT&CK T1557 - Adversary-in-the-Middle"
+  - id: "HOME-NET-010"
+    title: "No high-risk TCP ports exposed on all network interfaces"
+    category: "Network"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Inspects listening TCP sockets via Get-NetTCPConnection (excluding loopback addresses and RPC port 135) to verify that high-risk remote-access, legacy, or backdoor ports (21, 23, 69, 139, 1433, 3389, 4444, 5900, 5985, 5986, 6379) are not exposed."
+    rationale: "Unrestricted remote-administration, unencrypted legacy, or database TCP services bound to non-loopback interfaces significantly expand the network attack surface for brute-force, lateral movement, and exploitation."
+    check:
+      command_ref: "Network.ps1#Test-HighRiskListeningPorts"
+    references:
+      - "CIS Benchmark Windows 11 - Network Exposure"
+      - "MITRE ATT&CK T1021 - Remote Services"

@@ -329,9 +329,19 @@ $script:RimediStaticiFetta = @{
         command = 'Get-CimInstance -ClassName Win32_DeviceGuard -Namespace root\Microsoft\Windows\DeviceGuard | Select-Object AvailableSecurityProperties'
         risk    = "Basso: protegge la memoria da dispositivi PCIe/Thunderbolt esterni non attendibili."
     }
+    'HOME-NET-009' = [PSCustomObject]@{
+        text    = "Disabilita la connessione automatica (AutoConnect) sui profili Wi-Fi aperti, WEP o WPA/TKIP obsoleti oppure rimuovi i profili non attendibili."
+        command = 'netsh wlan set profileparameter name="<SSID>" connectionmode=manual'
+        risk    = "Basso: richiede di connettersi manualmente alle reti wireless insicure prevenendo attacchi Evil Twin."
+    }
+    'HOME-NET-010' = [PSCustomObject]@{
+        text    = "Verifica e arresta o limita al solo traffico locale / firewall i servizi non necessari che espongono porte TCP ad alto rischio (FTP, Telnet, RDP, VNC, WinRM, Redis, ecc.) su tutte le interfacce."
+        command = 'Get-NetTCPConnection -State Listen | Sort-Object LocalPort | Select-Object LocalAddress, LocalPort, OwningProcess'
+        risk    = "Medio: verifica prima che l'accesso remoto (es. RDP) non sia richiesto dal tuo flusso di lavoro."
+    }
 }
 
-# Complete English (EN) control translations for all 62 controls (Title, Category, Rationale, Remediation, Risk)
+# Complete English (EN) control translations for all 64 controls (Title, Category, Rationale, Remediation, Risk)
 $script:TraduzioniControlliEN = @{
     'HOME-FW-001'  = @{ cat = 'Firewall';          title = 'Windows Firewall enabled on all profiles';                   rat = 'The firewall is the first line of defense against unauthorized network connections.'; rem = 'Enable Windows Defender Firewall for Domain, Private, and Public profiles via Windows Security or PowerShell as Administrator.'; risk = 'Low: blocks unsolicited inbound connections while allowing normal outbound traffic.' }
     'HOME-UAC-001' = @{ cat = 'UAC';               title = 'User Account Control (UAC) enabled';                         rat = 'UAC protects the system by asking for confirmation before running elevated operations.'; rem = 'Enable UAC (EnableLUA = 1) via Windows Settings or PowerShell as Administrator. Requires a reboot.'; risk = 'Low: Windows will prompt before administrative changes.' }
@@ -395,9 +405,11 @@ $script:TraduzioniControlliEN = @{
     'HOME-SYS-010' = @{ cat = 'Windows Settings';  title = 'PrintNightmare printer driver installation protection';         rat = 'Allowing non-administrators to install printer drivers exposes Windows to PrintNightmare (CVE-2021-34527) privilege escalation.'; rem = 'Ensure RestrictDriverInstallationToAdministrators is not set to 0 in PointAndPrint policy (or disable Spooler if unused).'; risk = 'Low: restricts new printer driver installations to administrators.' }
     'HOME-FIL-009' = @{ cat = 'File Security';     title = 'No vulnerable unquoted service executable paths';             rat = 'Unquoted service paths containing spaces outside SystemRoot can allow local privilege escalation via path interception.'; rem = 'Quote the executable path in the ImagePath registry value under HKLM:\SYSTEM\CurrentControlSet\Services\<ServiceName>.'; risk = 'Low: quoting the executable path secures service startup without changing behavior.' }
     'HOME-SEC-011' = @{ cat = 'Advanced Security'; title = 'Kernel DMA Protection active';                                 rat = 'Kernel DMA Protection uses hardware IOMMU isolation to defend against rogue external PCIe or Thunderbolt DMA attacks.'; rem = 'Enable VT-d / AMD-Vi IOMMU and Kernel DMA Protection in UEFI/BIOS and ensure DeviceEnumerationPolicy is not set to 2.'; risk = 'Low: prevents unauthorized direct memory access from external peripherals.' }
+    'HOME-NET-009' = @{ cat = 'Network';           title = 'No insecure Wi-Fi profiles configured for AutoConnect';         rat = 'AutoConnect on open, WEP, or legacy WPA/TKIP profiles enables passive sniffing and Evil Twin / Adversary-in-the-Middle attacks whenever a matching SSID is spoofed.'; rem = 'Switch insecure wireless profiles to manual connection mode or remove untrusted open/WEP/TKIP Wi-Fi profiles.'; risk = 'Low: requires manual confirmation before joining untrusted or legacy wireless networks.' }
+    'HOME-NET-010' = @{ cat = 'Network';           title = 'No high-risk TCP ports exposed on all network interfaces';       rat = 'Listening remote-access, legacy cleartext, or database TCP services bound to non-loopback addresses expand host exposure to brute-force and remote exploitation.'; rem = 'Disable unnecessary listening services (FTP, Telnet, TFTP, VNC, WinRM, Redis, RDP) or restrict bindings to loopback/authorized firewall rules.'; risk = 'Medium: confirm no active remote management workflow depends on the listening service before stopping it.' }
 }
 
-# Complete German (DE) control translations for all 62 controls (Title, Category, Rationale, Remediation, Risk)
+# Complete German (DE) control translations for all 64 controls (Title, Category, Rationale, Remediation, Risk)
 $script:TraduzioniControlliDE = @{
     'HOME-FW-001'  = @{ cat = 'Firewall';            title = 'Windows-Firewall auf allen Profilen aktiviert';                  rat = 'Die Firewall ist die erste Verteidigungslinie gegen unbefugte Netzwerkverbindungen.'; rem = 'Aktivieren Sie die Windows Defender Firewall fuer Domaenen-, Privat- und Oeffentliche Profile ueber Windows-Sicherheit oder PowerShell als Administrator.'; risk = 'Gering: Blockiert unerwuenschte eingehende Verbindungen bei normalem ausgehendem Datenverkehr.' }
     'HOME-UAC-001' = @{ cat = 'UAC';                 title = 'Benutzerkontensteuerung (UAC) aktiviert';                        rat = 'UAC schuetzt das System, indem vor Vorgaengen mit Administratorrechten eine Bestaetigung angefordert wird.'; rem = 'Aktivieren Sie UAC (EnableLUA = 1) in den Windows-Einstellungen oder per PowerShell als Administrator. Neustart erforderlich.'; risk = 'Gering: Windows fragt vor administrativen Aenderungen nach.' }
@@ -461,6 +473,8 @@ $script:TraduzioniControlliDE = @{
     'HOME-SYS-010' = @{ cat = 'Windows-Einstellungen'; title = 'PrintNightmare-Schutz fuer Druckertreiber-Installationen';     rat = 'Wenn Nicht-Administratoren Druckertreiber installieren duerfen, besteht das Risiko von PrintNightmare (CVE-2021-34527)-Rechteausweitung.'; rem = 'Stellen Sie sicher, dass RestrictDriverInstallationToAdministrators nicht auf 0 steht (oder deaktivieren Sie Spooler).'; risk = 'Gering: Beschraenkt neue Druckertreiberinstallationen auf Administratoren.' }
     'HOME-FIL-009' = @{ cat = 'Dateisicherheit';       title = 'Keine verwundbaren nicht-quotierten Dienstpfade';              rat = 'Nicht in Anfuehrungszeichen gesetzte Dienstpfade mit Leerzeichen ausserhalb von Windows koennen lokale Rechteausweitung ermoeglichen.'; rem = 'Setzen Sie den ausfuehrbaren Pfad in ImagePath unter HKLM:\SYSTEM\CurrentControlSet\Services\<Dienst> in Anfuehrungszeichen.'; risk = 'Gering: Schuetzt den Dienststart ohne Aenderung der Funktion.' }
     'HOME-SEC-011' = @{ cat = 'Erweiterte Sicherheit'; title = 'Kernel-DMA-Schutz aktiv';                                      rat = 'Der Kernel-DMA-Schutz isoliert externe PCIe-/Thunderbolt-Geraete per IOMMU gegen unbefugte Speicherzugriffe.'; rem = 'Aktivieren Sie VT-d / AMD-Vi und Kernel-DMA-Schutz im UEFI/BIOS und setzen Sie DeviceEnumerationPolicy nicht auf 2.'; risk = 'Gering: Schuetzt den Arbeitsspeicher vor boesartigen DMA-Geraeten.' }
+    'HOME-NET-009' = @{ cat = 'Netzwerk';              title = 'Keine unsicheren WLAN-Profile mit automatischer Verbindung'; rat = 'Automatische Verbindungen zu offenen, WEP- oder alten WPA/TKIP-WLANs ermoeglichen Abhoeren und Evil-Twin-Angriffe.'; rem = 'Setzen Sie unsichere WLAN-Profile auf manuelle Verbindung oder loeschen Sie nicht vertrauenswuerdige Profile.'; risk = 'Gering: Verhindert automatisches Verbinden mit unsicheren Funknetzen.' }
+    'HOME-NET-010' = @{ cat = 'Netzwerk';              title = 'Keine kritischen TCP-Ports auf allen Schnittstellen offen';   rat = 'Auf allen Schnittstellen lauschende Dienste wie FTP, Telnet, VNC, RDP, WinRM oder Redis vergroessern die Angriffsflaeche.'; rem = 'Deaktivieren Sie nicht benoetigte Dienste oder beschraenken Sie deren Bindung auf Loopback bzw. strenge Firewall-Regeln.'; risk = 'Mittel: Pruefen Sie vorab, ob benoetigte Fernwartungsdienste betroffen sind.' }
 }
 
 function Get-ValoreProprietaSicuro {

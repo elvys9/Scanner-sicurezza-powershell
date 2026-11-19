@@ -12,6 +12,8 @@
     - HOME-NET-006: WinRM service disabled/stopped (Test-WinRmDisabilitatoOSicuro)
     - HOME-NET-007: WPAD auto-discovery disabled (Test-WpadDisabilitato)
     - HOME-NET-008: Legacy TLS 1.0/1.1 disabled and DoH supported (Test-LegacyTlsAndDoh)
+    - HOME-NET-009: No insecure Wi-Fi profiles configured for AutoConnect (Test-InsecureWifiProfiles)
+    - HOME-NET-010: No high-risk TCP ports exposed on all interfaces (Test-HighRiskListeningPorts)
     Never modifies system state.
 #>
 
@@ -634,4 +636,354 @@ function Test-LegacyTlsAndDoh {
     }
 
     return $risultato
+}
+
+function Test-InsecureWifiProfiles {
+    <#
+    .SYNOPSIS
+        Verifies that no saved Wi-Fi profile with insecure authentication or encryption
+        is configured for automatic connection (HOME-NET-009).
+
+    .DESCRIPTION
+        Reads saved WLAN profile XML files directly in read-only mode without relying
+        on localized netsh output. Flags a profile only when connectionMode is 'auto'
+        AND either authentication is insecure (open, shared, WEP, WPA, WPAPSK) or
+        encryption is insecure (none, WEP, TKIP).
+
+    .PARAMETER Controllo
+        Catalog control object metadata for HOME-NET-009.
+
+    .PARAMETER Ambiente
+        Optional shared host environment snapshot object.
+
+    .PARAMETER ProfilesPath
+        Optional path to the WLAN XML profiles directory (defaults to the standard Windows path).
+        Primarily intended for deterministic unit testing.
+
+    .EXAMPLE
+        Test-InsecureWifiProfiles -Controllo $control
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null,
+
+        [Parameter(Mandatory = $false)]
+        [string]$ProfilesPath = 'C:\ProgramData\Microsoft\Wlansvc\Profiles\Interfaces'
+    )
+
+    $result = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = 'No insecure Wi-Fi profiles (open, shared, WEP, WPA, WPAPSK, or TKIP) configured with AutoConnect enabled'
+        Evidence = $null
+        Error    = $null
+    }
+
+    $insecureAuthValues = @('open', 'shared', 'WEP', 'WPA', 'WPAPSK')
+    $insecureEncValues  = @('none', 'WEP', 'TKIP')
+
+    try {
+        if (-not (Test-Path -LiteralPath $ProfilesPath -ErrorAction Stop)) {
+            $result.Status   = 'superato'
+            $result.Observed = 'No saved Wi-Fi profiles found on this system.'
+            $result.Evidence = [PSCustomObject]@{
+                ProfilesPath    = $ProfilesPath
+                DirectoryExists = $false
+                ScannedProfiles = 0
+                InsecureProfiles = @()
+            }
+            return $result
+        }
+
+        $profileFiles = @(Get-ChildItem -LiteralPath $ProfilesPath -Filter '*.xml' -File -Recurse -ErrorAction Stop)
+        if ($profileFiles.Count -eq 0) {
+            $result.Status   = 'superato'
+            $result.Observed = 'No saved Wi-Fi profiles found on this system.'
+            $result.Evidence = [PSCustomObject]@{
+                ProfilesPath     = $ProfilesPath
+                DirectoryExists  = $true
+                ScannedProfiles  = 0
+                InsecureProfiles = @()
+            }
+            return $result
+        }
+
+        $scannedCount = 0
+        $insecureProfiles = @()
+
+        foreach ($profileFile in $profileFiles) {
+            $rawXml = Get-Content -LiteralPath $profileFile.FullName -Raw -ErrorAction Stop
+            if ([string]::IsNullOrWhiteSpace($rawXml)) {
+                continue
+            }
+
+            $xmlDoc = $null
+            try {
+                $xmlDoc = [xml]$rawXml
+            }
+            catch {
+                # Skip malformed or non-WLAN XML files cleanly without failing the entire audit
+                continue
+            }
+
+            $root = $xmlDoc.DocumentElement
+            if ($null -eq $root) {
+                continue
+            }
+
+            $scannedCount++
+
+            $profileName    = if ($null -ne $root['name']) { ([string]$root['name'].InnerText).Trim() } else { $profileFile.BaseName }
+            $connectionMode = if ($null -ne $root['connectionMode']) { ([string]$root['connectionMode'].InnerText).Trim() } else { '' }
+
+            $authNode = $null
+            $msmNode = $root['MSM']
+            if ($null -ne $msmNode) {
+                $securityNode = $msmNode['security']
+                if ($null -ne $securityNode) {
+                    $authNode = $securityNode['authEncryption']
+                }
+            }
+
+            $authentication = if ($null -ne $authNode -and $null -ne $authNode['authentication']) { ([string]$authNode['authentication'].InnerText).Trim() } else { '' }
+            $encryption     = if ($null -ne $authNode -and $null -ne $authNode['encryption'])     { ([string]$authNode['encryption'].InnerText).Trim() }     else { '' }
+
+            $isAutoConnect   = ($connectionMode -eq 'auto')
+            $hasInsecureAuth = ($insecureAuthValues -contains $authentication)
+            $hasInsecureEnc  = ($insecureEncValues -contains $encryption)
+
+            if ($isAutoConnect -and ($hasInsecureAuth -or $hasInsecureEnc)) {
+                $insecureProfiles += [PSCustomObject]@{
+                    ProfileName    = $profileName
+                    ConnectionMode = $connectionMode
+                    Authentication = $authentication
+                    Encryption     = $encryption
+                    FileName       = $profileFile.Name
+                }
+            }
+        }
+
+        if ($insecureProfiles.Count -gt 0) {
+            $summaryList = @($insecureProfiles | ForEach-Object {
+                "$($_.ProfileName) (Auth=$($_.Authentication), Enc=$($_.Encryption), Mode=$($_.ConnectionMode))"
+            }) -join '; '
+
+            $result.Status   = 'fallito'
+            $result.Observed = "Insecure AutoConnect Wi-Fi profile(s) detected: $summaryList"
+            $result.Evidence = [PSCustomObject]@{
+                ProfilesPath     = $ProfilesPath
+                ScannedProfiles  = $scannedCount
+                InsecureProfiles = @($insecureProfiles)
+            }
+        }
+        elseif ($scannedCount -eq 0) {
+            $result.Status   = 'superato'
+            $result.Observed = 'No saved Wi-Fi profiles found on this system.'
+            $result.Evidence = [PSCustomObject]@{
+                ProfilesPath     = $ProfilesPath
+                ScannedProfiles  = 0
+                InsecureProfiles = @()
+            }
+        }
+        else {
+            $result.Status   = 'superato'
+            $result.Observed = "All $scannedCount saved Wi-Fi profile(s) use strong authentication/encryption or manual connection mode."
+            $result.Evidence = [PSCustomObject]@{
+                ProfilesPath     = $ProfilesPath
+                ScannedProfiles  = $scannedCount
+                InsecureProfiles = @()
+            }
+        }
+    }
+    catch {
+        $exception = $_.Exception
+        if (
+            ($exception -is [System.UnauthorizedAccessException]) -or
+            ($exception -is [System.Security.SecurityException]) -or
+            ($exception.Message -match '(?i)access.*denied|unauthorized')
+        ) {
+            $result.Status   = 'sconosciuto'
+            $result.Observed = 'Administrator privileges are required to inspect saved Wi-Fi profile XML files'
+            $result.Error    = $exception.Message
+        }
+        else {
+            $result.Status = 'errore'
+            $result.Error  = $exception.Message
+        }
+    }
+
+    return $result
+}
+
+function Test-HighRiskListeningPorts {
+    <#
+    .SYNOPSIS
+        Verifies that high-risk remote access, legacy, or backdoor TCP ports are not
+        listening on exposed (non-loopback) network interfaces (HOME-NET-010).
+
+    .DESCRIPTION
+        Queries listening TCP sockets via Get-NetTCPConnection in read-only mode, strictly
+        excluding loopback bindings (127.0.0.1, ::1, and 127.*). Evaluates exposed sockets
+        against a closed allow-free high-risk port table (21, 23, 69, 139, 1433, 3389,
+        4444, 5900, 5985, 5986, 6379) while deliberately excluding RPC port 135 to prevent
+        false positives on standard Windows hosts. Resolves owning process names cleanly.
+
+    .PARAMETER Controllo
+        Catalog control object metadata for HOME-NET-010.
+
+    .PARAMETER Ambiente
+        Optional shared host environment snapshot object.
+
+    .EXAMPLE
+        Test-HighRiskListeningPorts -Controllo $control
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $result = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = 'No high-risk TCP ports listening on exposed (non-loopback) network interfaces'
+        Evidence = $null
+        Error    = $null
+    }
+
+    # Strict closed set of high-risk exposed TCP ports (deliberately excludes RPC 135)
+    $highRiskPorts = @{
+        21   = 'FTP'
+        23   = 'Telnet'
+        69   = 'TFTP'
+        139  = 'NetBIOS Session'
+        1433 = 'MS SQL Server'
+        3389 = 'RDP'
+        4444 = 'Reverse Shell / Metasploit'
+        5900 = 'VNC'
+        5985 = 'WinRM HTTP'
+        5986 = 'WinRM HTTPS'
+        6379 = 'Redis'
+    }
+
+    try {
+        if ($null -eq (Get-Command -Name 'Get-NetTCPConnection' -ErrorAction SilentlyContinue)) {
+            $result.Status   = 'sconosciuto'
+            $result.Observed = 'Get-NetTCPConnection cmdlet is unavailable on this system.'
+            return $result
+        }
+
+        $listeningConnections = @(Get-NetTCPConnection -State Listen -ErrorAction Stop)
+        $exposedFindings = @()
+
+        foreach ($conn in $listeningConnections) {
+            if ($null -eq $conn) {
+                continue
+            }
+
+            $localAddr = if ($null -ne $conn.PSObject.Properties['LocalAddress'] -and $null -ne $conn.LocalAddress) {
+                ([string]$conn.LocalAddress).Trim()
+            }
+            else {
+                ''
+            }
+
+            if ([string]::IsNullOrWhiteSpace($localAddr)) {
+                continue
+            }
+
+            # Strip optional IPv6 scope identifier before loopback comparison
+            $normalizedAddr = ($localAddr -split '%')[0]
+            if (
+                ($normalizedAddr -eq '127.0.0.1') -or
+                ($normalizedAddr -like '127.*') -or
+                ($normalizedAddr -eq '::1') -or
+                ($normalizedAddr -eq '::ffff:127.0.0.1') -or
+                ($normalizedAddr -eq 'localhost')
+            ) {
+                continue
+            }
+
+            $localPort = if ($null -ne $conn.PSObject.Properties['LocalPort'] -and $null -ne $conn.LocalPort) {
+                [int]$conn.LocalPort
+            }
+            else {
+                0
+            }
+
+            if ($highRiskPorts.ContainsKey($localPort)) {
+                $owningPid = $null
+                $processName = 'Unknown'
+
+                if ($null -ne $conn.PSObject.Properties['OwningProcess'] -and $null -ne $conn.OwningProcess) {
+                    $owningPid = [int]$conn.OwningProcess
+                    if ($owningPid -gt 0) {
+                        $proc = Get-Process -Id $owningPid -ErrorAction SilentlyContinue
+                        if ($null -ne $proc -and $null -ne $proc.PSObject.Properties['ProcessName'] -and -not [string]::IsNullOrWhiteSpace($proc.ProcessName)) {
+                            $processName = [string]$proc.ProcessName
+                        }
+                    }
+                    elseif ($owningPid -eq 0) {
+                        $processName = 'Idle'
+                    }
+                }
+
+                $exposedFindings += [PSCustomObject]@{
+                    LocalAddress  = $localAddr
+                    LocalPort     = $localPort
+                    ProtocolLabel = $highRiskPorts[$localPort]
+                    PID           = $owningPid
+                    ProcessName   = $processName
+                }
+            }
+        }
+
+        if ($exposedFindings.Count -gt 0) {
+            $sortedFindings = @($exposedFindings | Sort-Object -Property LocalPort, LocalAddress)
+            $summaryList = @($sortedFindings | ForEach-Object {
+                "$($_.LocalPort)/$($_.ProtocolLabel) ($($_.LocalAddress), Process=$($_.ProcessName), PID=$($_.PID))"
+            }) -join '; '
+
+            $result.Status   = 'fallito'
+            $result.Observed = "High-risk TCP port(s) exposed on non-loopback interfaces: $summaryList"
+            $result.Evidence = [PSCustomObject]@{
+                ExposedCount = $sortedFindings.Count
+                ExposedPorts = @($sortedFindings)
+            }
+        }
+        else {
+            $result.Status   = 'superato'
+            $result.Observed = 'No high-risk TCP ports are listening on exposed network interfaces.'
+            $result.Evidence = [PSCustomObject]@{
+                ExposedCount = 0
+                ExposedPorts = @()
+                CheckedPorts = @($highRiskPorts.Keys | Sort-Object)
+            }
+        }
+    }
+    catch {
+        $exception = $_.Exception
+        if (
+            ($exception -is [System.Management.Automation.CommandNotFoundException]) -or
+            ($exception -is [System.NotSupportedException]) -or
+            ($exception.Message -match '(?i)not recognized|unavailable|not available|NetTCPIP|not supported')
+        ) {
+            $result.Status   = 'sconosciuto'
+            $result.Observed = 'Get-NetTCPConnection cmdlet is unavailable on this system.'
+            $result.Error    = $exception.Message
+        }
+        else {
+            $result.Status = 'errore'
+            $result.Error  = $exception.Message
+        }
+    }
+
+    return $result
 }

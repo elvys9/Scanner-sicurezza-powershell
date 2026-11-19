@@ -1,7 +1,7 @@
 # Windows 11 Security Scanner (PowerShell 5.1 & WPF + Local Ollama AI)
 
 > **A zero-dependency, 100% read-only security configuration, antivirus, and suspicious file scanner for Windows 11 (Home & Pro), inspired by [winutil](https://github.com/ChrisTitusTech/winutil).**  
-> Built natively for Windows PowerShell 5.1 with a modernized two-page Fluent WPF graphical interface (Dark/Light themes, explicit `IT` / `EN` / `DE` language selector), **62 deterministic CIS & MITRE ATT&CK aligned checks**, and an integrated **Local AI Security Advisor powered by Ollama**.
+> Built natively for Windows PowerShell 5.1 with a modernized two-page Fluent WPF graphical interface (Dark/Light themes, explicit `IT` / `EN` / `DE` language selector), **64 deterministic CIS & MITRE ATT&CK aligned checks**, and an integrated **Local AI Security Advisor powered by Ollama**.
 
 ---
 
@@ -30,10 +30,10 @@ irm https://raw.githubusercontent.com/elvys9/Powershell-Vulnerability-Scanner/ma
 
 ## ✨ Key Features
 
-- **100% Read-Only & Deterministic**: The scanner **never modifies** system settings, registry keys, or services (enforced via automated PowerShell AST static analysis tests). All 62 checks are evaluated deterministically; the AI only explains results and recommends prioritized fixes.
+- **100% Read-Only & Deterministic**: The scanner **never modifies** system settings, registry keys, or services (enforced via automated PowerShell AST static analysis tests). All 64 checks are evaluated deterministically; the AI only explains results and recommends prioritized fixes.
 - **Zero External Runtime Dependencies**: Runs out-of-the-box on Windows 11 using built-in Windows PowerShell 5.1 and `.NET Framework` (`PresentationFramework` WPF).
 - **Two-Page Full-Screen WPF Interface**:
-  1. **Page 1 — Security Controls & Technical Details**: Filterable table of 62 security controls (Status, Severity, Category, Search), live progress bar, KPI summary cards, and step-by-step remediation guidance with one-click copyable PowerShell commands.
+  1. **Page 1 — Security Controls & Technical Details**: Filterable table of 64 security controls (Status, Severity, Category, Search), live progress bar, KPI summary cards, and step-by-step remediation guidance with one-click copyable PowerShell commands.
   2. **Page 2 — Full-Screen Local AI Security Advisor (Ollama)**: Dedicated full-screen workspace that analyzes all failed controls and generates an executive security report and prioritized remediation plan.
 - **Zero-Touch Ollama Auto-Setup (Works on VMs too)**:
   - Automatically detects a local Ollama instance (`127.0.0.1:11434`) or a VM Host gateway (`10.0.2.2:11434`).
@@ -42,7 +42,7 @@ irm https://raw.githubusercontent.com/elvys9/Powershell-Vulnerability-Scanner/ma
 
 ---
 
-## 🛡️ All 62 Implemented Security Controls
+## 🛡️ All 64 Implemented Security Controls
 
 | ID             | Category          | Security Check Description                                                  | Type     |
 |----------------|-------------------|-----------------------------------------------------------------------------|----------|
@@ -97,6 +97,8 @@ irm https://raw.githubusercontent.com/elvys9/Powershell-Vulnerability-Scanner/ma
 | `HOME-NET-006` | Network           | Windows Remote Management (`WinRM` / PowerShell Remoting) service stopped   | Function |
 | `HOME-NET-007` | Network           | WPAD automatic web proxy discovery disabled (anti-MITM)                     | Function |
 | `HOME-NET-008` | Network           | Legacy TLS 1.0/1.1 disabled and DNS over HTTPS (`DoH`) supported            | Function |
+| `HOME-NET-009` | Network           | No insecure Wi-Fi profiles configured for AutoConnect                       | Function |
+| `HOME-NET-010` | Network           | No high-risk TCP ports exposed on all network interfaces                    | Function |
 | `HOME-ENC-001` | Encryption        | BitLocker or Device Encryption active on the system drive (`C:`) (Home & Pro) | Function |
 | `HOME-PRV-001` | Privacy           | Windows diagnostic telemetry set to minimum required level (`AllowTelemetry <= 1`) | Function |
 | `HOME-SEC-001` | Advanced Security | UEFI Secure Boot enabled                                                    | Function |
@@ -155,14 +157,14 @@ src/
     Start-ScannerUI.ps1    WPF controller, asynchronous Runspace execution & Ollama integration
     ViewModel.ps1          Pure functions for sorting, filtering, counters, and detail formatting
 catalog/
-  home_profile.yaml        Source security catalog (YAML, 62 controls)
+  home_profile.yaml        Source security catalog (YAML, 64 controls)
   home_profile.json        Generated runtime catalog (JSON)
   schema.json              JSON Schema v0.2 validation specification
 tools/
   Build.ps1                Compiles all modules into dist/scanner-win11*.ps1 (IT/EN/DE)
   yaml_to_json.py          Converts YAML catalog to JSON and validates against schema.json
 tests/
-  *.Tests.ps1              170 Pester 5 automated tests (Unit, AST Read-Only, ViewModel, Ollama, E2E)
+  *.Tests.ps1              178 Pester 5 automated tests (Unit, AST Read-Only, ViewModel, Ollama, E2E)
 ```
 
 ---
@@ -176,6 +178,6 @@ python tools/yaml_to_json.py
 # 2. Rebuild the standalone single-file scripts in dist/:
 powershell -ExecutionPolicy Bypass -File tools\Build.ps1
 
-# 3. Run the entire Pester 5 test suite (170 tests):
+# 3. Run the entire Pester 5 test suite (178 tests):
 Invoke-Pester tests -Output Detailed
 ```

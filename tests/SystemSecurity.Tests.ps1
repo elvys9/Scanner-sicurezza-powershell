@@ -453,13 +453,13 @@ Describe 'Controlli SystemSecurity (HOME-UPD-001, HOME-ENC-001, HOME-PRV-001, HO
     }
 }
 
-Describe 'Copertura completa dei 62 controlli e script singolo stile winutil' {
+Describe 'Copertura completa dei 64 controlli e script singolo stile winutil' {
 
-    It 'Tutti i 62 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
+    It 'Tutti i 64 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
         $percorsoJson = Join-Path $PSScriptRoot '..\catalog\home_profile.json'
         $cat = Get-Content -LiteralPath $percorsoJson -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        @($cat.controls).Count | Should -Be 62
+        @($cat.controls).Count | Should -Be 64
         foreach ($c in $cat.controls) {
             $haReg = ($null -ne $c.check.PSObject.Properties['registry'] -and $null -ne $c.check.registry)
             $haCmd = ($null -ne $c.check.PSObject.Properties['command_ref'] -and (-not [string]::IsNullOrWhiteSpace($c.check.command_ref)))
