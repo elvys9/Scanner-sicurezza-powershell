@@ -753,9 +753,9 @@
                 <!-- Tabella + Pannello Dettaglio -->
                 <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="3.1*" MinWidth="460"/>
+                        <ColumnDefinition Width="3.1*" MinWidth="380"/>
                         <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="2.3*" MinWidth="360"/>
+                        <ColumnDefinition Width="2.3*" MinWidth="320"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- SINISTRA: Tabella Risultati -->
@@ -781,15 +781,18 @@
                                       Foreground="{DynamicResource TextPrimary}"
                                       BorderThickness="0"
                                       RowHeight="36"
+                                      HorizontalScrollBarVisibility="Auto"
+                                      VerticalScrollBarVisibility="Auto"
+                                      CanUserResizeColumns="True"
                                       CanUserAddRows="False"
                                       CanUserDeleteRows="False"
                                       CanUserReorderColumns="False">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn x:Name="ColStato" Header="Stato" Binding="{Binding StatusLabel}" Width="140"/>
-                                    <DataGridTextColumn x:Name="ColGravita" Header="Gravita'" Binding="{Binding SeverityLabel}" Width="95"/>
-                                    <DataGridTextColumn x:Name="ColCategoria" Header="Categoria" Binding="{Binding Category}" Width="140"/>
-                                    <DataGridTextColumn x:Name="ColId" Header="ID" Binding="{Binding ControlId}" Width="115"/>
-                                    <DataGridTextColumn x:Name="ColControllo" Header="Controllo" Binding="{Binding Title}" Width="*"/>
+                                    <DataGridTextColumn x:Name="ColStato" Header="Stato" Binding="{Binding StatusLabel}" Width="Auto" MinWidth="130"/>
+                                    <DataGridTextColumn x:Name="ColGravita" Header="Gravita'" Binding="{Binding SeverityLabel}" Width="Auto" MinWidth="95"/>
+                                    <DataGridTextColumn x:Name="ColCategoria" Header="Categoria" Binding="{Binding Category}" Width="Auto" MinWidth="150"/>
+                                    <DataGridTextColumn x:Name="ColId" Header="ID" Binding="{Binding ControlId}" Width="Auto" MinWidth="130"/>
+                                    <DataGridTextColumn x:Name="ColControllo" Header="Controllo" Binding="{Binding Title}" Width="Auto" MinWidth="560"/>
                                 </DataGrid.Columns>
                             </DataGrid>
 
