@@ -73,9 +73,10 @@ Describe 'Verifica SOLA LETTURA dei file sorgente' {
             'Start-Process'
         )
 
-        $percorsoSrc  = Join-Path $PSScriptRoot '..\src'
-        $percorsoCore = Join-Path $percorsoSrc 'core'
-        $percorsoUi   = Join-Path $percorsoSrc 'ui'
+        $percorsoSrc         = Join-Path $PSScriptRoot '..\src'
+        $percorsoCore        = Join-Path $percorsoSrc 'core'
+        $percorsoUi          = Join-Path $percorsoSrc 'ui'
+        $percorsoRemediation = Join-Path $percorsoSrc 'remediation'
     }
 
     Context 'Motore di scansione (src/core)' {
@@ -186,8 +187,11 @@ Describe 'Verifica SOLA LETTURA dei file sorgente' {
             $violazioni.Count | Should -Be 0 -Because $messaggio
         }
 
-        It 'Nessun file eseguibile in src/ contiene scritture nel registro' {
-            $fileSorgente = Get-ChildItem -Path $percorsoSrc -Filter '*.ps1' -Recurse
+        It 'Nessun file eseguibile in src/core, src/ui e Invoke-Scanner.ps1 contiene scritture nel registro' {
+            $fileCoreReg  = @(Get-ChildItem -Path $percorsoCore -Filter '*.ps1' -Recurse)
+            $fileUiReg    = @(Get-ChildItem -Path $percorsoUi -Filter '*.ps1' -Recurse)
+            $fileEntryReg = Get-Item -LiteralPath (Join-Path $percorsoSrc 'Invoke-Scanner.ps1')
+            $fileSorgente = @($fileCoreReg) + @($fileUiReg) + @($fileEntryReg)
             $violazioni = @()
 
             foreach ($file in $fileSorgente) {
@@ -214,6 +218,73 @@ Describe 'Verifica SOLA LETTURA dei file sorgente' {
                 "Trovati comandi di scrittura su Item/Registro:`n$($violazioni -join "`n")"
             } else { 'Nessuna scrittura trovata' }
             $violazioni.Count | Should -Be 0 -Because $messaggio
+        }
+    }
+
+    Context 'Modulo opzionale di remediation (src/remediation)' {
+
+        It 'La cartella src/remediation esiste e tutti gli script sono sintatticamente validi' {
+            Test-Path -LiteralPath $percorsoRemediation | Should -Be $true
+
+            $fileRemediation = @(Get-ChildItem -Path $percorsoRemediation -Filter '*.ps1' -Recurse)
+            $fileRemediation.Count | Should -BeGreaterThan 0
+
+            $erroriSintassi = @()
+            foreach ($file in $fileRemediation) {
+                $erroriParse = $null
+                [System.Management.Automation.Language.Parser]::ParseFile(
+                    $file.FullName,
+                    [ref]$null,
+                    [ref]$erroriParse
+                ) | Out-Null
+
+                foreach ($err in @($erroriParse)) {
+                    $erroriSintassi += "$($file.Name):$($err.Extent.StartLineNumber) - $($err.Message)"
+                }
+            }
+
+            $erroriSintassi.Count | Should -Be 0 -Because ($erroriSintassi -join "`n")
+        }
+
+        It 'src/remediation non usa comandi dinamici o distruttivi vietati (Invoke-Expression, iex, Invoke-Command, Remove-Item)' {
+            $fileRemediation = @(Get-ChildItem -Path $percorsoRemediation -Filter '*.ps1' -Recurse)
+            $comandiVietatiRem = @('Invoke-Expression', 'iex', 'Invoke-Command', 'Remove-Item')
+            $violazioni = @()
+
+            foreach ($file in $fileRemediation) {
+                $erroriParse = $null
+                $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+                    $file.FullName,
+                    [ref]$null,
+                    [ref]$erroriParse
+                )
+                $comandi = $ast.FindAll(
+                    { param($nodo) $nodo -is [System.Management.Automation.Language.CommandAst] },
+                    $true
+                )
+                foreach ($cmd in $comandi) {
+                    $nome = $cmd.GetCommandName()
+                    if ($nome -and ($comandiVietatiRem -contains $nome)) {
+                        $violazioni += "$($file.Name):$($cmd.Extent.StartLineNumber) - $nome"
+                    }
+                }
+            }
+
+            $violazioni.Count | Should -Be 0 -Because ($violazioni -join "`n")
+        }
+
+        It 'src/core e strettamente isolato e non referenzia o importa src/remediation' {
+            $fileCore = @(Get-ChildItem -Path $percorsoCore -Filter '*.ps1' -Recurse)
+            $riferimenti = @()
+
+            foreach ($file in $fileCore) {
+                $contenuto = [System.IO.File]::ReadAllText($file.FullName, [System.Text.Encoding]::UTF8)
+                if ($contenuto -match '(?i)src[\\/]remediation|[\\/]remediation[\\/]|FixRunner|RemediationCatalog|BackupManager|Invoke-SecurityRemediation|Restore-RemediationBackup') {
+                    $riferimenti += $file.Name
+                }
+            }
+
+            $riferimenti.Count | Should -Be 0 -Because "Trovati riferimenti a remediation in src/core: $($riferimenti -join ', ')"
         }
     }
 }
