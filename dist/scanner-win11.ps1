@@ -8841,6 +8841,367 @@ function Update-TemaFinestra {
     }
 }
 
+function Test-SessioneTerminaleSsh {
+    <#
+    .SYNOPSIS
+        Rileva se PowerShell e' in esecuzione all'interno di una sessione SSH o in Sessione 0
+        priva di desktop grafico interattivo (dove una finestra WPF rimarrebbe invisibile/bloccata).
+    #>
+    [CmdletBinding()]
+    param()
+
+    if (-not [string]::IsNullOrWhiteSpace($env:SSH_CONNECTION) -or
+        -not [string]::IsNullOrWhiteSpace($env:SSH_CLIENT) -or
+        -not [string]::IsNullOrWhiteSpace($env:SSH_TTY)) {
+        return $true
+    }
+
+    try {
+        if (-not [Environment]::UserInteractive) {
+            return $true
+        }
+        $procCorr = Get-Process -Id $PID -ErrorAction SilentlyContinue
+        if ($null -ne $procCorr -and $procCorr.SessionId -eq 0) {
+            return $true
+        }
+        # Verifica se il processo padre o antenato e' sshd
+        $currPid = $PID
+        for ($depth = 0; $depth -lt 4; $depth++) {
+            $wmiProc = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = $currPid" -ErrorAction SilentlyContinue
+            if ($null -eq $wmiProc) { break }
+            if ($wmiProc.Name -match '^(sshd|ssh-shellhost)(\.exe)?$') {
+                return $true
+            }
+            $parentId = [int]$wmiProc.ParentProcessId
+            if ($parentId -le 0 -or $parentId -eq $currPid) { break }
+            $pObj = Get-Process -Id $parentId -ErrorAction SilentlyContinue
+            if ($null -ne $pObj -and $pObj.ProcessName -match '^(sshd|ssh-shellhost)$') {
+                return $true
+            }
+            $currPid = $parentId
+        }
+    }
+    catch { }
+
+    return $false
+}
+
+function Show-ScannerConsoleUI {
+    <#
+    .SYNOPSIS
+        Interfaccia interattiva da terminale (TUI / CLI) per sessioni SSH o console senza GUI.
+        Supporta scansione in tempo reale dei 50 controlli, tabella colorata, ispezione dettagli,
+        Resoconto IA con Ollama (con auto-setup sulla VM), cambio lingua (IT/EN/DE) ed export JSON/HTML.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Catalogo,
+
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Ambiente,
+
+        [Parameter(Mandatory = $false)]
+        [string]$PercorsoProgetto = '',
+
+        [Parameter(Mandatory = $false)]
+        [string[]]$ControlId = @(),
+
+        [Parameter(Mandatory = $false)]
+        [string]$VersioneTool = '0.2.0',
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN', 'DE')]
+        [string]$LinguaIniziale = 'IT',
+
+        [Parameter(Mandatory = $false)]
+        [switch]$NonInterattivo
+    )
+
+    $lingua = $LinguaIniziale
+    $percorsoChecks = if ($PercorsoProgetto) { Join-Path $PercorsoProgetto 'src\core\Checks' } else { '' }
+    $totaleCat = @($Catalogo.controls).Count
+    $risultatiGrezzi = @()
+    $elementiVista   = @()
+
+    $eseguiScansioneConsole = {
+        $lblAvvio = switch ($lingua) {
+            'EN' { "Running security audit ($totaleCat deterministic controls) in read-only mode..." }
+            'DE' { "Sicherheitspruefung wird ausgefuehrt ($totaleCat deterministische Pruefungen, schreibgeschuetzt)..." }
+            default { "Esecuzione scansione di sicurezza ($totaleCat controlli deterministici) in sola lettura..." }
+        }
+        Write-Host ""
+        Write-Host "================================================================================" -ForegroundColor DarkCyan
+        Write-Host "  $lblAvvio" -ForegroundColor Cyan
+        Write-Host "================================================================================" -ForegroundColor DarkCyan
+
+        $onProg = {
+            param($idx, $tot, $res)
+            $simbolo = switch ($res.status) {
+                'superato'        { '[OK]' }
+                'fallito'         { '[X] ' }
+                'sconosciuto'     { '[?] ' }
+                'non_applicabile' { '[-] ' }
+                default           { '[!] ' }
+            }
+            $colore = switch ($res.status) {
+                'superato'        { 'Green' }
+                'fallito'         { 'Red' }
+                'sconosciuto'     { 'Yellow' }
+                'non_applicabile' { 'DarkGray' }
+                default           { 'Magenta' }
+            }
+            $pct = if ($tot -gt 0) { [int](($idx * 100) / $tot) } else { 100 }
+            $barra = ('#' * [int]($pct / 5)).PadRight(20, '.')
+            Write-Host ("  [{0,2}/{1,2}] [{2}] {3} {4}" -f $idx, $tot, $barra, $simbolo, $res.control_id) -ForegroundColor $colore
+        }
+
+        $paramRun = @{
+            Catalogo       = $Catalogo
+            Ambiente       = $Ambiente
+            CartellaChecks = $percorsoChecks
+            OnProgress     = $onProg
+        }
+        if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
+            $paramRun['ControlId'] = $ControlId
+        }
+
+        $script:ConsoleRisultatiGrezzi = Invoke-Controlli @paramRun
+        $script:ConsoleElementiVista   = @(ConvertTo-RisultatiVista -Risultati $script:ConsoleRisultatiGrezzi -Catalogo $Catalogo -Lingua $lingua)
+    }
+
+    $mostraRiepilogoETabella = {
+        $script:ConsoleElementiVista = @(ConvertTo-RisultatiVista -Risultati $script:ConsoleRisultatiGrezzi -Catalogo $Catalogo -Lingua $lingua)
+        $cnt = Measure-ConteggiRisultati -Elementi $script:ConsoleRisultatiGrezzi
+
+        $titoloBanner = switch ($lingua) {
+            'EN' { "WINDOWS 11 SECURITY SCANNER (SSH / TERMINAL MODE - READ-ONLY)" }
+            'DE' { "WINDOWS 11 SICHERHEITSSCANNER (SSH / TERMINAL-MODUS - NUR LESEN)" }
+            default { "SCANNER SICUREZZA WINDOWS 11 (MODALITA' TERMINALE SSH - SOLA LETTURA)" }
+        }
+        $adminTxt = if ($Ambiente.IsAdmin) {
+            switch ($lingua) { 'EN' { 'Yes' } 'DE' { 'Ja' } default { 'Si' } }
+        } else {
+            switch ($lingua) { 'DE' { 'Nein (Eingeschraenkt)' } 'EN' { 'No (Limited)' } default { 'No (Limitato)' } }
+        }
+
+        Write-Host ""
+        Write-Host "================================================================================" -ForegroundColor Blue
+        Write-Host "  $titoloBanner" -ForegroundColor White
+        Write-Host "  OS: Windows 11 $($Ambiente.Edition) ($($Ambiente.Build)) | Admin: $adminTxt | Lang: [$lingua]" -ForegroundColor Gray
+        Write-Host "================================================================================" -ForegroundColor Blue
+
+        if (-not $Ambiente.IsAdmin) {
+            $warnAdm = switch ($lingua) {
+                'EN' { "  [!] Non-Admin SSH session: some checks report 'Unknown'. Connect as an Admin user for full results." }
+                'DE' { "  [!] SSH-Sitzung ohne Admin-Rechte: Einige Pruefungen melden 'Unbekannt'." }
+                default { "  [!] Sessione SSH non amministrativa: alcuni controlli risultano 'Sconosciuto'." }
+            }
+            Write-Host $warnAdm -ForegroundColor Yellow
+        }
+
+        # Contatori KPI colorati
+        Write-Host ""
+        switch ($lingua) {
+            'EN' {
+                Write-Host "  [OK] $($cnt.superato) Passed   " -NoNewline -ForegroundColor Green
+                Write-Host "[X] $($cnt.fallito) Failed   " -NoNewline -ForegroundColor Red
+                Write-Host "[?] $($cnt.sconosciuto) Unknown   " -NoNewline -ForegroundColor Yellow
+                Write-Host "[-] $($cnt.non_applicabile) N/A   " -NoNewline -ForegroundColor DarkGray
+                Write-Host "[!] $($cnt.errore) Errors" -ForegroundColor Magenta
+            }
+            'DE' {
+                Write-Host "  [OK] $($cnt.superato) Bestanden   " -NoNewline -ForegroundColor Green
+                Write-Host "[X] $($cnt.fallito) Fehlgeschlagen   " -NoNewline -ForegroundColor Red
+                Write-Host "[?] $($cnt.sconosciuto) Unbekannt   " -NoNewline -ForegroundColor Yellow
+                Write-Host "[-] $($cnt.non_applicabile) N/Z   " -NoNewline -ForegroundColor DarkGray
+                Write-Host "[!] $($cnt.errore) Fehler" -ForegroundColor Magenta
+            }
+            default {
+                Write-Host "  [OK] $($cnt.superato) Superati   " -NoNewline -ForegroundColor Green
+                Write-Host "[X] $($cnt.fallito) Falliti   " -NoNewline -ForegroundColor Red
+                Write-Host "[?] $($cnt.sconosciuto) Sconosciuti   " -NoNewline -ForegroundColor Yellow
+                Write-Host "[-] $($cnt.non_applicabile) N/A   " -NoNewline -ForegroundColor DarkGray
+                Write-Host "[!] $($cnt.errore) Errori" -ForegroundColor Magenta
+            }
+        }
+        Write-Host "--------------------------------------------------------------------------------" -ForegroundColor DarkGray
+
+        $hdr = switch ($lingua) {
+            'EN' { ("{0,-16} {1,-10} {2,-18} {3,-14} {4}" -f "STATUS", "SEVERITY", "CATEGORY", "ID", "SECURITY CONTROL") }
+            'DE' { ("{0,-18} {1,-10} {2,-21} {3,-14} {4}" -f "STATUS", "SCHWERE", "KATEGORIE", "ID", "SICHERHEITSPRUEFUNG") }
+            default { ("{0,-16} {1,-10} {2,-20} {3,-14} {4}" -f "STATO", "GRAVITA'", "CATEGORIA", "ID", "CONTROLLO") }
+        }
+        Write-Host "  $hdr" -ForegroundColor Cyan
+        Write-Host "--------------------------------------------------------------------------------" -ForegroundColor DarkGray
+
+        foreach ($el in $script:ConsoleElementiVista) {
+            $colRiga = switch ($el.Status) {
+                'superato'        { 'Green' }
+                'fallito'         { 'Red' }
+                'sconosciuto'     { 'Yellow' }
+                'non_applicabile' { 'DarkGray' }
+                default           { 'Magenta' }
+            }
+            $catTronc = if ($el.Category.Length -gt 18) { $el.Category.Substring(0, 17) + '.' } else { $el.Category }
+            $titTronc = if ($el.Title.Length -gt 48) { $el.Title.Substring(0, 45) + '...' } else { $el.Title }
+            $rigaTxt = ("  {0,-16} {1,-10} {2,-18} {3,-14} {4}" -f $el.StatusLabel, $el.SeverityLabel, $catTronc, $el.ControlId, $titTronc)
+            Write-Host $rigaTxt -ForegroundColor $colRiga
+        }
+        Write-Host "================================================================================" -ForegroundColor Blue
+    }
+
+    # Esegui la scansione iniziale
+    & $eseguiScansioneConsole
+    & $mostraRiepilogoETabella
+
+    if ($NonInterattivo) {
+        return
+    }
+
+    # Loop Menu Interattivo da Terminale SSH
+    $continuaLoop = $true
+    while ($continuaLoop) {
+        Write-Host ""
+        switch ($lingua) {
+            'EN' {
+                Write-Host "  SSH INTERACTIVE MENU (Active Language: [*] EN English):" -ForegroundColor Cyan
+                Write-Host "  [1] Inspect all FAILED controls (details & remediation commands)" -ForegroundColor White
+                Write-Host "  [2] Generate FULL PC AI SECURITY REPORT (Local Ollama / Auto-Setup)" -ForegroundColor Magenta
+                Write-Host "  [3] Inspect or explain a specific control by ID (e.g. HOME-ENC-001)" -ForegroundColor White
+                Write-Host "  [4] Switch Language: [IT Italiano] / [EN English] / [DE Deutsch]" -ForegroundColor Yellow
+                Write-Host "  [5] Export JSON & HTML reports to disk" -ForegroundColor Green
+                Write-Host "  [R] Re-run security scan ($totaleCat controls)" -ForegroundColor Gray
+                Write-Host "  [Q] Quit" -ForegroundColor Gray
+                $promptScelta = "  Select an option (1-5, R, Q)"
+            }
+            'DE' {
+                Write-Host "  INTERAKTIVES SSH-MENUE (Aktive Sprache: [*] DE Deutsch):" -ForegroundColor Cyan
+                Write-Host "  [1] Alle FEHLGESCHLAGENEN Pruefungen anzeigen (Details & Befehle)" -ForegroundColor White
+                Write-Host "  [2] VOLLSTAENDIGEN KI-SICHERHEITSBERICHT erstellen (Lokales Ollama)" -ForegroundColor Magenta
+                Write-Host "  [3] Einzelne Pruefung per ID untersuchen/erklaeren (z. B. HOME-ENC-001)" -ForegroundColor White
+                Write-Host "  [4] Sprache wechseln: [IT Italiano] / [EN English] / [DE Deutsch]" -ForegroundColor Yellow
+                Write-Host "  [5] JSON- & HTML-Berichte auf Festplatte exportieren" -ForegroundColor Green
+                Write-Host "  [R] Sicherheitsscan erneut starten ($totaleCat Pruefungen)" -ForegroundColor Gray
+                Write-Host "  [Q] Beenden" -ForegroundColor Gray
+                $promptScelta = "  Option waehlen (1-5, R, Q)"
+            }
+            default {
+                Write-Host "  MENU INTERATTIVO TERMINALE SSH (Lingua attiva: [*] IT Italiano):" -ForegroundColor Cyan
+                Write-Host "  [1] Mostra dettagli e comandi di correzione di tutti i controlli FALLITI" -ForegroundColor White
+                Write-Host "  [2] Genera RESOCONTO COMPLETO IA (Ollama locale / Auto-Setup VM)" -ForegroundColor Magenta
+                Write-Host "  [3] Ispeziona o spiega con IA un controllo specifico tramite ID (es. HOME-ENC-001)" -ForegroundColor White
+                Write-Host "  [4] Cambia Lingua: [IT Italiano] / [EN English] / [DE Deutsch]" -ForegroundColor Yellow
+                Write-Host "  [5] Esporta report JSON e HTML su disco" -ForegroundColor Green
+                Write-Host "  [R] Riesegui la scansione ($totaleCat controlli)" -ForegroundColor Gray
+                Write-Host "  [Q] Esci" -ForegroundColor Gray
+                $promptScelta = "  Scegli un'opzione (1-5, R, Q)"
+            }
+        }
+
+        $scelta = Read-Host $promptScelta
+        if ($null -eq $scelta) { break }
+        $sceltaNorm = $scelta.Trim().ToUpperInvariant()
+
+        switch ($sceltaNorm) {
+            '1' {
+                $falliti = @($script:ConsoleElementiVista | Where-Object { $_.Status -eq 'fallito' })
+                if ($falliti.Count -eq 0) {
+                    $msgZero = switch ($lingua) {
+                        'EN' { "  [OK] No failed controls found!" }
+                        'DE' { "  [OK] Keine fehlgeschlagenen Pruefungen gefunden!" }
+                        default { "  [OK] Nessun controllo fallito rilevato!" }
+                    }
+                    Write-Host $msgZero -ForegroundColor Green
+                }
+                else {
+                    foreach ($f in $falliti) {
+                        $det = Format-DettaglioControllo -Elemento $f -Modalita 'Semplice' -Lingua $lingua
+                        Write-Host ""
+                        Write-Host "  ----------------------------------------------------------------------------" -ForegroundColor DarkRed
+                        Write-Host "  $($det.StatusLabel) | [$($det.SeverityLabel)] $($det.ControlId) - $($det.Title)" -ForegroundColor Red
+                        Write-Host "  Observed: $($det.ValoreOsservato)" -ForegroundColor Yellow
+                        Write-Host "  Expected: $($det.ValoreAtteso)" -ForegroundColor Gray
+                        Write-Host "  Why:      $($det.TestoSpiegazione)" -ForegroundColor White
+                        Write-Host "  Fix:      $($det.TestoRimedio)" -ForegroundColor Cyan
+                        if ($det.HaComando) {
+                            Write-Host "  Command:  $($det.ComandoRimedio)" -ForegroundColor Green
+                        }
+                    }
+                }
+            }
+            '2' {
+                $cnt = Measure-ConteggiRisultati -Elementi $script:ConsoleRisultatiGrezzi
+                $promptRes   = Format-PromptResocontoOllama -ElementiVista $script:ConsoleElementiVista -Conteggi $cnt -Ambiente $Ambiente -Lingua $lingua
+                $fallbackRes = Format-ResocontoLocaleScansione -ElementiVista $script:ConsoleElementiVista -Conteggi $cnt -Ambiente $Ambiente -Lingua $lingua
+
+                $cbStatoConsole = {
+                    param([string]$msg)
+                    Write-Host "  [Ollama] $msg" -ForegroundColor DarkCyan
+                }
+                Write-Host ""
+                $esitoIa = Invoke-RichiestaOllama -Prompt $promptRes -Modello 'qwen2.5:0.5b' -Endpoint 'http://127.0.0.1:11434' -TestoFallbackLocale $fallbackRes -AutoProvision $true -Lingua $lingua -OnStatus $cbStatoConsole
+                Write-Host ""
+                Write-Host "================================================================================" -ForegroundColor Magenta
+                Write-Host "  $($esitoIa.Sorgente)" -ForegroundColor Cyan
+                Write-Host "================================================================================" -ForegroundColor Magenta
+                Write-Host $esitoIa.Risposta -ForegroundColor White
+                Write-Host "================================================================================" -ForegroundColor Magenta
+            }
+            '3' {
+                $msgAskId = switch ($lingua) {
+                    'EN' { "  Enter Control ID (e.g. HOME-ENC-001, HOME-AV-009)" }
+                    'DE' { "  Pruefungs-ID eingeben (z. B. HOME-ENC-001, HOME-AV-009)" }
+                    default { "  Inserisci l'ID del controllo (es. HOME-ENC-001, HOME-AV-009)" }
+                }
+                $idCercato = (Read-Host $msgAskId).Trim().ToUpperInvariant()
+                $elTrovato = $script:ConsoleElementiVista | Where-Object { $_.ControlId.ToUpperInvariant() -eq $idCercato } | Select-Object -First 1
+                if ($null -eq $elTrovato) {
+                    Write-Host "  [!] ID '$idCercato' non trovato." -ForegroundColor Yellow
+                }
+                else {
+                    $det = Format-DettaglioControllo -Elemento $elTrovato -Modalita 'Semplice' -Lingua $lingua
+                    $promptCtrl  = Format-PromptControlloOllama -Dettaglio $det -Ambiente $Ambiente -Lingua $lingua
+                    $fallbackLoc = Format-AnalisiLocaleControllo -Dettaglio $det -Ambiente $Ambiente -Lingua $lingua
+                    $esitoCtrl = Invoke-RichiestaOllama -Prompt $promptCtrl -Modello 'qwen2.5:0.5b' -Endpoint 'http://127.0.0.1:11434' -TestoFallbackLocale $fallbackLoc -AutoProvision $true -Lingua $lingua
+                    Write-Host ""
+                    Write-Host $esitoCtrl.Risposta -ForegroundColor White
+                }
+            }
+            '4' {
+                $sceltaLang = (Read-Host "  Choose language / Lingua / Sprache (IT / EN / DE)").Trim().ToUpperInvariant()
+                if ($sceltaLang -in @('IT', 'EN', 'DE')) {
+                    $lingua = $sceltaLang
+                }
+                else {
+                    $lingua = switch ($lingua) { 'IT' { 'EN' } 'EN' { 'DE' } default { 'IT' } }
+                }
+                & $mostraRiepilogoETabella
+            }
+            '5' {
+                $dirOut = (Get-Location).Path
+                $fileJson = Join-Path $dirOut (Get-NomeFileExport -Estensione 'json')
+                $fileHtml = Join-Path $dirOut (Get-NomeFileExport -Estensione 'html')
+                $rep = New-Report -Risultati $script:ConsoleRisultatiGrezzi -Ambiente $Ambiente -Catalogo $Catalogo -VersioneTool $VersioneTool
+                Export-ReportJson -Report $rep -PercorsoFile $fileJson
+                Export-ReportHtml -Report $rep -Catalogo $Catalogo -PercorsoFile $fileHtml
+                Write-Host "  [OK] JSON: $fileJson" -ForegroundColor Green
+                Write-Host "  [OK] HTML: $fileHtml" -ForegroundColor Green
+            }
+            'R' {
+                & $eseguiScansioneConsole
+                & $mostraRiepilogoETabella
+            }
+            'Q' {
+                $continuaLoop = $false
+            }
+            default {
+                & $mostraRiepilogoETabella
+            }
+        }
+    }
+}
+
 function Start-ScannerUI {
     <#
     .SYNOPSIS
@@ -8870,6 +9231,13 @@ function Start-ScannerUI {
         [ValidateSet('IT', 'EN', 'DE')]
         [string]$LinguaIniziale = 'IT'
     )
+
+    # Se lo script viene eseguito in una sessione SSH o priva di desktop interattivo,
+    # passa automaticamente alla modalita' interattiva da terminale (TUI / Console)
+    if (Test-SessioneTerminaleSsh) {
+        Show-ScannerConsoleUI -Catalogo $Catalogo -Ambiente $Ambiente -PercorsoProgetto $PercorsoProgetto -ControlId $ControlId -VersioneTool $VersioneTool -LinguaIniziale $LinguaIniziale
+        return
+    }
 
     # Verifica che il thread corrente sia STA (obbligatorio per WPF)
     if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne [System.Threading.ApartmentState]::STA) {
@@ -10272,6 +10640,7 @@ function Invoke-Win11Scanner {
     [CmdletBinding()]
     param(
         [switch]$Gui,
+        [switch]$Cli,
         [switch]$Headless,
         [string]$OutFile,
         [string[]]$ControlId,
@@ -10294,6 +10663,21 @@ function Invoke-Win11Scanner {
     $ambiente    = Get-AmbienteSistema
 
     if ($modalitaGui) {
+        # Se siamo collegati via SSH o in modalita' terminale (-Cli), avvia l'interfaccia interattiva da console (TUI)
+        if ($Cli -or (Test-SessioneTerminaleSsh)) {
+            $paramConsole = @{
+                Catalogo       = $catalogo
+                Ambiente       = $ambiente
+                VersioneTool   = $script:VERSIONE_TOOL
+                LinguaIniziale = $Lang
+            }
+            if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
+                $paramConsole['ControlId'] = $ControlId
+            }
+            Show-ScannerConsoleUI @paramConsole
+            return
+        }
+
         if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne [System.Threading.ApartmentState]::STA) {
             if (-not [string]::IsNullOrWhiteSpace($script:PercorsoScriptAutonomo) -and (Test-Path -LiteralPath $script:PercorsoScriptAutonomo)) {
                 $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -File `"$($script:PercorsoScriptAutonomo)`" -Gui"
@@ -10358,6 +10742,7 @@ for ($i = 0; $i -lt $argomentiRigaComando.Count; $i++) {
     $token = [string]$argomentiRigaComando[$i]
     switch -Regex ($token) {
         '^-Gui$'       { $parametriInvocazione['Gui'] = $true }
+        '^-Cli$'       { $parametriInvocazione['Cli'] = $true }
         '^-Headless$'  { $parametriInvocazione['Headless'] = $true }
         '^-OutFile$'   {
             if ($i + 1 -lt $argomentiRigaComando.Count) {

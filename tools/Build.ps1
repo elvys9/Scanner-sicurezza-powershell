@@ -102,6 +102,7 @@ function Invoke-Win11Scanner {
     [CmdletBinding()]
     param(
         [switch]$Gui,
+        [switch]$Cli,
         [switch]$Headless,
         [string]$OutFile,
         [string[]]$ControlId,
@@ -124,6 +125,21 @@ function Invoke-Win11Scanner {
     $ambiente    = Get-AmbienteSistema
 
     if ($modalitaGui) {
+        # Se siamo collegati via SSH o in modalita' terminale (-Cli), avvia l'interfaccia interattiva da console (TUI)
+        if ($Cli -or (Test-SessioneTerminaleSsh)) {
+            $paramConsole = @{
+                Catalogo       = $catalogo
+                Ambiente       = $ambiente
+                VersioneTool   = $script:VERSIONE_TOOL
+                LinguaIniziale = $Lang
+            }
+            if ($null -ne $ControlId -and $ControlId.Count -gt 0) {
+                $paramConsole['ControlId'] = $ControlId
+            }
+            Show-ScannerConsoleUI @paramConsole
+            return
+        }
+
         if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne [System.Threading.ApartmentState]::STA) {
             if (-not [string]::IsNullOrWhiteSpace($script:PercorsoScriptAutonomo) -and (Test-Path -LiteralPath $script:PercorsoScriptAutonomo)) {
                 $argSta = "-NoProfile -ExecutionPolicy Bypass -STA -File `"$($script:PercorsoScriptAutonomo)`" -Gui"
@@ -188,6 +204,7 @@ for ($i = 0; $i -lt $argomentiRigaComando.Count; $i++) {
     $token = [string]$argomentiRigaComando[$i]
     switch -Regex ($token) {
         '^-Gui$'       { $parametriInvocazione['Gui'] = $true }
+        '^-Cli$'       { $parametriInvocazione['Cli'] = $true }
         '^-Headless$'  { $parametriInvocazione['Headless'] = $true }
         '^-OutFile$'   {
             if ($i + 1 -lt $argomentiRigaComando.Count) {

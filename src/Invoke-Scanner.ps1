@@ -58,8 +58,14 @@ if ($Headless -and (-not $OutFile)) {
 # Modalita' predefinita: GUI quando non e' specificato -Headless
 $modalitaGui = ($Gui -or (-not $Headless))
 
-# --- Verifica STA per modalita' GUI ---
-if ($modalitaGui) {
+# --- Verifica STA per modalita' GUI (solo se non siamo in sessione SSH / Session 0) ---
+$isSshSession = (
+    (-not [string]::IsNullOrWhiteSpace($env:SSH_CONNECTION)) -or
+    (-not [string]::IsNullOrWhiteSpace($env:SSH_CLIENT)) -or
+    (-not [string]::IsNullOrWhiteSpace($env:SSH_TTY)) -or
+    (-not [Environment]::UserInteractive)
+)
+if ($modalitaGui -and (-not $isSshSession)) {
     if ([System.Threading.Thread]::CurrentThread.ApartmentState -ne [System.Threading.ApartmentState]::STA) {
         $percorsoQuestoScript = $MyInvocation.MyCommand.Path
         $argomentiSta = @(
