@@ -27,6 +27,9 @@
     - HOME-SYS-009: Windows Script Host disabled (Test-WshDisabled)
     - HOME-SEC-009: Secure PowerShell ExecutionPolicy (Test-PowerShellExecutionPolicySecure)
     - HOME-UAC-004: Windows 11 Administrator Protection active (Test-AdministratorProtection)
+    - HOME-SEC-010: Windows Event Log integrity & Security log clearing check (Test-EventLogIntegrity)
+    - HOME-SYS-010: PrintNightmare driver installation protection (Test-PrintNightmareProtection)
+    - HOME-SEC-011: Kernel DMA Protection (Test-KernelDmaProtection)
     Never modifies system state.
 #>
 
@@ -1533,4 +1536,393 @@ function Test-AdministratorProtection {
     }
 
     return $risultato
+}
+
+function Test-EventLogIntegrity {
+    <#
+    .SYNOPSIS
+        Verifies Windows Event Log service health and checks for recent Security log clearing events (Event ID 1102) (HOME-SEC-010).
+    .DESCRIPTION
+        Confirms that the EventLog service is running and not disabled, then queries
+        the Security event log for Event ID 1102 over the last 30 days in strict read-only mode.
+    .PARAMETER Controllo
+        Control object from the security catalog.
+    .PARAMETER Ambiente
+        Environment object returned by Get-AmbienteSistema.
+    .OUTPUTS
+        PSCustomObject with properties: Status, Observed, Expected, Evidence, Error.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $result = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "EventLog service running and no Security log clearing events (Event ID 1102) in the last 30 days"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $eventLogService = $null
+        try {
+            $eventLogService = Get-Service -Name 'EventLog' -ErrorAction Stop
+        }
+        catch {
+            if ($_.Exception.Message -match 'Cannot find any service|Impossibile trovare alcun servizio') {
+                $eventLogService = $null
+            }
+            else {
+                throw
+            }
+        }
+
+        $serviceStatus = if ($null -ne $eventLogService) { [string]$eventLogService.Status } else { 'Missing' }
+        $startType = if ($null -ne $eventLogService -and $null -ne $eventLogService.PSObject.Properties['StartType'] -and $null -ne $eventLogService.StartType) {
+            [string]$eventLogService.StartType
+        }
+        else {
+            ''
+        }
+
+        if ($null -eq $eventLogService -or $serviceStatus -ne 'Running' -or $startType -eq 'Disabled') {
+            $result.Status   = 'fallito'
+            $result.Observed = "Windows Event Log service (EventLog) is not running properly (Status=$serviceStatus, StartType=$startType)"
+            $result.Evidence = @{
+                ServiceStatus = $serviceStatus
+                StartType     = $startType
+            }
+            return $result
+        }
+
+        try {
+            $startTime   = (Get-Date).AddDays(-30)
+            $clearEvents = @(Get-WinEvent -FilterHashtable @{
+                LogName   = 'Security'
+                Id        = 1102
+                StartTime = $startTime
+            } -MaxEvents 5 -ErrorAction Stop)
+
+            $timestamps = @()
+            foreach ($evt in $clearEvents) {
+                if ($null -ne $evt.PSObject.Properties['TimeCreated'] -and $null -ne $evt.TimeCreated) {
+                    if ($evt.TimeCreated -is [datetime]) {
+                        $timestamps += $evt.TimeCreated.ToString('yyyy-MM-dd HH:mm:ss')
+                    }
+                    else {
+                        $timestamps += [string]$evt.TimeCreated
+                    }
+                }
+            }
+
+            $result.Evidence = @{
+                ServiceStatus   = $serviceStatus
+                Event1102Count  = $clearEvents.Count
+                EventTimestamps = $timestamps
+                LookbackDays    = 30
+            }
+
+            if ($clearEvents.Count -gt 0) {
+                $latestStr       = if ($timestamps.Count -gt 0) { $timestamps[0] } else { 'Unknown timestamp' }
+                $result.Status   = 'fallito'
+                $result.Observed = "Detected $($clearEvents.Count) Security event log clearing event(s) (Event ID 1102) in the last 30 days (latest: $latestStr)"
+            }
+            else {
+                $result.Status   = 'superato'
+                $result.Observed = "EventLog service is running and no Security log clearing events (Event ID 1102) were found in the last 30 days"
+            }
+        }
+        catch {
+            if ($_.FullyQualifiedErrorId -like 'NoMatchingEventsFound*' -or
+                $_.Exception.Message -match 'No events were found|Nessun evento trovato|Keine Ereignisse gefunden') {
+                $result.Status   = 'superato'
+                $result.Observed = "EventLog service is running and no Security log clearing events (Event ID 1102) were found in the last 30 days"
+                $result.Evidence = @{
+                    ServiceStatus  = $serviceStatus
+                    Event1102Count = 0
+                    LookbackDays   = 30
+                }
+            }
+            elseif ($_.Exception -is [System.UnauthorizedAccessException] -or
+                $_.Exception -is [System.Security.SecurityException] -or
+                $_.FullyQualifiedErrorId -match 'UnauthorizedAccess|AccessDenied' -or
+                $_.Exception.Message -match 'Access is denied|Unauthorized|unauthorized operation|Accesso negato|privileg') {
+                $result.Status   = 'sconosciuto'
+                $result.Observed = "Administrator privileges are required to inspect the Windows Security event log"
+                $result.Evidence = @{
+                    ServiceStatus = $serviceStatus
+                    RequiresAdmin = $true
+                }
+                $result.Error = $_.Exception.Message
+            }
+            elseif ($_.Exception -is [System.Management.Automation.CommandNotFoundException]) {
+                $result.Status   = 'sconosciuto'
+                $result.Observed = "Cmdlet Get-WinEvent is not available"
+                $result.Error    = $_.Exception.Message
+            }
+            else {
+                $result.Status = 'errore'
+                $result.Error  = $_.Exception.Message
+            }
+        }
+    }
+    catch {
+        $result.Status = 'errore'
+        $result.Error  = $_.Exception.Message
+    }
+
+    return $result
+}
+
+function Test-PrintNightmareProtection {
+    <#
+    .SYNOPSIS
+        Verifies PrintNightmare (CVE-2021-34527) Point and Print driver installation restrictions (HOME-SYS-010).
+    .DESCRIPTION
+        Checks whether the Print Spooler service is disabled/absent, or otherwise ensures that
+        RestrictDriverInstallationToAdministrators is not overridden to 0 on Windows 11.
+    .PARAMETER Controllo
+        Control object from the security catalog.
+    .PARAMETER Ambiente
+        Environment object returned by Get-AmbienteSistema.
+    .OUTPUTS
+        PSCustomObject with properties: Status, Observed, Expected, Evidence, Error.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $result = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Print Spooler disabled or RestrictDriverInstallationToAdministrators not set to 0 (admin-only driver installation enforced)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $spooler = Get-Service -Name 'Spooler' -ErrorAction SilentlyContinue
+        if ($null -eq $spooler) {
+            $result.Status   = 'superato'
+            $result.Observed = "Print Spooler service is not installed; PrintNightmare attack surface is mitigated"
+            $result.Evidence = @{ SpoolerPresent = $false }
+            return $result
+        }
+
+        $spoolerStatus = [string]$spooler.Status
+        $spoolerStartType = if ($null -ne $spooler.PSObject.Properties['StartType'] -and $null -ne $spooler.StartType) {
+            [string]$spooler.StartType
+        }
+        else {
+            ''
+        }
+
+        if ($spoolerStartType -eq 'Disabled' -or $spoolerStatus -eq 'Disabled') {
+            $result.Status   = 'superato'
+            $result.Observed = "Print Spooler service is disabled; PrintNightmare attack surface is mitigated"
+            $result.Evidence = @{
+                SpoolerPresent   = $true
+                SpoolerStatus    = $spoolerStatus
+                SpoolerStartType = 'Disabled'
+            }
+            return $result
+        }
+
+        $policyPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint'
+        if (-not (Test-Path -LiteralPath $policyPath -ErrorAction SilentlyContinue)) {
+            $result.Status   = 'superato'
+            $result.Observed = "Windows 11 default PrintNightmare protection active (PointAndPrint policy absent; admin-only driver installation enforced by default)"
+            $result.Evidence = @{
+                SpoolerStatus                          = $spoolerStatus
+                PolicyKeyExists                        = $false
+                RestrictDriverInstallationToAdministrators = $null
+            }
+            return $result
+        }
+
+        $policyProps = Get-ItemProperty -LiteralPath $policyPath -ErrorAction Stop
+        $hasValue = (
+            $null -ne $policyProps -and
+            $null -ne $policyProps.PSObject.Properties['RestrictDriverInstallationToAdministrators'] -and
+            $null -ne $policyProps.RestrictDriverInstallationToAdministrators
+        )
+
+        if ($hasValue) {
+            [int]$restrictVal = $policyProps.RestrictDriverInstallationToAdministrators
+            $result.Evidence = @{
+                SpoolerStatus                              = $spoolerStatus
+                PolicyPath                                 = $policyPath
+                RestrictDriverInstallationToAdministrators = $restrictVal
+            }
+
+            if ($restrictVal -eq 0) {
+                $result.Status   = 'fallito'
+                $result.Observed = "Insecure override detected: non-administrators are allowed to install printer drivers (RestrictDriverInstallationToAdministrators = 0)"
+            }
+            else {
+                $result.Status   = 'superato'
+                $result.Observed = "Driver installation explicitly restricted to administrators (RestrictDriverInstallationToAdministrators = $restrictVal)"
+            }
+        }
+        else {
+            $result.Status   = 'superato'
+            $result.Observed = "Windows 11 default PrintNightmare protection active (RestrictDriverInstallationToAdministrators not overridden; admin-only enforced by default)"
+            $result.Evidence = @{
+                SpoolerStatus                              = $spoolerStatus
+                PolicyPath                                 = $policyPath
+                RestrictDriverInstallationToAdministrators = $null
+            }
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $result.Status   = 'sconosciuto'
+        $result.Observed = "Access denied while reading PointAndPrint registry policy"
+        $result.Error    = $_.Exception.Message
+    }
+    catch [System.UnauthorizedAccessException] {
+        $result.Status   = 'sconosciuto'
+        $result.Observed = "Access denied while reading PointAndPrint registry policy"
+        $result.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privileg') {
+            $result.Status   = 'sconosciuto'
+            $result.Observed = "Insufficient privileges to inspect PointAndPrint protection settings"
+            $result.Error    = $_.Exception.Message
+        }
+        else {
+            $result.Status = 'errore'
+            $result.Error  = $_.Exception.Message
+        }
+    }
+
+    return $result
+}
+
+function Test-KernelDmaProtection {
+    <#
+    .SYNOPSIS
+        Verifies Kernel DMA Protection hardware readiness and Group Policy configuration (HOME-SEC-011).
+    .DESCRIPTION
+        Inspects Kernel DMA Protection policy settings (DeviceEnumerationPolicy) and queries
+        Win32_DeviceGuard AvailableSecurityProperties for value 3 (DMA Protection).
+        Returns sconosciuto when hardware or VM does not expose IOMMU/DMA protection.
+    .PARAMETER Controllo
+        Control object from the security catalog.
+    .PARAMETER Ambiente
+        Environment object returned by Get-AmbienteSistema.
+    .OUTPUTS
+        PSCustomObject with properties: Status, Observed, Expected, Evidence, Error.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $result = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Kernel DMA Protection active (Win32_DeviceGuard AvailableSecurityProperties contains 3) and not disabled via policy (DeviceEnumerationPolicy != 2)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $policyPath = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection'
+        $policyVal  = $null
+        if (Test-Path -LiteralPath $policyPath -ErrorAction SilentlyContinue) {
+            $polProps = Get-ItemProperty -LiteralPath $policyPath -ErrorAction SilentlyContinue
+            if ($null -ne $polProps -and $null -ne $polProps.PSObject.Properties['DeviceEnumerationPolicy'] -and $null -ne $polProps.DeviceEnumerationPolicy) {
+                $policyVal = [int]$polProps.DeviceEnumerationPolicy
+                if ($policyVal -eq 2) {
+                    $result.Status   = 'fallito'
+                    $result.Observed = "Kernel DMA Protection is explicitly disabled via policy (DeviceEnumerationPolicy = 2 - Allow all)"
+                    $result.Evidence = @{
+                        PolicyPath              = $policyPath
+                        DeviceEnumerationPolicy = 2
+                    }
+                    return $result
+                }
+            }
+        }
+
+        $dmaKeyPath   = 'HKLM:\SYSTEM\CurrentControlSet\Control\DmaSecurity'
+        $dmaKeyExists = (Test-Path -LiteralPath $dmaKeyPath -ErrorAction SilentlyContinue)
+        if ($dmaKeyExists) {
+            $dmaProps = Get-ItemProperty -LiteralPath $dmaKeyPath -ErrorAction SilentlyContinue
+            if ($null -ne $dmaProps -and $null -ne $dmaProps.PSObject.Properties['DeviceEnumerationPolicy'] -and $null -ne $dmaProps.DeviceEnumerationPolicy) {
+                [int]$dmaPolicyVal = $dmaProps.DeviceEnumerationPolicy
+                if ($null -eq $policyVal) { $policyVal = $dmaPolicyVal }
+                if ($dmaPolicyVal -eq 2) {
+                    $result.Status   = 'fallito'
+                    $result.Observed = "Kernel DMA Protection is explicitly disabled in DmaSecurity configuration (DeviceEnumerationPolicy = 2)"
+                    $result.Evidence = @{
+                        DmaSecurityPath         = $dmaKeyPath
+                        DeviceEnumerationPolicy = 2
+                    }
+                    return $result
+                }
+            }
+        }
+
+        try {
+            $deviceGuard = Get-CimInstance -ClassName Win32_DeviceGuard -Namespace 'root\Microsoft\Windows\DeviceGuard' -ErrorAction Stop
+            $availableProps = @()
+            if ($null -ne $deviceGuard -and $null -ne $deviceGuard.PSObject.Properties['AvailableSecurityProperties'] -and $null -ne $deviceGuard.AvailableSecurityProperties) {
+                $availableProps = @($deviceGuard.AvailableSecurityProperties | ForEach-Object { [int]$_ })
+            }
+
+            $result.Evidence = @{
+                Source                        = 'Win32_DeviceGuard'
+                AvailableSecurityProperties   = $availableProps
+                PolicyDeviceEnumerationPolicy = $policyVal
+                DmaSecurityKeyPresent         = $dmaKeyExists
+            }
+
+            if ($availableProps -contains 3) {
+                $result.Status   = 'superato'
+                $result.Observed = "Kernel DMA Protection is active and supported by hardware (AvailableSecurityProperties contains 3)"
+            }
+            else {
+                $result.Status   = 'sconosciuto'
+                $result.Observed = "Kernel DMA Protection is not supported or not exposed by this hardware/VM (AvailableSecurityProperties=[$($availableProps -join ',')])"
+            }
+        }
+        catch {
+            $result.Status   = 'sconosciuto'
+            $result.Observed = "Kernel DMA Protection is not supported or not exposed by this hardware/VM"
+            $result.Evidence = @{
+                Source                        = 'Win32_DeviceGuard'
+                PolicyDeviceEnumerationPolicy = $policyVal
+                DmaSecurityKeyPresent         = $dmaKeyExists
+            }
+            $result.Error = $_.Exception.Message
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $result.Status   = 'sconosciuto'
+        $result.Observed = "Access denied while checking Kernel DMA Protection settings"
+        $result.Error    = $_.Exception.Message
+    }
+    catch {
+        $result.Status = 'errore'
+        $result.Error  = $_.Exception.Message
+    }
+
+    return $result
 }

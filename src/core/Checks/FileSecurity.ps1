@@ -12,6 +12,7 @@
     - HOME-FIL-006: Suspicious scripts or executables in Startup folders (Test-CartellaStartupUtente)
     - HOME-FIL-007: Fileless persistence via WMI Event Subscriptions (Test-WmiEventSubscriptions)
     - HOME-FIL-008: Policy-forced Chrome/Edge browser extensions (Test-BrowserForcedExtensions)
+    - HOME-FIL-009: No vulnerable unquoted service executable paths (Test-UnquotedServicePaths)
     Never modifies system state.
 #>
 
@@ -667,4 +668,102 @@ function Test-BrowserForcedExtensions {
     }
 
     return $risultato
+}
+
+function Test-UnquotedServicePaths {
+    <#
+    .SYNOPSIS
+        Checks all Windows services for exploitable unquoted executable paths containing spaces (HOME-FIL-009).
+    .DESCRIPTION
+        Queries Win32_Service in read-only mode and inspects each service PathName. Flags third-party
+        services whose unquoted .exe path contains whitespace and does not reside under SystemRoot.
+    .PARAMETER Controllo
+        Control object from the security catalog.
+    .PARAMETER Ambiente
+        Environment object returned by Get-AmbienteSistema.
+    .OUTPUTS
+        PSCustomObject with properties: Status, Observed, Expected, Evidence, Error.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $result = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 vulnerable unquoted third-party service executable paths"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $services   = @(Get-CimInstance -ClassName Win32_Service -ErrorAction Stop)
+        $systemRoot = if (-not [string]::IsNullOrWhiteSpace($env:SystemRoot)) { $env:SystemRoot.TrimEnd('\') } else { 'C:\Windows' }
+
+        $vulnerableServices = @()
+        foreach ($svc in $services) {
+            $svcName = if ($null -ne $svc.PSObject.Properties['Name'] -and $null -ne $svc.Name) { [string]$svc.Name } else { 'UnknownService' }
+            $pathName = if ($null -ne $svc.PSObject.Properties['PathName'] -and $null -ne $svc.PathName) { ([string]$svc.PathName).Trim() } else { '' }
+
+            if ([string]::IsNullOrWhiteSpace($pathName) -or $pathName.StartsWith('"')) {
+                continue
+            }
+
+            if ($pathName -match '^(?i)(.+?\.exe)(?:\s|$)') {
+                $exePath = $Matches[1].Trim()
+            }
+            else {
+                continue
+            }
+
+            if ($exePath -notmatch '\s') {
+                continue
+            }
+
+            if ($exePath.StartsWith("$systemRoot\", [System.StringComparison]::OrdinalIgnoreCase) -or
+                $exePath.StartsWith('\SystemRoot\', [System.StringComparison]::OrdinalIgnoreCase)) {
+                continue
+            }
+
+            $vulnerableServices += "$svcName ($pathName)"
+        }
+
+        $result.Evidence = @{
+            TotalServicesInspected = $services.Count
+            VulnerableCount        = $vulnerableServices.Count
+            VulnerableServices     = $vulnerableServices
+        }
+
+        if ($vulnerableServices.Count -eq 0) {
+            $result.Status   = 'superato'
+            $result.Observed = "No vulnerable unquoted service paths detected ($($services.Count) services inspected)"
+        }
+        else {
+            $result.Status   = 'fallito'
+            $result.Observed = "Detected $($vulnerableServices.Count) vulnerable unquoted service path(s): $($vulnerableServices -join '; ')"
+        }
+    }
+    catch [System.UnauthorizedAccessException] {
+        $result.Status   = 'sconosciuto'
+        $result.Observed = "Insufficient privileges to query Windows services (Win32_Service)"
+        $result.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privileg|CIM resource|Unauthorized') {
+            $result.Status   = 'sconosciuto'
+            $result.Observed = "Insufficient privileges to query Windows services (Win32_Service)"
+            $result.Error    = $_.Exception.Message
+        }
+        else {
+            $result.Status = 'errore'
+            $result.Error  = $_.Exception.Message
+        }
+    }
+
+    return $result
 }

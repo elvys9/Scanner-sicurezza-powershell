@@ -1073,6 +1073,80 @@
       "references": [
         "MITRE ATT&CK T1176 - Browser Extensions"
       ]
+    },
+    {
+      "id": "HOME-SEC-010",
+      "title": "Windows Event Log integrity and no recent Security log clearing (Event ID 1102)",
+      "category": "Advanced Security",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifies that the Windows Event Log service (EventLog) is running and queries the Security event log for log-clearing events (Event ID 1102) in the last 30 days.",
+      "rationale": "Attackers frequently stop the Event Log service or clear the Security log (Event ID 1102) to hide intrusion evidence and evade forensic investigation.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-EventLogIntegrity"
+      },
+      "references": [
+        "MITRE ATT&CK T1070.001 - Clear Windows Event Logs",
+        "CIS Benchmark Windows 11 - Event Log Service"
+      ]
+    },
+    {
+      "id": "HOME-SYS-010",
+      "title": "PrintNightmare printer driver installation protection enabled",
+      "category": "Windows Settings",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifies that the Print Spooler service is disabled or that Point and Print driver installation is not overridden via RestrictDriverInstallationToAdministrators = 0.",
+      "rationale": "Allowing non-administrators to install printer drivers via Point and Print exposes Windows to PrintNightmare (CVE-2021-34527) local privilege escalation and remote code execution.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-PrintNightmareProtection"
+      },
+      "references": [
+        "Microsoft CVE-2021-34527 - PrintNightmare Mitigation",
+        "Microsoft Security Baseline Windows 11"
+      ]
+    },
+    {
+      "id": "HOME-FIL-009",
+      "title": "No vulnerable unquoted service executable paths",
+      "category": "File Security",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Audits registered Windows services (Win32_Service) for third-party executable paths containing spaces that are not enclosed in quotation marks.",
+      "rationale": "Unquoted service paths containing spaces outside SystemRoot allow local privilege escalation by placing a malicious executable earlier in Windows path resolution order.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-UnquotedServicePaths"
+      },
+      "references": [
+        "MITRE ATT&CK T1574.009 - Path Interception by Unquoted Path"
+      ]
+    },
+    {
+      "id": "HOME-SEC-011",
+      "title": "Kernel DMA Protection enabled against external PCIe/Thunderbolt attacks",
+      "category": "Advanced Security",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Queries Win32_DeviceGuard AvailableSecurityProperties for hardware Kernel DMA Protection support and verifies it is not disabled via DeviceEnumerationPolicy = 2.",
+      "rationale": "Kernel DMA Protection leverages hardware IOMMU isolation to block rogue external PCIe or Thunderbolt peripherals from performing unauthorized direct memory access.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-KernelDmaProtection"
+      },
+      "references": [
+        "Microsoft Secured-core PC - Kernel DMA Protection"
+      ]
     }
   ]
 }

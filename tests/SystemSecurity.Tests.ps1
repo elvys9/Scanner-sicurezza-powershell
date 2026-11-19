@@ -320,15 +320,146 @@ Describe 'Controlli SystemSecurity (HOME-UPD-001, HOME-ENC-001, HOME-PRV-001, HO
             $res.Status | Should -Be 'sconosciuto'
         }
     }
+
+    Context 'Test-EventLogIntegrity (HOME-SEC-010)' {
+        It 'Returns superato when EventLog service is running and no Event ID 1102 is found' {
+            Mock Get-Service {
+                return [PSCustomObject]@{ Name = 'EventLog'; Status = 'Running'; StartType = 'Automatic' }
+            }
+            Mock Get-WinEvent {
+                throw [System.Exception]::new('No events were found that match the specified selection criteria.')
+            }
+            $res = Test-EventLogIntegrity -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+            $res.Evidence.Event1102Count | Should -Be 0
+        }
+
+        It 'Returns fallito when EventLog service is stopped or disabled' {
+            Mock Get-Service {
+                return [PSCustomObject]@{ Name = 'EventLog'; Status = 'Stopped'; StartType = 'Disabled' }
+            }
+            $res = Test-EventLogIntegrity -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+            $res.Observed | Should -Match 'EventLog'
+        }
+
+        It 'Returns fallito when Security log clearing Event ID 1102 is detected' {
+            Mock Get-Service {
+                return [PSCustomObject]@{ Name = 'EventLog'; Status = 'Running'; StartType = 'Automatic' }
+            }
+            Mock Get-WinEvent {
+                return @(
+                    [PSCustomObject]@{ Id = 1102; TimeCreated = (Get-Date).AddDays(-1) }
+                )
+            }
+            $res = Test-EventLogIntegrity -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+            $res.Evidence.Event1102Count | Should -Be 1
+            $res.Observed | Should -Match '1102'
+        }
+
+        It 'Returns sconosciuto when querying Security log fails with Access is denied' {
+            Mock Get-Service {
+                return [PSCustomObject]@{ Name = 'EventLog'; Status = 'Running'; StartType = 'Automatic' }
+            }
+            Mock Get-WinEvent {
+                throw [System.UnauthorizedAccessException]::new('Attempted to perform an unauthorized operation.')
+            }
+            $res = Test-EventLogIntegrity -Controllo $controlloDummy
+            $res.Status | Should -Be 'sconosciuto'
+            $res.Observed | Should -Match 'Administrator privileges'
+        }
+    }
+
+    Context 'Test-PrintNightmareProtection (HOME-SYS-010)' {
+        It 'Returns superato when Print Spooler service is Disabled' {
+            Mock Get-Service {
+                return [PSCustomObject]@{ Name = 'Spooler'; Status = 'Stopped'; StartType = 'Disabled' }
+            }
+            $res = Test-PrintNightmareProtection -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+            $res.Observed | Should -Match 'disabled'
+        }
+
+        It 'Returns fallito when Spooler is running and RestrictDriverInstallationToAdministrators = 0' {
+            Mock Get-Service {
+                return [PSCustomObject]@{ Name = 'Spooler'; Status = 'Running'; StartType = 'Automatic' }
+            }
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ RestrictDriverInstallationToAdministrators = 0 }
+            }
+            $res = Test-PrintNightmareProtection -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+            $res.Observed | Should -Match 'RestrictDriverInstallationToAdministrators = 0'
+        }
+
+        It 'Returns superato when Spooler is running and RestrictDriverInstallationToAdministrators = 1' {
+            Mock Get-Service {
+                return [PSCustomObject]@{ Name = 'Spooler'; Status = 'Running'; StartType = 'Automatic' }
+            }
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ RestrictDriverInstallationToAdministrators = 1 }
+            }
+            $res = Test-PrintNightmareProtection -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Returns superato on Windows 11 default when PointAndPrint policy key is absent' {
+            Mock Get-Service {
+                return [PSCustomObject]@{ Name = 'Spooler'; Status = 'Running'; StartType = 'Automatic' }
+            }
+            Mock Test-Path { return $false }
+            $res = Test-PrintNightmareProtection -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+            $res.Observed | Should -Match 'default'
+        }
+    }
+
+    Context 'Test-KernelDmaProtection (HOME-SEC-011)' {
+        It 'Returns superato when Win32_DeviceGuard AvailableSecurityProperties contains 3' {
+            Mock Test-Path { return $false }
+            Mock Get-CimInstance {
+                return [PSCustomObject]@{ AvailableSecurityProperties = @(1, 2, 3) }
+            }
+            $res = Test-KernelDmaProtection -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Returns sconosciuto when hardware or VM does not expose DMA Protection' {
+            Mock Test-Path { return $false }
+            Mock Get-CimInstance {
+                return [PSCustomObject]@{ AvailableSecurityProperties = @(1, 2) }
+            }
+            $res = Test-KernelDmaProtection -Controllo $controlloDummy
+            $res.Status | Should -Be 'sconosciuto'
+            $res.Observed | Should -Match 'not supported'
+        }
+
+        It 'Returns fallito when DeviceEnumerationPolicy is explicitly set to 2' {
+            Mock Test-Path { return $true } -ParameterFilter {
+                $LiteralPath -eq 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection'
+            }
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ DeviceEnumerationPolicy = 2 }
+            } -ParameterFilter {
+                $LiteralPath -eq 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection'
+            }
+            $res = Test-KernelDmaProtection -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+            $res.Observed | Should -Match 'DeviceEnumerationPolicy = 2'
+        }
+    }
 }
 
-Describe 'Copertura completa dei 58 controlli e script singolo stile winutil' {
+Describe 'Copertura completa dei 62 controlli e script singolo stile winutil' {
 
-    It 'Tutti i 58 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
+    It 'Tutti i 62 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
         $percorsoJson = Join-Path $PSScriptRoot '..\catalog\home_profile.json'
         $cat = Get-Content -LiteralPath $percorsoJson -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        @($cat.controls).Count | Should -Be 58
+        @($cat.controls).Count | Should -Be 62
         foreach ($c in $cat.controls) {
             $haReg = ($null -ne $c.check.PSObject.Properties['registry'] -and $null -ne $c.check.registry)
             $haCmd = ($null -ne $c.check.PSObject.Properties['command_ref'] -and (-not [string]::IsNullOrWhiteSpace($c.check.command_ref)))

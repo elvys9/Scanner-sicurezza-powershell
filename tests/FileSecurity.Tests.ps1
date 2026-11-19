@@ -168,4 +168,40 @@ Describe 'Controlli FileSecurity (HOME-FIL-001, HOME-FIL-002, HOME-FIL-003)' {
             $res.Status | Should -Be 'sconosciuto'
         }
     }
+
+    Context 'Test-UnquotedServicePaths (HOME-FIL-009)' {
+        It 'Returns superato when all service paths are quoted, have no spaces, or reside under SystemRoot' {
+            Mock Get-CimInstance {
+                return @(
+                    [PSCustomObject]@{ Name = 'QuotedApp'; PathName = '"C:\Program Files\Vendor App\svc.exe" -service' }
+                    [PSCustomObject]@{ Name = 'NoSpaceApp'; PathName = 'C:\Tools\Agent\worker.exe --port 8080' }
+                    [PSCustomObject]@{ Name = 'OsSpaceApp'; PathName = 'C:\Windows\System32\Sub Dir\native.exe -k' }
+                )
+            }
+            $res = Test-UnquotedServicePaths -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+            $res.Evidence.VulnerableCount | Should -Be 0
+        }
+
+        It 'Returns fallito when a third-party service has an unquoted path containing spaces' {
+            Mock Get-CimInstance {
+                return @(
+                    [PSCustomObject]@{ Name = 'QuotedApp'; PathName = '"C:\Program Files\Good App\good.exe"' }
+                    [PSCustomObject]@{ Name = 'VulnAppSvc'; PathName = 'C:\Program Files\Vulnerable App\service.exe --run' }
+                )
+            }
+            $res = Test-UnquotedServicePaths -Controllo $controlloDummy
+            $res.Status | Should -Be 'fallito'
+            $res.Evidence.VulnerableCount | Should -Be 1
+            $res.Observed | Should -Match 'VulnAppSvc'
+        }
+
+        It 'Returns sconosciuto when Get-CimInstance throws Access is denied' {
+            Mock Get-CimInstance {
+                throw [System.UnauthorizedAccessException]::new('Access is denied')
+            }
+            $res = Test-UnquotedServicePaths -Controllo $controlloDummy
+            $res.Status | Should -Be 'sconosciuto'
+        }
+    }
 }
