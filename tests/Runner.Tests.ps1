@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Test Pester 5 per il Runner.
+    Pester 5 tests for the Runner module.
 #>
 
 Set-StrictMode -Version 2
@@ -20,7 +20,7 @@ Describe 'Invoke-Controlli' {
             Edition   = 'Home'
             EditionId = 'Core'
             Build     = '22631.1234'
-            Language  = 'it-IT'
+            Language  = 'en-US'
             IsAdmin   = $true
             PsVersion = '5.1.22621.1234'
         }
@@ -28,16 +28,15 @@ Describe 'Invoke-Controlli' {
             Edition   = 'Pro'
             EditionId = 'Professional'
             Build     = '22631.1234'
-            Language  = 'it-IT'
+            Language  = 'en-US'
             IsAdmin   = $true
             PsVersion = '5.1.22621.1234'
         }
     }
 
-    Context 'Esecuzione dei tre controlli della fetta' {
+    Context 'Execution of core vertical slice controls' {
 
-        It 'Esegue i tre controlli senza errori fatali' {
-            # Mock per firewall
+        It 'Executes three controls without fatal errors' {
             Mock Get-NetFirewallProfile {
                 return @(
                     [PSCustomObject]@{ Name = 'Domain';  Enabled = $true }
@@ -45,7 +44,6 @@ Describe 'Invoke-Controlli' {
                     [PSCustomObject]@{ Name = 'Public';  Enabled = $true }
                 )
             }
-            # Mock per Guest
             Mock Get-LocalUser {
                 return @(
                     [PSCustomObject]@{
@@ -55,7 +53,6 @@ Describe 'Invoke-Controlli' {
                     }
                 )
             }
-            # Mock per UAC (registro reale con chiave di test)
             Mock Test-Path { return $true } -ParameterFilter {
                 $LiteralPath -eq 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
             }
@@ -108,16 +105,16 @@ Describe 'Invoke-Controlli' {
         }
     }
 
-    Context 'Edizione non applicabile' {
+    Context 'Not applicable edition' {
 
-        It 'Restituisce non_applicabile per edizione non coperta' {
+        It 'Returns non_applicabile when edition is not covered' {
             $catalogo = [PSCustomObject]@{
                 schema_version = '0.2'
                 controls = @(
                     [PSCustomObject]@{
                         id = 'HOME-RDP-001'
                         title = 'RDP'
-                        editions = @('Pro')  # Solo Pro
+                        editions = @('Pro')
                         check = [PSCustomObject]@{
                             registry = [PSCustomObject]@{
                                 path = 'HKLM:\SOFTWARE\Test'
@@ -136,11 +133,11 @@ Describe 'Invoke-Controlli' {
         }
     }
 
-    Context 'Isolamento errori' {
+    Context 'Error isolation' {
 
-        It 'Un controllo che lancia eccezione non ferma gli altri' {
+        It 'A throwing control does not halt subsequent controls' {
             Mock Get-NetFirewallProfile {
-                throw [System.InvalidOperationException]::new("Errore simulato")
+                throw [System.InvalidOperationException]::new("Simulated error")
             }
             Mock Get-LocalUser {
                 return @(
@@ -175,16 +172,15 @@ Describe 'Invoke-Controlli' {
             }
 
             $risultati = Invoke-Controlli -Catalogo $catalogo -Ambiente $ambienteHome -CartellaChecks $percorsoChecks
-            # Il primo controllo ha un errore, il secondo no
             $risultati.Count | Should -Be 2
             $risultati[0].status | Should -Be 'errore'
             $risultati[1].status | Should -Be 'superato'
         }
     }
 
-    Context 'Filtro per ControlId' {
+    Context 'ControlId filter' {
 
-        It 'Esegue solo i controlli specificati' {
+        It 'Executes only the specified control IDs' {
             Mock Get-LocalUser {
                 return @(
                     [PSCustomObject]@{
@@ -223,17 +219,17 @@ Describe 'Invoke-Controlli' {
         }
     }
 
-    Context 'Controllo non implementato' {
+    Context 'Unimplemented control' {
 
-        It 'Restituisce sconosciuto per controlli senza check definito' {
+        It 'Returns sconosciuto for controls without a check definition' {
             $catalogo = [PSCustomObject]@{
                 schema_version = '0.2'
                 controls = @(
                     [PSCustomObject]@{
                         id = 'HOME-UPD-001'
-                        title = 'Aggiornamenti'
+                        title = 'Updates'
                         editions = @('Home', 'Pro')
-                        check = [PSCustomObject]@{}  # Vuoto
+                        check = [PSCustomObject]@{}
                     }
                 )
             }
@@ -241,7 +237,7 @@ Describe 'Invoke-Controlli' {
             $risultati = Invoke-Controlli -Catalogo $catalogo -Ambiente $ambienteHome -CartellaChecks $percorsoChecks
             $risultati.Count | Should -Be 1
             $risultati[0].status | Should -Be 'sconosciuto'
-            $risultati[0].observed | Should -Match 'non ancora implementato'
+            $risultati[0].observed | Should -Match 'not yet implemented'
         }
     }
 }

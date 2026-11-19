@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Valutatore generico per i controlli basati su registro di Windows.
+    Generic evaluator for Windows Registry-based security controls.
 
 .DESCRIPTION
-    Legge un valore dal registro di Windows e lo confronta con il valore
-    atteso usando l'operatore specificato nel catalogo.
-    Non modifica mai lo stato del sistema.
+    Reads a Windows Registry value and compares it against the expected value
+    using the operator defined in the catalog.
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -13,13 +13,13 @@ Set-StrictMode -Version 2
 function Test-RegistryValue {
     <#
     .SYNOPSIS
-        Verifica un valore nel registro confrontandolo con i parametri del catalogo.
+        Evaluates a Windows Registry value against catalog parameters.
     .PARAMETER RegistryCheck
-        Oggetto con proprieta': Path, Name, Operator, Value.
+        Object with properties: path, name, operator, value.
     .PARAMETER Ambiente
-        Oggetto ambiente (da Get-AmbienteSistema).
+        Environment object (from Get-AmbienteSistema).
     .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
+        PSCustomObject with properties: Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -46,30 +46,30 @@ function Test-RegistryValue {
     $risultato.Expected = "$nome $operatore $atteso"
 
     try {
-        # Verifica se la chiave esiste
+        # Check whether the registry key exists
         if (-not (Test-Path -LiteralPath $percorso)) {
             if ($operatore -eq 'notexists') {
                 $risultato.Status = 'superato'
-                $risultato.Observed = "Chiave non presente"
+                $risultato.Observed = "Registry key not present"
                 $risultato.Evidence = @{ Path = $percorso; Exists = $false }
             }
             elseif ($operatore -eq 'exists') {
                 $risultato.Status = 'fallito'
-                $risultato.Observed = "Chiave non presente"
+                $risultato.Observed = "Registry key not present"
                 $risultato.Evidence = @{ Path = $percorso; Exists = $false }
             }
             else {
                 $risultato.Status = 'sconosciuto'
-                $risultato.Observed = "Chiave di registro non trovata: $percorso"
+                $risultato.Observed = "Registry key not found: $percorso"
                 $risultato.Evidence = @{ Path = $percorso; Exists = $false }
             }
             return $risultato
         }
 
-        # Leggi il valore
+        # Read the registry value
         $prop = Get-ItemProperty -LiteralPath $percorso -Name $nome -ErrorAction Stop
         if (-not $prop.PSObject.Properties[$nome]) {
-            throw [System.Management.Automation.PSArgumentException]::new("Valore di registro non trovato: $nome")
+            throw [System.Management.Automation.PSArgumentException]::new("Registry value not found: $nome")
         }
         $valoreCorrente = $prop.$nome
 
@@ -80,18 +80,18 @@ function Test-RegistryValue {
             Value = $valoreCorrente
         }
 
-        # Confronto con l'operatore specificato
+        # Compare using the specified operator
         $superato = $false
         switch ($operatore) {
             'eq'        { $superato = ($valoreCorrente -eq $atteso) }
             'ne'        { $superato = ($valoreCorrente -ne $atteso) }
             'ge'        { $superato = ($valoreCorrente -ge $atteso) }
             'le'        { $superato = ($valoreCorrente -le $atteso) }
-            'exists'    { $superato = $true }  # Se siamo qui, il valore esiste
-            'notexists' { $superato = $false } # Se siamo qui, il valore esiste (non dovrebbe)
+            'exists'    { $superato = $true }  # Value exists
+            'notexists' { $superato = $false } # Value exists (should not)
             default     {
                 $risultato.Status = 'errore'
-                $risultato.Error = "Operatore non supportato: $operatore"
+                $risultato.Error = "Unsupported operator: $operatore"
                 return $risultato
             }
         }
@@ -104,44 +104,44 @@ function Test-RegistryValue {
         }
     }
     catch [System.Security.SecurityException] {
-        # Accesso negato: il dato non e' disponibile, non e' un fallimento del controllo
+        # Access denied: data unavailable, not a control failure
         $risultato.Status = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave di registro"
+        $risultato.Observed = "Access denied to registry key"
         $risultato.Error = $_.Exception.Message
     }
     catch [System.Management.Automation.PSArgumentException] {
-        # Il valore specifico non esiste nella chiave
+        # The requested value does not exist in the key
         if ($operatore -eq 'notexists') {
             $risultato.Status = 'superato'
-            $risultato.Observed = "Valore non presente"
+            $risultato.Observed = "Registry value not present"
             $risultato.Evidence = @{ Path = $percorso; Name = $nome; Exists = $false }
         }
         elseif ($operatore -eq 'exists') {
             $risultato.Status = 'fallito'
-            $risultato.Observed = "Valore non presente"
+            $risultato.Observed = "Registry value not present"
             $risultato.Evidence = @{ Path = $percorso; Name = $nome; Exists = $false }
         }
         else {
             $risultato.Status = 'sconosciuto'
-            $risultato.Observed = "Valore di registro non trovato: $nome"
+            $risultato.Observed = "Registry value not found: $nome"
             $risultato.Evidence = @{ Path = $percorso; Name = $nome; Exists = $false }
         }
     }
     catch [System.Management.Automation.ItemNotFoundException] {
-        # Il valore specifico non esiste nella chiave
+        # The requested value does not exist in the key
         if ($operatore -eq 'notexists') {
             $risultato.Status = 'superato'
-            $risultato.Observed = "Valore non presente"
+            $risultato.Observed = "Registry value not present"
             $risultato.Evidence = @{ Path = $percorso; Name = $nome; Exists = $false }
         }
         elseif ($operatore -eq 'exists') {
             $risultato.Status = 'fallito'
-            $risultato.Observed = "Valore non presente"
+            $risultato.Observed = "Registry value not present"
             $risultato.Evidence = @{ Path = $percorso; Name = $nome; Exists = $false }
         }
         else {
             $risultato.Status = 'sconosciuto'
-            $risultato.Observed = "Valore di registro non trovato: $nome"
+            $risultato.Observed = "Registry value not found: $nome"
             $risultato.Evidence = @{ Path = $percorso; Name = $nome; Exists = $false }
         }
     }

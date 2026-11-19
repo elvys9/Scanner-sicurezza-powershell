@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Catalogo controlli di sicurezza",
-  "description": "Schema per il catalogo dei controlli di sicurezza Windows 11 (Home/Pro) - versione 0.2",
+  "title": "Security Controls Catalog",
+  "description": "Schema for the Windows 11 (Home/Pro) security controls catalog - version 0.2",
   "type": "object",
   "required": ["schema_version", "profile", "controls"],
   "properties": {

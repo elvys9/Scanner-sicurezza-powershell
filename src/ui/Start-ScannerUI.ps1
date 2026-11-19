@@ -1,14 +1,13 @@
 ﻿<#
 .SYNOPSIS
-    Avvia l'interfaccia grafica WPF per lo scanner di sicurezza Windows 11.
+    Launches the WPF graphical user interface (or SSH console TUI) for the Windows 11 Security Scanner.
 
 .DESCRIPTION
-    Carica il layout XAML da src/ui/MainWindow.xaml tramite XamlReader,
-    collega i controlli con FindName, gestisce il tema scuro/chiaro completo,
-    la localizzazione completa trilingue (IT / EN / DE) con selettore esplicito,
-    i filtri, il pannello di dettaglio, l'export JSON/HTML e l'esecuzione
-    asincrona della scansione e dell'assistente IA Ollama in Runspace separati.
-    Il codice e' in SOLA LETTURA e riusa esattamente il motore di src/core.
+    Loads the XAML layout from src/ui/MainWindow.xaml via XamlReader,
+    binds controls via FindName, manages Dark/Light themes, trilingual
+    localization (IT / EN / DE), filters, details panel, JSON/HTML export,
+    and asynchronous background Runspace execution for scanning and Ollama AI.
+    Strictly READ-ONLY and reuses the core engine in src/core.
 #>
 
 Set-StrictMode -Version 2
@@ -16,7 +15,7 @@ Set-StrictMode -Version 2
 function Update-TemaFinestra {
     <#
     .SYNOPSIS
-        Applica il dizionario completo di colori del tema Scuro o Chiaro alle risorse della finestra.
+        Applies the Dark or Light theme color dictionary to the window resources.
     #>
     [CmdletBinding()]
     param(

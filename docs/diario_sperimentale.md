@@ -1,59 +1,44 @@
-# Diario sperimentale
+# Experimental Development Log
 
-## 2026-11-17 — Fetta verticale iniziale
+## 2026-11-17 - Initial Vertical Slice
 
-### Obiettivo
-Costruire la struttura del progetto e una fetta verticale funzionante con tre
-controlli: HOME-FW-001 (firewall), HOME-UAC-001 (UAC), HOME-ACC-001 (Guest).
+### Goal
+Build the project structure and a working vertical slice with three initial controls:
+`HOME-FW-001` (Firewall), `HOME-UAC-001` (UAC), and `HOME-ACC-001` (Guest account).
 
-### Attivita' svolte
-- Creata la struttura di directory del progetto
-- Scritto il catalogo `home_profile.yaml` con 18 controlli e lo schema
-  `schema.json` v0.2 (decisione D5)
-- Implementato il motore: Catalog.ps1, Environment.ps1, Runner.ps1, Report.ps1
-- Implementati i tre controlli della fetta:
-  - `Firewall.ps1` — stato dei tre profili via Get-NetFirewallProfile
-  - `Registry.ps1` — valutatore generico per controlli su registro
-  - `Accounts.ps1` — account Guest via SID -501
-- Scritto il punto d'ingresso `Invoke-Scanner.ps1` con parametri -Headless,
-  -OutFile, -ControlId
-- Scritto `yaml_to_json.py` per la conversione YAML -> JSON
-- Scritti i test Pester 5
+### Completed Work
+- Created repository directory layout (`catalog/`, `src/`, `tests/`, `tools/`, `docs/`, `dist/`).
+- Authored `catalog/home_profile.yaml` (initial 18 controls) and `catalog/schema.json` v0.2 (decision D5).
+- Implemented core engine: `Catalog.ps1`, `Environment.ps1`, `Runner.ps1`, `Report.ps1`.
+- Implemented initial check modules (`Firewall.ps1`, `Registry.ps1`, `Accounts.ps1`).
+- Created entry point `src/Invoke-Scanner.ps1` supporting `-Headless`, `-OutFile`, and `-ControlId`.
+- Added `tools/yaml_to_json.py` for YAML -> JSON conversion and validation.
+- Added Pester 5 unit and read-only AST tests.
 
-### Decisioni
-- Vedi docs/decisioni.md, decisione D5 (estensione schema 0.2)
+### Technical Notes
+- PowerShell 5.1 encoding: source `.ps1`/`.xaml` files use UTF-8 with BOM; JSON reports and `dist/*.ps1` bundles use UTF-8 without BOM.
+- Built-in Guest (`-501`) and Administrator (`-500`) accounts are matched by SID suffix rather than localized display names.
+- `Set-StrictMode -Version 2`: optional properties on `PSCustomObject` are guarded via `.PSObject.Properties['name']`.
+- Non-admin execution: insufficient privileges for CIM or local accounts cleanly return `sconosciuto` (Unknown), never `errore` or `fallito`.
+- Pester 5+: dot-sourcing modules inside `BeforeAll` ensures proper scope isolation between Discovery and Run phases.
 
-### Note
-- PowerShell 5.1: attenzione alla codifica dei file (UTF-8 con BOM per .ps1)
-- Il file JSON di output e' UTF-8 senza BOM
-- L'account Guest si identifica con il SID che termina in -501, non con il nome
-- Set-StrictMode -Version 2: accesso a proprieta' facoltative su PSCustomObject protetto tramite `.PSObject.Properties['nome']`
-- Esecuzione non-admin: se mancano privilegi per CIM o account locali, lo stato e' correttamente classificato come `sconosciuto` (non `errore` o `fallito`)
-- Test Pester 5+: il dot-sourcing dei moduli nei test deve avvenire dentro i blocchi `BeforeAll` per evitare problemi di scope tra fase di Discovery e Run
+## 2026-11-17 - Winutil-Style WPF GUI
 
-## 2026-11-17 — Interfaccia grafica WPF in stile winutil
+### Goal
+Build a read-only WPF graphical interface in PowerShell 5.1 (`src/ui/`) reusing the headless engine, with background Runspace scanning, combinable filters, Light/Dark themes, JSON/HTML export, and Pester 5 ViewModel tests.
 
-### Obiettivo
-Realizzare l'interfaccia grafica WPF in PowerShell 5.1 (`src/ui/`) in sola lettura, riusando lo stesso motore della modalita' `-Headless`, con scansione in Runspace separato, filtri combinabili, tema chiaro/scuro, export JSON/HTML e test Pester 5 sul ViewModel.
+### Completed Work
+- Extended `src/core/Runner.ps1` with optional `-OnProgress` and `-ShouldCancel` hooks.
+- Extended `src/core/Report.ps1` with `ConvertTo-ReportHtml`, `Export-ReportHtml`, and `Export-TechnicalLog`.
+- Created pure presentation layer `src/ui/ViewModel.ps1`, XAML layout `src/ui/MainWindow.xaml`, and controller `src/ui/Start-ScannerUI.ps1`.
+- Added `-Gui` (default) and automatic `-STA` apartment check to `src/Invoke-Scanner.ps1`.
+- Added `tests/ViewModel.Tests.ps1` and updated `tests/ReadOnly.Tests.ps1` allowlists for `src/ui/`.
 
-### Attivita' svolte
-- Esteso `src/core/Runner.ps1` con i parametri opzionali `-OnProgress` e `-ShouldCancel` mantenendo la piena retrocompatibilita'
-- Esteso `src/core/Report.ps1` con `ConvertTo-ReportHtml`, `Export-ReportHtml` (HTML autonomo con CSS incorporato) ed `Export-TechnicalLog`
-- Creato `src/ui/ViewModel.ps1` con funzioni pure (senza dipendenze WPF) per unione catalogo/risultati, ordinamento predefinito, filtri combinabili, conteggi e formattazione del pannello di dettaglio
-- Creato `src/ui/MainWindow.xaml` con layout ridimensionabile (min 900x600), supporto DPI 100%/125%/150%, navigazione da tastiera e risorse dinamiche per tema chiaro/scuro
-- Creato `src/ui/Start-ScannerUI.ps1` con caricamento `XamlReader`, gestione eventi tramite `FindName`, esecuzione della scansione in un `[runspace]` separato con aggiornamento via `Dispatcher`, pulsante `Annulla`, copia negli appunti e riavvio come amministratore
-- Aggiornato `src/Invoke-Scanner.ps1` aggiungendo il parametro `-Gui` (predefinito quando non si specifica `-Headless`) e il controllo automatico dell'ApartmentState `STA`
-- Scritti i test unitari in `tests/ViewModel.Tests.ps1` e aggiornato `tests/ReadOnly.Tests.ps1` con la lista esplicita e commentata dei comandi consentiti per `src/ui`
-- Redatta la documentazione e checklist di collaudo manuale in `docs/ui.md` e la decisione `D6` in `docs/decisioni.md`
+## 2026-11-17 to 2026-11-19 - Baseline Expansion (58 Controls), AI Advisor & TUI
 
-## 2026-11-17 — Implementazione completa dei 18 controlli e pacchetto autonomo stile winutil
-
-### Obiettivo
-Implementare i restanti 15 controlli del catalogo per eliminare gli stati `sconosciuto` ("non ancora implementato"), estendere la suite di test Pester a tutti i 18 controlli e creare il bundler `tools/Build.ps1` per generare `dist/scanner-win11.ps1` eseguibile da qualsiasi cartella o da GitHub (`irm ... | iex`).
-
-### Attivita' svolte
-- Implementati tutti i 15 controlli rimanenti tra registro (`HOME-UAC-002`, `HOME-UAC-003`, `HOME-RDP-001`) e moduli funzione (`Accounts.ps1`, `Defender.ps1`, `Network.ps1`, `SystemSecurity.ps1`)
-- Rigenerato e validato `catalog/home_profile.json` con `tools/yaml_to_json.py`
-- Aggiunti i rimedi statici e i comandi di riferimento per tutti i 18 controlli in `src/ui/ViewModel.ps1`
-- Creato `tools/Build.ps1` e compilato lo script singolo autonomo `dist/scanner-win11.ps1`
-- Estesa la suite di test Pester a 13 file e **91 test** tutti superati (`Accounts.Tests.ps1`, `Defender.Tests.ps1`, `Network.Tests.ps1`, `SystemSecurity.Tests.ps1`)
+### Completed Work
+- Expanded catalog to **58 read-only controls** aligned with Microsoft Security Baselines (Windows 11 24H2/25H2/26H2), CIS Windows 11 Benchmark, HardeningKitty, and MITRE ATT&CK (including HVCI runtime check, ASR rules, TPM 2.0, Smart App Control, Vulnerable Driver Blocklist, WSH, ExecutionPolicy, Administrator Protection, WMI Event Subscriptions, and Browser Forced Extensions).
+- Added local Ollama AI Advisor (`src/core/OllamaClient.ps1`) with deterministic local expert fallback.
+- Added interactive console TUI fallback for SSH / non-interactive terminal sessions (`-Cli`).
+- Built standalone single-file distributions via `tools/Build.ps1`: `dist/scanner-win11.ps1` (IT), `dist/scanner-win11-en.ps1` (EN), and `dist/scanner-win11-de.ps1` (DE).
+- Standardized catalog, code comments, documentation, and test suite in technical English with full Pester 5 coverage.

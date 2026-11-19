@@ -1,13 +1,13 @@
 ﻿<#
 .SYNOPSIS
-    Carica e valida il catalogo dei controlli di sicurezza.
+    Loads and validates the security controls catalog.
 
 .DESCRIPTION
-    Legge il file JSON del catalogo e verifica la coerenza minima:
-    - Il file esiste e contiene JSON valido
-    - La versione dello schema e' supportata
-    - Gli ID dei controlli non sono duplicati
-    Non modifica mai lo stato del sistema.
+    Reads the JSON catalog file and verifies minimum structural integrity:
+    - The file exists and contains valid JSON
+    - The schema_version is supported
+    - Control IDs are unique (no duplicates)
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -15,14 +15,14 @@ Set-StrictMode -Version 2
 function Import-Catalogo {
     <#
     .SYNOPSIS
-        Carica il catalogo JSON e restituisce l'oggetto PowerShell.
+        Loads the JSON catalog and returns the parsed PowerShell object.
     .PARAMETER PercorsoCatalogo
-        Percorso completo del file home_profile.json.
+        Full path to the home_profile.json file.
     .OUTPUTS
-        PSCustomObject rappresentante il catalogo.
+        PSCustomObject representing the catalog.
     .NOTES
-        Lancia un'eccezione se il file non esiste, il JSON non e' valido,
-        o la coerenza minima non e' rispettata.
+        Throws an exception if the file does not exist, contains invalid JSON,
+        or fails structural validation.
     #>
     [CmdletBinding()]
     param(
@@ -30,44 +30,44 @@ function Import-Catalogo {
         [string]$PercorsoCatalogo
     )
 
-    # Verifica esistenza file
+    # Verify file existence
     if (-not (Test-Path -LiteralPath $PercorsoCatalogo)) {
-        throw "Il file del catalogo non esiste: $PercorsoCatalogo"
+        throw "Catalog file not found: $PercorsoCatalogo"
     }
 
-    # Leggi il contenuto
+    # Read file contents
     $contenuto = Get-Content -LiteralPath $PercorsoCatalogo -Raw -Encoding UTF8 -ErrorAction Stop
 
-    # Converti da JSON
+    # Parse JSON
     try {
         $catalogo = $contenuto | ConvertFrom-Json
     }
     catch {
-        throw "Il file del catalogo non contiene JSON valido: $_"
+        throw "Catalog file does not contain valid JSON: $_"
     }
 
-    # Verifica schema_version
+    # Verify schema_version
     $versioniSupportate = @('0.1', '0.2')
     if (-not ($catalogo.PSObject.Properties['schema_version']) -or -not ($catalogo.schema_version)) {
-        throw "Il catalogo non contiene il campo 'schema_version'."
+        throw "Catalog is missing the 'schema_version' field."
     }
     if ($versioniSupportate -notcontains $catalogo.schema_version) {
-        throw "Versione dello schema non supportata: $($catalogo.schema_version). Supportate: $($versioniSupportate -join ', ')"
+        throw "Unsupported schema version: $($catalogo.schema_version). Supported: $($versioniSupportate -join ', ')"
     }
 
-    # Verifica presenza controlli
+    # Verify controls array presence
     if (-not ($catalogo.PSObject.Properties['controls']) -or -not ($catalogo.controls)) {
-        throw "Il catalogo non contiene il campo 'controls'."
+        throw "Catalog is missing the 'controls' field."
     }
 
-    # Verifica ID duplicati
+    # Check for duplicate control IDs
     $ids = @()
     foreach ($controllo in $catalogo.controls) {
         if (-not ($controllo.PSObject.Properties['id']) -or -not $controllo.id) {
-            throw "Un controllo nel catalogo non ha il campo 'id'."
+            throw "A control in the catalog is missing the 'id' field."
         }
         if ($ids -contains $controllo.id) {
-            throw "ID duplicato nel catalogo: $($controllo.id)"
+            throw "Duplicate control ID in catalog: $($controllo.id)"
         }
         $ids += $controllo.id
     }

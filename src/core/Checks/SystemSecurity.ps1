@@ -1,23 +1,33 @@
 ﻿<#
 .SYNOPSIS
-    Controlli di sicurezza di sistema: Windows Update, BitLocker, Telemetria,
-    Secure Boot, Protezione LSA, PowerShell Script Block Logging e Impostazioni Windows.
+    System security controls: Windows Update, BitLocker, Telemetry, Secure Boot,
+    LSA Protection, PowerShell Script Block Logging, Smart App Control, TPM 2.0,
+    WSH, ExecutionPolicy, Administrator Protection, and Windows hardening settings.
 
 .DESCRIPTION
-    Contiene i controlli per:
-    - HOME-UPD-001: Aggiornamenti automatici abilitati (Test-WindowsUpdateEnabled)
-    - HOME-UPD-002: Server Windows Update autentico (Test-WindowsUpdateAuthenticServer)
-    - HOME-ENC-001: BitLocker attivo sul disco di sistema (Test-BitLockerSystemDrive)
-    - HOME-PRV-001: Telemetria impostata al livello minimo (Test-TelemetryMinimum)
-    - HOME-SEC-001: Avvio protetto Secure Boot attivo (Test-SecureBoot)
-    - HOME-SEC-002: Protezione LSA abilitata RunAsPPL (Test-LsaProtection)
-    - HOME-SEC-003: PowerShell Script Block Logging abilitato (Test-PsScriptBlockLogging)
-    - HOME-SYS-001: Visibilita' estensioni file conosciuti in Esplora file (Test-FileExtensionsVisible)
-    - HOME-SYS-002: AutoRun / AutoPlay disabilitato per unita' rimovibili (Test-AutorunDisabled)
-    - HOME-SYS-003: Filtro Microsoft Defender SmartScreen attivo (Test-SmartScreenEnabled)
-    - HOME-SYS-004: Isolamento core / Integrita' della memoria HVCI attivo (Test-MemoryIntegrityEnabled)
-    - HOME-SYS-005: Accesso anonimo SAM bloccato (Test-AnonymousSamRestricted)
-    Non modifica mai lo stato del sistema.
+    Implements read-only checks for:
+    - HOME-UPD-001: Automatic Windows Updates enabled (Test-WindowsUpdateEnabled)
+    - HOME-UPD-002: Official Windows Update server (Test-WindowsUpdateAuthenticServer)
+    - HOME-ENC-001: BitLocker or Device Encryption active on system drive (Test-BitLockerSystemDrive)
+    - HOME-PRV-001: Telemetry set to minimum level (Test-TelemetryMinimum)
+    - HOME-SEC-001: UEFI Secure Boot active (Test-SecureBoot)
+    - HOME-SEC-002: LSA Protection enabled RunAsPPL (Test-LsaProtection)
+    - HOME-SEC-003: PowerShell Script Block Logging enabled (Test-PsScriptBlockLogging)
+    - HOME-SYS-001: Known file extensions visible in File Explorer (Test-FileExtensionsVisible)
+    - HOME-SYS-002: AutoRun / AutoPlay disabled for removable drives (Test-AutorunDisabled)
+    - HOME-SYS-003: Microsoft Defender SmartScreen active (Test-SmartScreenEnabled)
+    - HOME-SYS-004: Core Isolation / Memory Integrity HVCI active (Test-MemoryIntegrityEnabled)
+    - HOME-SYS-005: Anonymous SAM enumeration restricted (Test-AnonymousSamRestricted)
+    - HOME-SYS-006: WDigest cleartext credential caching disabled (Test-WDigestDisabilitato)
+    - HOME-SYS-007: Windows Remote Assistance disabled (Test-AssistenzaRemotaDisabilitata)
+    - HOME-SYS-008: Remote Registry service disabled (Test-RegistroRemotoDisabilitato)
+    - HOME-UAC-002: UAC prompts for elevation on Secure Desktop (Test-UacSecureElevation)
+    - HOME-SEC-007: Smart App Control active (Test-SmartAppControl)
+    - HOME-SEC-008: Hardware TPM 2.0 present and ready (Test-Tpm20Ready)
+    - HOME-SYS-009: Windows Script Host disabled (Test-WshDisabled)
+    - HOME-SEC-009: Secure PowerShell ExecutionPolicy (Test-PowerShellExecutionPolicySecure)
+    - HOME-UAC-004: Windows 11 Administrator Protection active (Test-AdministratorProtection)
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -25,8 +35,8 @@ Set-StrictMode -Version 2
 function Test-WindowsUpdateEnabled {
     <#
     .SYNOPSIS
-        Verifica che il servizio Windows Update non sia disabilitato e che le policy
-        non disattivino gli aggiornamenti automatici.
+        Verifies that the Windows Update service is not disabled and Group Policy
+        does not disable automatic updates.
     #>
     [CmdletBinding()]
     param(
@@ -40,7 +50,7 @@ function Test-WindowsUpdateEnabled {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Servizio wuauserv abilitato (Start != 4) e policy NoAutoUpdate != 1"
+        Expected = "wuauserv service enabled (Start != 4) and NoAutoUpdate policy != 1"
         Evidence = $null
         Error    = $null
     }
@@ -51,7 +61,7 @@ function Test-WindowsUpdateEnabled {
 
         if (-not (Test-Path -LiteralPath $percorsoServizio)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Chiave del servizio wuauserv non trovata"
+            $risultato.Observed = "wuauserv service registry key not found"
             return $risultato
         }
 
@@ -73,20 +83,20 @@ function Test-WindowsUpdateEnabled {
 
         if ($startVal -eq 4) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Il servizio Windows Update (wuauserv) e' disabilitato (Start = 4)"
+            $risultato.Observed = "Windows Update service (wuauserv) is disabled (Start = 4)"
         }
         elseif ($noAutoUpdate -eq 1) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Gli aggiornamenti automatici sono disabilitati tramite policy (NoAutoUpdate = 1)"
+            $risultato.Observed = "Automatic updates are disabled via policy (NoAutoUpdate = 1)"
         }
         else {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Windows Update abilitato (wuauserv Start = $startVal, NoAutoUpdate = $noAutoUpdate)"
+            $risultato.Observed = "Windows Update enabled (wuauserv Start = $startVal, NoAutoUpdate = $noAutoUpdate)"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla configurazione di Windows Update"
+        $risultato.Observed = "Access denied to Windows Update configuration"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -100,7 +110,7 @@ function Test-WindowsUpdateEnabled {
 function Test-BitLockerSystemDrive {
     <#
     .SYNOPSIS
-        Verifica che BitLocker sia attivo sulla partizione di sistema.
+        Verifies that BitLocker or Device Encryption is active on the system drive.
     #>
     [CmdletBinding()]
     param(
@@ -114,7 +124,7 @@ function Test-BitLockerSystemDrive {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Crittografia BitLocker attiva sul disco di sistema"
+        Expected = "BitLocker or Device Encryption active on the system drive"
         Evidence = $null
         Error    = $null
     }
@@ -132,16 +142,16 @@ function Test-BitLockerSystemDrive {
                     MountPoint       = $discoSistema
                     ProtectionStatus = $statoProt
                     VolumeStatus     = $statoVol
-                    Fonte            = 'Get-BitLockerVolume'
+                    Source           = 'Get-BitLockerVolume'
                 }
 
                 if ($statoProt -eq 'On' -or $statoProt -eq '1') {
                     $risultato.Status   = 'superato'
-                    $risultato.Observed = "BitLocker attivo su $discoSistema (ProtectionStatus = $statoProt)"
+                    $risultato.Observed = "BitLocker active on $discoSistema (ProtectionStatus = $statoProt)"
                 }
                 else {
                     $risultato.Status   = 'fallito'
-                    $risultato.Observed = "BitLocker non attivo su $discoSistema (ProtectionStatus = $statoProt, VolumeStatus = $statoVol)"
+                    $risultato.Observed = "BitLocker not active on $discoSistema (ProtectionStatus = $statoProt, VolumeStatus = $statoVol)"
                 }
                 return $risultato
             }
@@ -156,22 +166,22 @@ function Test-BitLockerSystemDrive {
                 $risultato.Evidence = @{
                     MountPoint = $discoSistema
                     BootStatus = $bootStatus
-                    Fonte      = 'BitLockerStatusRegistry'
+                    Source     = 'BitLockerStatusRegistry'
                 }
                 if ($bootStatus -ge 1) {
                     $risultato.Status   = 'superato'
-                    $risultato.Observed = "Crittografia disco di avvio attiva (BootStatus = $bootStatus)"
+                    $risultato.Observed = "Boot drive encryption active (BootStatus = $bootStatus)"
                 }
                 else {
                     $risultato.Status   = 'fallito'
-                    $risultato.Observed = "Crittografia BitLocker non attiva sul disco di sistema (BootStatus = 0)"
+                    $risultato.Observed = "BitLocker encryption not active on system drive (BootStatus = 0)"
                 }
                 return $risultato
             }
         }
 
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Stato BitLocker non determinabile (eseguire come amministratore)"
+        $risultato.Observed = "Unable to determine BitLocker status (run as Administrator)"
     }
     catch {
         $risultato.Status = 'errore'
@@ -184,7 +194,7 @@ function Test-BitLockerSystemDrive {
 function Test-TelemetryMinimum {
     <#
     .SYNOPSIS
-        Verifica che il livello di telemetria di Windows (AllowTelemetry) sia impostato al minimo (<= 1).
+        Verifies that Windows telemetry level (AllowTelemetry) is set to minimum (<= 1).
     #>
     [CmdletBinding()]
     param(
@@ -198,7 +208,7 @@ function Test-TelemetryMinimum {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "AllowTelemetry <= 1 (Dati diagnostici obbligatori / minimo)"
+        Expected = "AllowTelemetry <= 1 (Required diagnostic data / minimum)"
         Evidence = $null
         Error    = $null
     }
@@ -228,7 +238,7 @@ function Test-TelemetryMinimum {
 
         if ($null -eq $valoreTrovato) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "AllowTelemetry non limitato (livello predefinito completo attivo)"
+            $risultato.Observed = "AllowTelemetry not restricted (default full telemetry level active)"
             $risultato.Evidence = @{ Configured = $false }
             return $risultato
         }
@@ -240,16 +250,16 @@ function Test-TelemetryMinimum {
 
         if ($valoreTrovato -le 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "AllowTelemetry = $valoreTrovato (livello minimo)"
+            $risultato.Observed = "AllowTelemetry = $valoreTrovato (minimum level)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "AllowTelemetry = $valoreTrovato (superiore al livello minimo 1)"
+            $risultato.Observed = "AllowTelemetry = $valoreTrovato (above minimum level 1)"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave di registro DataCollection"
+        $risultato.Observed = "Access denied to DataCollection registry key"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -263,7 +273,7 @@ function Test-TelemetryMinimum {
 function Test-SecureBoot {
     <#
     .SYNOPSIS
-        Verifica che l'avvio protetto UEFI (Secure Boot) sia abilitato.
+        Verifies that UEFI Secure Boot is enabled.
     #>
     [CmdletBinding()]
     param(
@@ -277,7 +287,7 @@ function Test-SecureBoot {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "UEFISecureBootEnabled = 1 (Secure Boot attivo)"
+        Expected = "UEFISecureBootEnabled = 1 (Secure Boot enabled)"
         Evidence = $null
         Error    = $null
     }
@@ -286,7 +296,7 @@ function Test-SecureBoot {
         $percorsoSb = 'HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\State'
         if (-not (Test-Path -LiteralPath $percorsoSb)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Stato Secure Boot non presente (possibile sistema BIOS legacy)"
+            $risultato.Observed = "Secure Boot state key not present (possible legacy BIOS system)"
             $risultato.Evidence = @{ KeyExists = $false }
             return $risultato
         }
@@ -294,7 +304,7 @@ function Test-SecureBoot {
         $propSb = Get-ItemProperty -LiteralPath $percorsoSb -ErrorAction Stop
         if ($null -eq $propSb.PSObject.Properties['UEFISecureBootEnabled']) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Valore UEFISecureBootEnabled non trovato"
+            $risultato.Observed = "UEFISecureBootEnabled value not found"
             return $risultato
         }
 
@@ -306,16 +316,16 @@ function Test-SecureBoot {
 
         if ($sbVal -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Secure Boot attivo (UEFISecureBootEnabled = 1)"
+            $risultato.Observed = "Secure Boot enabled (UEFISecureBootEnabled = 1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Secure Boot disattivato (UEFISecureBootEnabled = $sbVal)"
+            $risultato.Observed = "Secure Boot disabled (UEFISecureBootEnabled = $sbVal)"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave SecureBoot"
+        $risultato.Observed = "Access denied to SecureBoot registry key"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -329,7 +339,7 @@ function Test-SecureBoot {
 function Test-LsaProtection {
     <#
     .SYNOPSIS
-        Verifica che la protezione del processo LSA (RunAsPPL) sia abilitata.
+        Verifies that Local Security Authority (LSA) Protection (RunAsPPL) is enabled.
     #>
     [CmdletBinding()]
     param(
@@ -343,7 +353,7 @@ function Test-LsaProtection {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "RunAsPPL >= 1 oppure RunAsPPLBoot >= 1 in HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
+        Expected = "RunAsPPL >= 1 or RunAsPPLBoot >= 1 in HKLM:\SYSTEM\CurrentControlSet\Control\Lsa"
         Evidence = $null
         Error    = $null
     }
@@ -352,7 +362,7 @@ function Test-LsaProtection {
         $percorsoLsa = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'
         if (-not (Test-Path -LiteralPath $percorsoLsa)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Chiave di registro LSA non trovata"
+            $risultato.Observed = "LSA registry key not found"
             return $risultato
         }
 
@@ -379,16 +389,16 @@ function Test-LsaProtection {
 
         if ($runAsPpl -ge 1 -or $runAsPplBoot -ge 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Protezione LSA attiva (RunAsPPL = $runAsPpl, RunAsPPLBoot = $runAsPplBoot)"
+            $risultato.Observed = "LSA Protection active (RunAsPPL = $runAsPpl, RunAsPPLBoot = $runAsPplBoot)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Protezione LSA non attiva (RunAsPPL = 0)"
+            $risultato.Observed = "LSA Protection not active (RunAsPPL = 0)"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave di registro LSA"
+        $risultato.Observed = "Access denied to LSA registry key"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -402,7 +412,7 @@ function Test-LsaProtection {
 function Test-PsScriptBlockLogging {
     <#
     .SYNOPSIS
-        Verifica che il logging degli script block di PowerShell (EnableScriptBlockLogging) sia abilitato.
+        Verifies that PowerShell Script Block Logging (EnableScriptBlockLogging) is enabled.
     #>
     [CmdletBinding()]
     param(
@@ -425,7 +435,7 @@ function Test-PsScriptBlockLogging {
         $percorsoSbl = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging'
         if (-not (Test-Path -LiteralPath $percorsoSbl)) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Policy ScriptBlockLogging non configurata (logging disabilitato per impostazione predefinita)"
+            $risultato.Observed = "ScriptBlockLogging policy not configured (logging disabled by default)"
             $risultato.Evidence = @{ Path = $percorsoSbl; KeyExists = $false }
             return $risultato
         }
@@ -445,16 +455,16 @@ function Test-PsScriptBlockLogging {
 
         if ($valore -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Script Block Logging abilitato (EnableScriptBlockLogging = 1)"
+            $risultato.Observed = "Script Block Logging enabled (EnableScriptBlockLogging = 1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Script Block Logging disabilitato (EnableScriptBlockLogging = $valore)"
+            $risultato.Observed = "Script Block Logging disabled (EnableScriptBlockLogging = $valore)"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave di registro ScriptBlockLogging"
+        $risultato.Observed = "Access denied to ScriptBlockLogging registry key"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -468,7 +478,7 @@ function Test-PsScriptBlockLogging {
 function Test-FileExtensionsVisible {
     <#
     .SYNOPSIS
-        Verifica che le estensioni dei file conosciuti siano visibili in Esplora file (HideFileExt = 0).
+        Verifies that known file extensions are visible in File Explorer (HideFileExt = 0).
     #>
     [CmdletBinding()]
     param(
@@ -482,7 +492,7 @@ function Test-FileExtensionsVisible {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "HideFileExt = 0 (Estensioni dei file sempre visibili)"
+        Expected = "HideFileExt = 0 (File extensions always visible)"
         Evidence = $null
         Error    = $null
     }
@@ -491,7 +501,7 @@ function Test-FileExtensionsVisible {
         $percorsoExp = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced'
         if (-not (Test-Path -LiteralPath $percorsoExp)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Chiave Explorer Advanced non trovata"
+            $risultato.Observed = "Explorer Advanced registry key not found"
             return $risultato
         }
 
@@ -510,11 +520,11 @@ function Test-FileExtensionsVisible {
 
         if ($hideExt -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Estensioni dei file visibili (HideFileExt = 0)"
+            $risultato.Observed = "File extensions visible (HideFileExt = 0)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Estensioni dei file nascoste (HideFileExt = $hideExt, rischio file camuffati)"
+            $risultato.Observed = "File extensions hidden (HideFileExt = $hideExt, risk of disguised executables)"
         }
     }
     catch {
@@ -528,7 +538,7 @@ function Test-FileExtensionsVisible {
 function Test-AutorunDisabled {
     <#
     .SYNOPSIS
-        Verifica che AutoRun/AutoPlay sia disabilitato sulle unita' rimovibili (NoDriveTypeAutoRun >= 145 o DisableAutoplay = 1).
+        Verifies that AutoRun/AutoPlay is disabled for removable drives (NoDriveTypeAutoRun >= 145 or DisableAutoplay = 1).
     #>
     [CmdletBinding()]
     param(
@@ -542,7 +552,7 @@ function Test-AutorunDisabled {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "NoDriveTypeAutoRun = 255 oppure AutoPlay disabilitato (DisableAutoplay = 1)"
+        Expected = "NoDriveTypeAutoRun = 255 or AutoPlay disabled (DisableAutoplay = 1)"
         Evidence = $null
         Error    = $null
     }
@@ -574,11 +584,11 @@ function Test-AutorunDisabled {
 
         if ($noDriveType -ge 145 -or $disableAutoplay -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "AutoRun/AutoPlay disabilitato (NoDriveTypeAutoRun=$noDriveType, DisableAutoplay=$disableAutoplay)"
+            $risultato.Observed = "AutoRun/AutoPlay disabled (NoDriveTypeAutoRun=$noDriveType, DisableAutoplay=$disableAutoplay)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "AutoPlay attivo per unita' rimovibili (DisableAutoplay=0, NoDriveTypeAutoRun=$noDriveType)"
+            $risultato.Observed = "AutoPlay enabled for removable drives (DisableAutoplay=0, NoDriveTypeAutoRun=$noDriveType)"
         }
     }
     catch {
@@ -592,7 +602,7 @@ function Test-AutorunDisabled {
 function Test-SmartScreenEnabled {
     <#
     .SYNOPSIS
-        Verifica che il filtro Microsoft Defender SmartScreen per app e file scaricati sia abilitato.
+        Verifies that Microsoft Defender SmartScreen is enabled for downloaded apps and files.
     #>
     [CmdletBinding()]
     param(
@@ -606,7 +616,7 @@ function Test-SmartScreenEnabled {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "SmartScreen abilitato (SmartScreenEnabled != 'Off' e EnableWebContentEvaluation = 1)"
+        Expected = "SmartScreen enabled (SmartScreenEnabled != 'Off' and EnableWebContentEvaluation = 1)"
         Evidence = $null
         Error    = $null
     }
@@ -638,11 +648,11 @@ function Test-SmartScreenEnabled {
 
         if ($ssExplorer -ne 'Off' -and $webEval -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "SmartScreen attivo (SmartScreenEnabled=$ssExplorer, WebEvaluation=$webEval)"
+            $risultato.Observed = "SmartScreen active (SmartScreenEnabled=$ssExplorer, WebEvaluation=$webEval)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "SmartScreen disattivato (SmartScreenEnabled=$ssExplorer, WebEvaluation=$webEval)"
+            $risultato.Observed = "SmartScreen disabled (SmartScreenEnabled=$ssExplorer, WebEvaluation=$webEval)"
         }
     }
     catch {
@@ -656,9 +666,9 @@ function Test-SmartScreenEnabled {
 function Test-MemoryIntegrityEnabled {
     <#
     .SYNOPSIS
-        Verifica che l'Isolamento core / Integrita' della memoria (HVCI) sia realmente attivo a runtime
-        tramite Win32_DeviceGuard (VirtualizationBasedSecurityStatus = 2 e SecurityServicesRunning contiene 2),
-        mantenendo la chiave di registro come evidenza diagnostica e fallback (HOME-SYS-004).
+        Verifies that Core Isolation / Memory Integrity (HVCI) is actively running at runtime
+        via Win32_DeviceGuard (VirtualizationBasedSecurityStatus = 2 and SecurityServicesRunning contains 2),
+        keeping the registry key as diagnostic evidence and fallback (HOME-SYS-004).
     #>
     [CmdletBinding()]
     param(
@@ -672,7 +682,7 @@ function Test-MemoryIntegrityEnabled {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "VirtualizationBasedSecurityStatus = 2 e SecurityServicesRunning contiene 2 (HVCI attivo a runtime)"
+        Expected = "VirtualizationBasedSecurityStatus = 2 and SecurityServicesRunning contains 2 (HVCI running)"
         Evidence = $null
         Error    = $null
     }
@@ -703,7 +713,7 @@ function Test-MemoryIntegrityEnabled {
                 }
 
                 $risultato.Evidence = @{
-                    Fonte                             = 'Win32_DeviceGuard'
+                    Source                            = 'Win32_DeviceGuard'
                     VirtualizationBasedSecurityStatus = $vbsStatus
                     SecurityServicesRunning           = $serviziRunning
                     RegistryPath                      = $percorsoHvci
@@ -712,39 +722,39 @@ function Test-MemoryIntegrityEnabled {
 
                 if ($vbsStatus -eq 2 -and ($serviziRunning -contains 2)) {
                     $risultato.Status   = 'superato'
-                    $risultato.Observed = "Integrita' della memoria (HVCI) attiva a runtime (VBS=2, SecurityServicesRunning contiene 2)"
+                    $risultato.Observed = "Memory Integrity (HVCI) active at runtime (VBS=2, SecurityServicesRunning contains 2)"
                 }
                 else {
                     $risultato.Status   = 'fallito'
-                    $risultato.Observed = "HVCI non in esecuzione a runtime (VBSStatus=$vbsStatus, ServicesRunning=[$($serviziRunning -join ',')], RegEnabled=$valoreReg)"
+                    $risultato.Observed = "HVCI not running at runtime (VBSStatus=$vbsStatus, ServicesRunning=[$($serviziRunning -join ',')], RegEnabled=$valoreReg)"
                 }
                 return $risultato
             }
         }
         catch {
-            # Fallback diagnostico sul registro se il namespace CIM DeviceGuard non e' accessibile
+            # Diagnostic registry fallback if CIM DeviceGuard namespace is unavailable
         }
 
         if (-not $esisteChiave) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Integrita' della memoria (HVCI) non configurata"
-            $risultato.Evidence = @{ Fonte = 'RegistryFallback'; KeyExists = $false }
+            $risultato.Observed = "Memory Integrity (HVCI) not configured"
+            $risultato.Evidence = @{ Source = 'RegistryFallback'; KeyExists = $false }
             return $risultato
         }
 
         $risultato.Evidence = @{
-            Fonte           = 'RegistryFallback'
+            Source          = 'RegistryFallback'
             Path            = $percorsoHvci
             RegistryEnabled = $valoreReg
         }
 
         if ($valoreReg -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Isolamento core / Integrita' della memoria abilitata da registro (Enabled = 1)"
+            $risultato.Observed = "Core Isolation / Memory Integrity enabled in registry (Enabled = 1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Isolamento core / Integrita' della memoria disattivata (Enabled = $valoreReg)"
+            $risultato.Observed = "Core Isolation / Memory Integrity disabled (Enabled = $valoreReg)"
         }
     }
     catch {
@@ -758,7 +768,7 @@ function Test-MemoryIntegrityEnabled {
 function Test-AnonymousSamRestricted {
     <#
     .SYNOPSIS
-        Verifica che l'enumerazione anonima degli account SAM (RestrictAnonymousSAM = 1) sia bloccata.
+        Verifies that anonymous enumeration of SAM accounts (RestrictAnonymousSAM = 1) is blocked.
     #>
     [CmdletBinding()]
     param(
@@ -781,7 +791,7 @@ function Test-AnonymousSamRestricted {
         $percorsoLsa = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'
         if (-not (Test-Path -LiteralPath $percorsoLsa)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Chiave LSA non trovata"
+            $risultato.Observed = "LSA registry key not found"
             return $risultato
         }
 
@@ -800,11 +810,11 @@ function Test-AnonymousSamRestricted {
 
         if ($valore -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Enumerazione anonima SAM bloccata (RestrictAnonymousSAM = 1)"
+            $risultato.Observed = "Anonymous SAM enumeration blocked (RestrictAnonymousSAM = 1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Enumerazione anonima SAM consentita (RestrictAnonymousSAM = $valore)"
+            $risultato.Observed = "Anonymous SAM enumeration allowed (RestrictAnonymousSAM = $valore)"
         }
     }
     catch {
@@ -818,7 +828,7 @@ function Test-AnonymousSamRestricted {
 function Test-WindowsUpdateAuthenticServer {
     <#
     .SYNOPSIS
-        Verifica che Windows Update non sia dirottato verso un server WSUS esterno non sicuro (WUServer).
+        Verifies that Windows Update is not redirected to an unauthorized external WSUS server (WUServer).
     #>
     [CmdletBinding()]
     param(
@@ -832,7 +842,7 @@ function Test-WindowsUpdateAuthenticServer {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Nessun server WSUS non autorizzato configurato in WindowsUpdate"
+        Expected = "No unauthorized WSUS server configured in WindowsUpdate policy"
         Evidence = $null
         Error    = $null
     }
@@ -841,7 +851,7 @@ function Test-WindowsUpdateAuthenticServer {
         $percorsoWu = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate'
         if (-not (Test-Path -LiteralPath $percorsoWu)) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Connessione diretta ai server ufficiali Microsoft Windows Update"
+            $risultato.Observed = "Direct connection to official Microsoft Windows Update servers"
             $risultato.Evidence = @{ CustomWUServer = $null }
             return $risultato
         }
@@ -861,11 +871,11 @@ function Test-WindowsUpdateAuthenticServer {
 
         if ([string]::IsNullOrWhiteSpace($wuServer)) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessun server WSUS personalizzato impostato"
+            $risultato.Observed = "No custom WSUS server configured"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Windows Update rediretto verso server esterno: $wuServer"
+            $risultato.Observed = "Windows Update redirected to external server: $wuServer"
         }
     }
     catch {
@@ -879,8 +889,8 @@ function Test-WindowsUpdateAuthenticServer {
 function Test-WDigestDisabilitato {
     <#
     .SYNOPSIS
-        Verifica che la memorizzazione in chiaro delle password in memoria tramite WDigest
-        (UseLogonCredential) sia disabilitata (HOME-SYS-006).
+        Verifies that WDigest cleartext password caching in LSASS memory
+        (UseLogonCredential) is disabled (HOME-SYS-006).
     #>
     [CmdletBinding()]
     param(
@@ -894,7 +904,7 @@ function Test-WDigestDisabilitato {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "UseLogonCredential = 0 (o assente) in WDigest"
+        Expected = "UseLogonCredential = 0 (or absent) in WDigest"
         Evidence = $null
         Error    = $null
     }
@@ -917,11 +927,11 @@ function Test-WDigestDisabilitato {
 
         if ($valore -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Credenziali WDigest in chiaro in memoria disabilitate (0)"
+            $risultato.Observed = "WDigest cleartext credential caching disabled (0)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "PERICOLO: WDigest UseLogonCredential = $valore (password memorizzate in chiaro in LSASS)"
+            $risultato.Observed = "WARNING: WDigest UseLogonCredential = $valore (cleartext passwords cached in LSASS)"
         }
     }
     catch {
@@ -935,7 +945,7 @@ function Test-WDigestDisabilitato {
 function Test-AssistenzaRemotaDisabilitata {
     <#
     .SYNOPSIS
-        Verifica che l'Assistenza remota di Windows (fAllowToGetHelp = 0) sia disabilitata (HOME-SYS-007).
+        Verifies that Windows Remote Assistance (fAllowToGetHelp = 0) is disabled (HOME-SYS-007).
     #>
     [CmdletBinding()]
     param(
@@ -971,11 +981,11 @@ function Test-AssistenzaRemotaDisabilitata {
 
         if ($valore -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Assistenza remota disabilitata (fAllowToGetHelp = 0)"
+            $risultato.Observed = "Remote Assistance disabled (fAllowToGetHelp = 0)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Assistenza remota abilitata (fAllowToGetHelp = $valore)"
+            $risultato.Observed = "Remote Assistance enabled (fAllowToGetHelp = $valore)"
         }
     }
     catch {
@@ -989,7 +999,7 @@ function Test-AssistenzaRemotaDisabilitata {
 function Test-RegistroRemotoDisabilitato {
     <#
     .SYNOPSIS
-        Verifica che il servizio Registro di sistema remoto (RemoteRegistry) sia disabilitato e fermo (HOME-SYS-008).
+        Verifies that the Remote Registry service (RemoteRegistry) is disabled and stopped (HOME-SYS-008).
     #>
     [CmdletBinding()]
     param(
@@ -1003,7 +1013,7 @@ function Test-RegistroRemotoDisabilitato {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Servizio RemoteRegistry fermo e disabilitato (Start = 4)"
+        Expected = "RemoteRegistry service stopped and disabled (Start = 4)"
         Evidence = $null
         Error    = $null
     }
@@ -1012,7 +1022,7 @@ function Test-RegistroRemotoDisabilitato {
         $chiaveRr = 'HKLM:\SYSTEM\CurrentControlSet\Services\RemoteRegistry'
         if (-not (Test-Path -LiteralPath $chiaveRr)) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Servizio RemoteRegistry non installato"
+            $risultato.Observed = "RemoteRegistry service not installed"
             return $risultato
         }
 
@@ -1029,11 +1039,11 @@ function Test-RegistroRemotoDisabilitato {
 
         if ($startVal -eq 4 -and $statoSrv -ne 'Running') {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Servizio RemoteRegistry disabilitato (Start=4) e fermo"
+            $risultato.Observed = "RemoteRegistry service disabled (Start=4) and stopped"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Servizio RemoteRegistry non disabilitato (Start=$startVal, Status=$statoSrv)"
+            $risultato.Observed = "RemoteRegistry service not disabled (Start=$startVal, Status=$statoSrv)"
         }
     }
     catch {
@@ -1047,8 +1057,8 @@ function Test-RegistroRemotoDisabilitato {
 function Test-UacSecureElevation {
     <#
     .SYNOPSIS
-        Verifica che UAC richieda la conferma per l'elevazione (ConsentPromptBehaviorAdmin in 1, 2, 5)
-        e che il prompt venga mostrato sul Desktop sicuro (PromptOnSecureDesktop = 1) (HOME-UAC-002).
+        Verifies that UAC prompts for elevation consent (ConsentPromptBehaviorAdmin in 1, 2, 5)
+        on the Secure Desktop (PromptOnSecureDesktop = 1) (HOME-UAC-002).
     #>
     [CmdletBinding()]
     param(
@@ -1062,7 +1072,7 @@ function Test-UacSecureElevation {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "ConsentPromptBehaviorAdmin in (1, 2, 5) e PromptOnSecureDesktop = 1"
+        Expected = "ConsentPromptBehaviorAdmin in (1, 2, 5) and PromptOnSecureDesktop = 1"
         Evidence = $null
         Error    = $null
     }
@@ -1071,7 +1081,7 @@ function Test-UacSecureElevation {
         $chiaveUac = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
         if (-not (Test-Path -LiteralPath $chiaveUac)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Chiave di registro UAC Policies\System non trovata"
+            $risultato.Observed = "UAC Policies\System registry key not found"
             return $risultato
         }
 
@@ -1100,16 +1110,16 @@ function Test-UacSecureElevation {
 
         if ($consentSicuro -and $desktopSicuro) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "UAC richiede conferma su Desktop sicuro (ConsentPromptBehaviorAdmin=$consent, PromptOnSecureDesktop=1)"
+            $risultato.Observed = "UAC prompts for consent on Secure Desktop (ConsentPromptBehaviorAdmin=$consent, PromptOnSecureDesktop=1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Configurazione elevazione UAC debole (ConsentPromptBehaviorAdmin=$consent, PromptOnSecureDesktop=$secureDesk)"
+            $risultato.Observed = "Weak UAC elevation configuration (ConsentPromptBehaviorAdmin=$consent, PromptOnSecureDesktop=$secureDesk)"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave UAC Policies\System"
+        $risultato.Observed = "Access denied to UAC Policies\System key"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -1123,7 +1133,7 @@ function Test-UacSecureElevation {
 function Test-SmartAppControl {
     <#
     .SYNOPSIS
-        Verifica lo stato di Smart App Control (SAC) in HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy
+        Verifies Smart App Control (SAC) status in HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy
         (VerifiedAndReputablePolicyState: 1 = Enforced, 2 = Evaluation, 0 = Off) (HOME-SEC-007).
     #>
     [CmdletBinding()]
@@ -1138,7 +1148,7 @@ function Test-SmartAppControl {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "VerifiedAndReputablePolicyState = 1 (Enforced) oppure 2 (Evaluation)"
+        Expected = "VerifiedAndReputablePolicyState = 1 (Enforced) or 2 (Evaluation)"
         Evidence = $null
         Error    = $null
     }
@@ -1160,15 +1170,15 @@ function Test-SmartAppControl {
 
         if ($statoSac -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Smart App Control attivo in modalita' Enforced (1)"
+            $risultato.Observed = "Smart App Control active in Enforced mode (1)"
         }
         elseif ($statoSac -eq 2) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Smart App Control attivo in modalita' Evaluation (2 - apprendimento attivo)"
+            $risultato.Observed = "Smart App Control active in Evaluation mode (2 - active evaluation)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Smart App Control disattivato (VerifiedAndReputablePolicyState = $statoSac)"
+            $risultato.Observed = "Smart App Control disabled (VerifiedAndReputablePolicyState = $statoSac)"
         }
     }
     catch {
@@ -1182,8 +1192,8 @@ function Test-SmartAppControl {
 function Test-Tpm20Ready {
     <#
     .SYNOPSIS
-        Verifica tramite Get-Tpm (o fallback CIM Win32_Tpm) che il chip hardware TPM 2.0
-        sia presente e pronto (TpmPresent = True e TpmReady = True) (HOME-SEC-008).
+        Verifies via Get-Tpm (or CIM Win32_Tpm / TPM registry fallback) that hardware TPM 2.0
+        is present and ready (TpmPresent = True and TpmReady = True) (HOME-SEC-008).
     #>
     [CmdletBinding()]
     param(
@@ -1197,7 +1207,7 @@ function Test-Tpm20Ready {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "TpmPresent = True e TpmReady = True"
+        Expected = "TpmPresent = True and TpmReady = True"
         Evidence = $null
         Error    = $null
     }
@@ -1205,24 +1215,24 @@ function Test-Tpm20Ready {
     try {
         $tpm = Get-Tpm -ErrorAction Stop
         if ($null -eq $tpm -or $null -eq $tpm.PSObject.Properties['TpmPresent']) {
-            throw "Oggetto TPM non restituito o richiede privilegi elevati"
+            throw "TPM object not returned or requires elevated privileges"
         }
         $present = [bool]$tpm.TpmPresent
         $ready   = [bool]$tpm.TpmReady
 
         $risultato.Evidence = @{
-            Fonte      = 'Get-Tpm'
+            Source     = 'Get-Tpm'
             TpmPresent = $present
             TpmReady   = $ready
         }
 
         if ($present -and $ready) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Modulo hardware TPM 2.0 presente e pronto (TpmPresent=True, TpmReady=True)"
+            $risultato.Observed = "Hardware TPM 2.0 module present and ready (TpmPresent=True, TpmReady=True)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "TPM non pronto o assente (TpmPresent=$present, TpmReady=$ready)"
+            $risultato.Observed = "TPM not ready or absent (TpmPresent=$present, TpmReady=$ready)"
         }
     }
     catch {
@@ -1232,24 +1242,24 @@ function Test-Tpm20Ready {
                 $enVal  = [bool]$cimTpm.IsEnabled_InitialValue
                 $actVal = [bool]$cimTpm.IsActivated_InitialValue
                 $risultato.Evidence = @{
-                    Fonte                    = 'Win32_Tpm'
+                    Source                   = 'Win32_Tpm'
                     IsEnabled_InitialValue   = $enVal
                     IsActivated_InitialValue = $actVal
                 }
                 if ($enVal -and $actVal) {
                     $risultato.Status   = 'superato'
-                    $risultato.Observed = "Modulo hardware TPM 2.0 abilitato e attivo (Win32_Tpm)"
+                    $risultato.Observed = "Hardware TPM 2.0 module enabled and activated (Win32_Tpm)"
                 }
                 else {
                     $risultato.Status   = 'fallito'
-                    $risultato.Observed = "TPM non attivo (Enabled=$enVal, Activated=$actVal)"
+                    $risultato.Observed = "TPM not active (Enabled=$enVal, Activated=$actVal)"
                 }
                 return $risultato
             }
         }
         catch { }
 
-        # Fallback su Registro (HKLM:\SYSTEM\CurrentControlSet\Services\TPM\WMI ed Enum - leggibile anche senza Admin)
+        # Registry fallback (HKLM:\SYSTEM\CurrentControlSet\Services\TPM\WMI and Enum - readable without Admin)
         try {
             $chiaveTpmWmi  = 'HKLM:\SYSTEM\CurrentControlSet\Services\TPM\WMI'
             $chiaveTpmEnum = 'HKLM:\SYSTEM\CurrentControlSet\Services\TPM\Enum'
@@ -1263,13 +1273,13 @@ function Test-Tpm20Ready {
 
                 if ($enumCount -ge 1 -or $readyStor -eq 1 -or (-not [string]::IsNullOrWhiteSpace($fwVer))) {
                     $risultato.Evidence = @{
-                        Fonte               = 'TPMServiceRegistry'
+                        Source              = 'TPMServiceRegistry'
                         DeviceCount         = $enumCount
                         TaskReadyForStorage = $readyStor
                         FirmwareVersion     = $fwVer
                     }
                     $risultato.Status   = 'superato'
-                    $risultato.Observed = "Modulo hardware TPM 2.0 presente e pronto (Firmware $fwVer)"
+                    $risultato.Observed = "Hardware TPM 2.0 module present and ready (Firmware $fwVer)"
                     return $risultato
                 }
             }
@@ -1278,12 +1288,12 @@ function Test-Tpm20Ready {
 
         if ($_.Exception.Message -match 'Administrator|amministratore|Access is denied|Accesso negato|privilegi|privilege|CIM resource') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi di amministratore richiesti per interrogare lo stato del chip TPM 2.0"
+            $risultato.Observed = "Administrator privileges required to query TPM 2.0 chip status"
             $risultato.Error    = $_.Exception.Message
         }
         else {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Impossibile interrogare lo stato TPM ($($_.Exception.Message))"
+            $risultato.Observed = "Unable to query TPM status ($($_.Exception.Message))"
             $risultato.Error    = $_.Exception.Message
         }
     }
@@ -1294,8 +1304,8 @@ function Test-Tpm20Ready {
 function Test-WshDisabled {
     <#
     .SYNOPSIS
-        Verifica che Windows Script Host (WSH: wscript.exe / cscript.exe per .vbs/.js)
-        sia disabilitato (Enabled = 0) (HOME-SYS-009).
+        Verifies that Windows Script Host (WSH: wscript.exe / cscript.exe for .vbs/.js)
+        is disabled (Enabled = 0) (HOME-SYS-009).
     #>
     [CmdletBinding()]
     param(
@@ -1342,11 +1352,11 @@ function Test-WshDisabled {
 
         if ($valLM -eq 0 -or $valCU -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Windows Script Host (WSH) disabilitato (HKLM=$valLM, HKCU=$valCU)"
+            $risultato.Observed = "Windows Script Host (WSH) disabled (HKLM=$valLM, HKCU=$valCU)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Windows Script Host (WSH) attivo per script .vbs/.js (Enabled = 1)"
+            $risultato.Observed = "Windows Script Host (WSH) enabled for .vbs/.js scripts (Enabled = 1)"
         }
     }
     catch {
@@ -1360,8 +1370,8 @@ function Test-WshDisabled {
 function Test-PowerShellExecutionPolicySecure {
     <#
     .SYNOPSIS
-        Verifica tramite Get-ExecutionPolicy -List che gli scope persistenti (MachinePolicy, UserPolicy,
-        LocalMachine, CurrentUser) non siano impostati su Unrestricted o Bypass (HOME-SEC-009).
+        Verifies via Get-ExecutionPolicy -List that persistent scopes (MachinePolicy, UserPolicy,
+        LocalMachine, CurrentUser) are not set to Unrestricted or Bypass (HOME-SEC-009).
     #>
     [CmdletBinding()]
     param(
@@ -1375,7 +1385,7 @@ function Test-PowerShellExecutionPolicySecure {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Nessuno scope persistente impostato su Unrestricted o Bypass"
+        Expected = "No persistent scope set to Unrestricted or Bypass"
         Evidence = $null
         Error    = $null
     }
@@ -1404,11 +1414,11 @@ function Test-PowerShellExecutionPolicySecure {
             $polLM = if ($mappaPol.ContainsKey('LocalMachine')) { $mappaPol['LocalMachine'] } else { 'Undefined' }
             $polCU = if ($mappaPol.ContainsKey('CurrentUser')) { $mappaPol['CurrentUser'] } else { 'Undefined' }
             $risultato.Status   = 'superato'
-            $risultato.Observed = "ExecutionPolicy sicura (LocalMachine=$polLM, CurrentUser=$polCU)"
+            $risultato.Observed = "Secure ExecutionPolicy (LocalMachine=$polLM, CurrentUser=$polCU)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "ExecutionPolicy troppo permissiva rilevata: $($scopeInsicuri -join ', ')"
+            $risultato.Observed = "Overly permissive ExecutionPolicy detected: $($scopeInsicuri -join ', ')"
         }
     }
     catch {
@@ -1422,8 +1432,8 @@ function Test-PowerShellExecutionPolicySecure {
 function Test-AdministratorProtection {
     <#
     .SYNOPSIS
-        Verifica che la nuova modalita' Administrator Protection (elevazione just-in-time di Windows 11 24H2/25H2/26H2)
-        sia abilitata (TypeOfAdminApprovalMode = 2) (HOME-UAC-004).
+        Verifies that Windows 11 24H2/25H2/26H2 just-in-time Administrator Protection
+        is enabled (TypeOfAdminApprovalMode = 2) (HOME-UAC-004).
     #>
     [CmdletBinding()]
     param(
@@ -1437,7 +1447,7 @@ function Test-AdministratorProtection {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "TypeOfAdminApprovalMode = 2 (Administrator Protection just-in-time attiva)"
+        Expected = "TypeOfAdminApprovalMode = 2 (Just-in-time Administrator Protection active)"
         Evidence = $null
         Error    = $null
     }
@@ -1466,7 +1476,7 @@ function Test-AdministratorProtection {
         $chiaveUac = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
         if (-not (Test-Path -LiteralPath $chiaveUac -ErrorAction SilentlyContinue)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Chiave di registro UAC Policies\System non trovata"
+            $risultato.Observed = "UAC Policies\System registry key not found"
             $risultato.Evidence = @{ Path = $chiaveUac; Build = $numeroBuild }
             return $risultato
         }
@@ -1494,26 +1504,26 @@ function Test-AdministratorProtection {
 
         if ($haProprieta -and $valoreMode -eq 2) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Administrator Protection just-in-time attiva (TypeOfAdminApprovalMode = 2)"
+            $risultato.Observed = "Just-in-time Administrator Protection active (TypeOfAdminApprovalMode = 2)"
         }
         elseif ((-not $haProprieta) -and ($numeroBuild -gt 0 -and $numeroBuild -lt 26100)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Funzionalita' disponibile da Windows 11 24H2/25H2+ (Build rilevata: $numeroBuild < 26100)"
+            $risultato.Observed = "Feature available starting in Windows 11 24H2/25H2+ (Detected build: $numeroBuild < 26100)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Modalita' UAC legacy attiva; Administrator Protection non abilitata (TypeOfAdminApprovalMode = $valoreMode)"
+            $risultato.Observed = "Legacy UAC mode active; Administrator Protection is not enabled (TypeOfAdminApprovalMode = $valoreMode)"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave UAC Policies\System"
+        $risultato.Observed = "Access denied to UAC Policies\System key"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per verificare Administrator Protection"
+            $risultato.Observed = "Insufficient privileges to check Administrator Protection"
             $risultato.Error    = $_.Exception.Message
         }
         else {

@@ -1,18 +1,18 @@
 ﻿<#
 .SYNOPSIS
-    Controlli di sicurezza sui file locali, avvio automatico (persistenza), task pianificati, IFEO e file hosts.
+    Local file security, startup persistence, Scheduled Tasks, IFEO, hosts file, WMI, and browser policy checks.
 
 .DESCRIPTION
-    Contiene i controlli in sola lettura per:
-    - HOME-FIL-001: Scansione file sospetti con doppia estensione in Download, Desktop e Temp (Test-SuspiciousDoubleExtensionFiles)
-    - HOME-FIL-002: Verifica voci di avvio automatico (Run/RunOnce) contro persistenza malware (Test-StartupPersistenceEntries)
-    - HOME-FIL-003: Integrita' del file hosts di Windows contro dirottamenti DNS (Test-HostsFileIntegrity)
-    - HOME-FIL-004: Verifica Attivita' pianificate (Scheduled Tasks) contro comandi offuscati (Test-TaskPianificatiSospetti)
-    - HOME-FIL-005: Verifica assenza dirottamenti IFEO Debugger (Sticky Keys / TaskMgr / Defender) (Test-HijackingIFEO)
-    - HOME-FIL-006: Scansione cartelle Esecuzione automatica (Startup) contro script sospetti (Test-CartellaStartupUtente)
-    - HOME-FIL-007: Verifica assenza persistenza fileless via WMI Event Subscriptions (Test-WmiEventSubscriptions)
-    - HOME-FIL-008: Verifica assenza estensioni browser forzate da policy Chrome/Edge (Test-BrowserForcedExtensions)
-    Non modifica mai lo stato del sistema.
+    Implements read-only checks for:
+    - HOME-FIL-001: Disguised double-extension executables in Downloads, Desktop, and Temp (Test-SuspiciousDoubleExtensionFiles)
+    - HOME-FIL-002: Suspicious or obfuscated Startup Run/RunOnce registry entries (Test-StartupPersistenceEntries)
+    - HOME-FIL-003: Windows hosts file integrity against DNS hijacking (Test-HostsFileIntegrity)
+    - HOME-FIL-004: Suspicious or obfuscated Scheduled Tasks (Test-TaskPianificatiSospetti)
+    - HOME-FIL-005: IFEO Debugger hijacking on critical executables (Test-HijackingIFEO)
+    - HOME-FIL-006: Suspicious scripts or executables in Startup folders (Test-CartellaStartupUtente)
+    - HOME-FIL-007: Fileless persistence via WMI Event Subscriptions (Test-WmiEventSubscriptions)
+    - HOME-FIL-008: Policy-forced Chrome/Edge browser extensions (Test-BrowserForcedExtensions)
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -20,8 +20,8 @@ Set-StrictMode -Version 2
 function Test-SuspiciousDoubleExtensionFiles {
     <#
     .SYNOPSIS
-        Scansiona in sola lettura le cartelle Download, Desktop e Temp alla ricerca di file
-        eseguibili camuffati con doppia estensione (es. documento.pdf.exe, foto.jpg.scr).
+        Performs a read-only scan of Downloads, Desktop, and Temp directories for
+        disguised double-extension executables (e.g., invoice.pdf.exe, photo.jpg.scr).
     #>
     [CmdletBinding()]
     param(
@@ -38,7 +38,7 @@ function Test-SuspiciousDoubleExtensionFiles {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "0 file eseguibili camuffati con doppia estensione in Download, Desktop e Temp"
+        Expected = "0 disguised double-extension executables in Downloads, Desktop, and Temp"
         Evidence = $null
         Error    = $null
     }
@@ -72,19 +72,19 @@ function Test-SuspiciousDoubleExtensionFiles {
         }
 
         $risultato.Evidence = @{
-            CartelleAnalizzate = $CartelleDaControllare
-            FileAnalizzati     = $totaleAnalizzati
-            FileSospetti       = $fileSospetti
+            ScannedFolders  = $CartelleDaControllare
+            ScannedFiles    = $totaleAnalizzati
+            SuspiciousFiles = $fileSospetti
         }
 
         if ($fileSospetti.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessun file con doppia estensione sospetta rilevato ($totaleAnalizzati file controllati)"
+            $risultato.Observed = "No suspicious double-extension files found ($totaleAnalizzati files scanned)"
         }
         else {
             $risultato.Status   = 'fallito'
             $nomiBrevi = @($fileSospetti | ForEach-Object { Split-Path -Leaf $_ })
-            $risultato.Observed = "Trovati $($fileSospetti.Count) file sospetti con doppia estensione: $($nomiBrevi -join ', ')"
+            $risultato.Observed = "Found $($fileSospetti.Count) suspicious double-extension files: $($nomiBrevi -join ', ')"
         }
     }
     catch {
@@ -98,8 +98,8 @@ function Test-SuspiciousDoubleExtensionFiles {
 function Test-StartupPersistenceEntries {
     <#
     .SYNOPSIS
-        Analizza le chiavi di avvio automatico (Run / RunOnce) alla ricerca di comandi
-        sospetti (esecuzione da Temp, PowerShell offuscato -enc, mshta, wscript).
+        Inspects Startup registry keys (Run / RunOnce) for suspicious commands
+        (execution from Temp, obfuscated PowerShell -enc, mshta, wscript).
     #>
     [CmdletBinding()]
     param(
@@ -113,7 +113,7 @@ function Test-StartupPersistenceEntries {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Nessuna voce di avvio automatico sospetta o offuscata nelle chiavi Run/RunOnce"
+        Expected = "No suspicious or obfuscated startup entries in Run/RunOnce keys"
         Evidence = $null
         Error    = $null
     }
@@ -152,17 +152,17 @@ function Test-StartupPersistenceEntries {
         }
 
         $risultato.Evidence = @{
-            TotaleVociRun = $vociTotali.Count
-            VociSospette  = $vociSospette
+            TotalRunEntries   = $vociTotali.Count
+            SuspiciousEntries = $vociSospette
         }
 
         if ($vociSospette.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessuna voce sospetta rilevata tra i $($vociTotali.Count) programmi in avvio automatico"
+            $risultato.Observed = "No suspicious startup entries detected across $($vociTotali.Count) Run/RunOnce entries"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Rilevate $($vociSospette.Count) voci di avvio automatico sospette: $($vociSospette -join '; ')"
+            $risultato.Observed = "Detected $($vociSospette.Count) suspicious startup entries: $($vociSospette -join '; ')"
         }
     }
     catch {
@@ -176,8 +176,7 @@ function Test-StartupPersistenceEntries {
 function Test-HostsFileIntegrity {
     <#
     .SYNOPSIS
-        Verifica che il file hosts di Windows non contenga dirottamenti di domini di sicurezza
-        o Windows Update.
+        Verifies that the Windows hosts file does not hijack security or Windows Update domains.
     #>
     [CmdletBinding()]
     param(
@@ -194,7 +193,7 @@ function Test-HostsFileIntegrity {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Nessun dirottamento di domini Microsoft o antivirus nel file hosts"
+        Expected = "No hijacking of Microsoft or antivirus domains in the hosts file"
         Evidence = $null
         Error    = $null
     }
@@ -207,7 +206,7 @@ function Test-HostsFileIntegrity {
 
         if (-not (Test-Path -LiteralPath $PercorsoHosts)) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "File hosts non presente (nessun dirottamento attivo)"
+            $risultato.Observed = "Hosts file not present (no active redirections)"
             return $risultato
         }
 
@@ -232,23 +231,23 @@ function Test-HostsFileIntegrity {
         }
 
         $risultato.Evidence = @{
-            Percorso             = $PercorsoHosts
-            VociPersonalizzate   = $righeAttive.Count
-            DirottamentiSospetti = $righeSospette
+            Path                = $PercorsoHosts
+            CustomEntriesCount  = $righeAttive.Count
+            SuspiciousRedirects = $righeSospette
         }
 
         if ($righeSospette.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "File hosts integro ($($righeAttive.Count) voci personalizzate, 0 dirottamenti di sicurezza)"
+            $risultato.Observed = "Hosts file intact ($($righeAttive.Count) custom entries, 0 security hijacks)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Rilevati $($righeSospette.Count) dirottamenti sospetti nel file hosts: $($righeSospette -join '; ')"
+            $risultato.Observed = "Detected $($righeSospette.Count) suspicious hosts redirections: $($righeSospette -join '; ')"
         }
     }
     catch [System.UnauthorizedAccessException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato in lettura al file hosts"
+        $risultato.Observed = "Access denied while reading the hosts file"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -262,8 +261,8 @@ function Test-HostsFileIntegrity {
 function Test-TaskPianificatiSospetti {
     <#
     .SYNOPSIS
-        Analizza le Attivita' pianificate (Scheduled Tasks) alla ricerca di persistenza malware
-        (esecuzione da Temp/Users\Public, PowerShell offuscato -enc, mshta, regsvr32, certutil) (HOME-FIL-004).
+        Audits non-Microsoft Scheduled Tasks for malware persistence indicators
+        (execution from Temp/Users\Public, obfuscated PowerShell -enc, mshta, regsvr32, certutil) (HOME-FIL-004).
     #>
     [CmdletBinding()]
     param(
@@ -277,7 +276,7 @@ function Test-TaskPianificatiSospetti {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "0 attivita' pianificate sospette o offuscate"
+        Expected = "0 suspicious or obfuscated Scheduled Tasks"
         Evidence = $null
         Error    = $null
     }
@@ -299,28 +298,28 @@ function Test-TaskPianificatiSospetti {
         }
 
         $risultato.Evidence = @{
-            TaskAnalizzati = $tasks.Count
-            TaskSospetti   = $sospetti
+            AnalyzedTasks   = $tasks.Count
+            SuspiciousTasks = $sospetti
         }
 
         if ($sospetti.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessuna attivita' pianificata sospetta rilevata ($($tasks.Count) task non-Microsoft verificati)"
+            $risultato.Observed = "No suspicious scheduled tasks detected ($($tasks.Count) non-Microsoft tasks inspected)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Rilevate $($sospetti.Count) attivita' pianificate sospette: $($sospetti -join '; ')"
+            $risultato.Observed = "Detected $($sospetti.Count) suspicious scheduled tasks: $($sospetti -join '; ')"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Cmdlet Get-ScheduledTask non disponibile"
+        $risultato.Observed = "Cmdlet Get-ScheduledTask is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi di amministratore richiesti per ispezionare tutte le Attivita' pianificate"
+            $risultato.Observed = "Administrator privileges required to inspect all Scheduled Tasks"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -335,8 +334,8 @@ function Test-TaskPianificatiSospetti {
 function Test-HijackingIFEO {
     <#
     .SYNOPSIS
-        Verifica che non vi siano dirottamenti di eseguibili di sistema o accessibilita'
-        (Sticky Keys sethc.exe, utilman.exe, taskmgr.exe, MsMpEng.exe) tramite IFEO Debugger (HOME-FIL-005).
+        Verifies that no critical system or accessibility executables (sethc.exe, utilman.exe,
+        taskmgr.exe, MsMpEng.exe) have an IFEO Debugger hijack configured (HOME-FIL-005).
     #>
     [CmdletBinding()]
     param(
@@ -350,7 +349,7 @@ function Test-HijackingIFEO {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Nessun Debugger IFEO malevolo su eseguibili di sistema o accessibilita'"
+        Expected = "No malicious IFEO Debugger values on critical system or accessibility executables"
         Evidence = $null
         Error    = $null
     }
@@ -375,17 +374,17 @@ function Test-HijackingIFEO {
         }
 
         $risultato.Evidence = @{
-            EseguibiliControllati = $eseguibiliCritici.Count
-            DirottamentiIFEO      = $dirottati
+            CheckedExecutables = $eseguibiliCritici.Count
+            IfeoHijacks        = $dirottati
         }
 
         if ($dirottati.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessun dirottamento IFEO rilevato sugli eseguibili critici di sistema ($($eseguibiliCritici.Count) controllati)"
+            $risultato.Observed = "No IFEO hijacking detected on critical system executables ($($eseguibiliCritici.Count) checked)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Rilevati dirottamenti IFEO sospetti: $($dirottati -join '; ')"
+            $risultato.Observed = "Suspicious IFEO hijacks detected: $($dirottati -join '; ')"
         }
     }
     catch {
@@ -399,8 +398,8 @@ function Test-HijackingIFEO {
 function Test-CartellaStartupUtente {
     <#
     .SYNOPSIS
-        Scansiona le cartelle di Esecuzione automatica (Startup utente e comune) alla ricerca di
-        script o eseguibili sospetti (.vbs, .js, .bat, .cmd, .ps1, .hta, .scr) (HOME-FIL-006).
+        Scans user and common Startup folders for suspicious scripts or executables
+        (.vbs, .js, .bat, .cmd, .ps1, .hta, .scr) (HOME-FIL-006).
     #>
     [CmdletBinding()]
     param(
@@ -414,7 +413,7 @@ function Test-CartellaStartupUtente {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "0 script o eseguibili sospetti nelle cartelle Startup"
+        Expected = "0 suspicious scripts or executables in Startup folders"
         Evidence = $null
         Error    = $null
     }
@@ -442,18 +441,18 @@ function Test-CartellaStartupUtente {
         }
 
         $risultato.Evidence = @{
-            FileTotaliStartup = $totFile
-            ScriptSospetti    = $trovati
+            TotalStartupFiles = $totFile
+            SuspiciousScripts = $trovati
         }
 
         if ($trovati.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessuno script sospetto nelle cartelle Esecuzione automatica ($totFile elementi presenti)"
+            $risultato.Observed = "No suspicious scripts in Startup folders ($totFile items checked)"
         }
         else {
             $risultato.Status   = 'fallito'
             $nomi = @($trovati | ForEach-Object { Split-Path -Leaf $_ })
-            $risultato.Observed = "Rilevati script/eseguibili sospetti in Startup: $($nomi -join ', ')"
+            $risultato.Observed = "Suspicious scripts/executables detected in Startup: $($nomi -join ', ')"
         }
     }
     catch {
@@ -467,9 +466,9 @@ function Test-CartellaStartupUtente {
 function Test-WmiEventSubscriptions {
     <#
     .SYNOPSIS
-        Verifica che non siano presenti sottoscrizioni WMI persistenti malevole
-        (persistenza fileless tramite __EventFilter, CommandLineEventConsumer,
-        ActiveScriptEventConsumer e __FilterToConsumerBinding in root\subscription) (HOME-FIL-007).
+        Verifies that no malicious permanent WMI event subscriptions exist
+        (fileless persistence via __EventFilter, CommandLineEventConsumer,
+        ActiveScriptEventConsumer, and __FilterToConsumerBinding in root\subscription) (HOME-FIL-007).
     #>
     [CmdletBinding()]
     param(
@@ -483,7 +482,7 @@ function Test-WmiEventSubscriptions {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "0 sottoscrizioni WMI persistenti sospette (CommandLineEventConsumer / ActiveScriptEventConsumer)"
+        Expected = "0 suspicious permanent WMI subscriptions (CommandLineEventConsumer / ActiveScriptEventConsumer)"
         Evidence = $null
         Error    = $null
     }
@@ -498,7 +497,7 @@ function Test-WmiEventSubscriptions {
         $filtriLegittimi = @('SCM Event Log Filter')
 
         foreach ($c in $cmdConsumers) {
-            $nomeC  = if ($null -ne $c.PSObject.Properties['Name'] -and $null -ne $c.Name) { [string]$c.Name } else { 'ConsumerSenzaNome' }
+            $nomeC  = if ($null -ne $c.PSObject.Properties['Name'] -and $null -ne $c.Name) { [string]$c.Name } else { 'UnnamedConsumer' }
             $cmdTpl = if ($null -ne $c.PSObject.Properties['CommandLineTemplate'] -and $null -ne $c.CommandLineTemplate) { [string]$c.CommandLineTemplate } else { '' }
             if ($cmdTpl.Length -gt 120) {
                 $cmdTpl = $cmdTpl.Substring(0, 117) + '...'
@@ -507,7 +506,7 @@ function Test-WmiEventSubscriptions {
         }
 
         foreach ($s in $scriptConsumers) {
-            $nomeS  = if ($null -ne $s.PSObject.Properties['Name'] -and $null -ne $s.Name) { [string]$s.Name } else { 'ScriptConsumerSenzaNome' }
+            $nomeS  = if ($null -ne $s.PSObject.Properties['Name'] -and $null -ne $s.Name) { [string]$s.Name } else { 'UnnamedScriptConsumer' }
             $scrTxt = if ($null -ne $s.PSObject.Properties['ScriptText'] -and $null -ne $s.ScriptText) { [string]$s.ScriptText } else { '' }
             if ($scrTxt.Length -gt 120) {
                 $scrTxt = $scrTxt.Substring(0, 117) + '...'
@@ -544,27 +543,27 @@ function Test-WmiEventSubscriptions {
             ActiveScriptConsumersCount = $scriptConsumers.Count
             BindingsCount              = $bindings.Count
             NonStandardBindingsCount   = $bindingsNonStandard
-            ElementiSospetti           = $elementiSospetti
+            SuspiciousItems            = $elementiSospetti
         }
 
         if ($elementiSospetti.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessuna sottoscrizione WMI persistente sospetta rilevata in root\subscription"
+            $risultato.Observed = "No suspicious permanent WMI subscriptions detected in root\subscription"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Rilevate $($elementiSospetti.Count) sottoscrizioni WMI sospette: $($elementiSospetti -join '; ')"
+            $risultato.Observed = "Detected $($elementiSospetti.Count) suspicious WMI subscriptions: $($elementiSospetti -join '; ')"
         }
     }
     catch [System.UnauthorizedAccessException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Privilegi insufficienti per interrogare il namespace WMI root\subscription"
+        $risultato.Observed = "Insufficient privileges to query WMI namespace root\subscription"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege|CIM resource|Unauthorized') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per interrogare il namespace WMI root\subscription"
+            $risultato.Observed = "Insufficient privileges to query WMI namespace root\subscription"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -579,8 +578,8 @@ function Test-WmiEventSubscriptions {
 function Test-BrowserForcedExtensions {
     <#
     .SYNOPSIS
-        Verifica che non vi siano estensioni browser forzate tramite policy di registro
-        (ExtensionInstallForcelist su Google Chrome o Microsoft Edge) (HOME-FIL-008).
+        Verifies that no browser extensions are force-installed via registry policy
+        (ExtensionInstallForcelist for Google Chrome or Microsoft Edge) (HOME-FIL-008).
     #>
     [CmdletBinding()]
     param(
@@ -594,7 +593,7 @@ function Test-BrowserForcedExtensions {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Nessuna estensione browser forzata da policy (ExtensionInstallForcelist vuota o assente)"
+        Expected = "No policy-forced browser extensions (ExtensionInstallForcelist empty or absent)"
         Evidence = $null
         Error    = $null
     }
@@ -630,35 +629,35 @@ function Test-BrowserForcedExtensions {
         }
 
         $risultato.Evidence = @{
-            ChiaviVerificate  = $chiaviBrowser.Count
-            ChiaviEsistenti   = $chiaviTrovate
-            EstensioniForzate = $estensioniForzate
-            TotaleRilevate    = $estensioniForzate.Count
+            CheckedKeys      = $chiaviBrowser.Count
+            ExistingKeys     = $chiaviTrovate
+            ForcedExtensions = $estensioniForzate
+            TotalDetected    = $estensioniForzate.Count
         }
 
         if ($estensioniForzate.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessuna estensione browser forzata da policy rilevata su Chrome o Edge"
+            $risultato.Observed = "No policy-forced browser extensions detected for Chrome or Edge"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Rilevate $($estensioniForzate.Count) estensioni browser forzate da policy: $($estensioniForzate -join '; ')"
+            $risultato.Observed = "Detected $($estensioniForzate.Count) policy-forced browser extensions: $($estensioniForzate -join '; ')"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+        $risultato.Observed = "Access denied to browser policy registry keys"
         $risultato.Error    = $_.Exception.Message
     }
     catch [System.UnauthorizedAccessException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+        $risultato.Observed = "Access denied to browser policy registry keys"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege|SecurityException') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+            $risultato.Observed = "Access denied to browser policy registry keys"
             $risultato.Error    = $_.Exception.Message
         }
         else {

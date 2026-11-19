@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Controllo dello stato del firewall di Windows.
+    Windows Defender Firewall profile status check.
 
 .DESCRIPTION
-    Verifica che Windows Defender Firewall sia attivo sui tre profili:
-    Domain, Private, Public.
-    Non modifica mai lo stato del sistema.
+    Verifies that Windows Defender Firewall is enabled across all three profiles
+    (Domain, Private, Public) and that DefaultInboundAction is not set to Allow.
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -13,13 +13,13 @@ Set-StrictMode -Version 2
 function Test-FirewallProfiles {
     <#
     .SYNOPSIS
-        Verifica che tutti i profili del firewall siano attivi.
+        Verifies that all firewall profiles are enabled with default inbound blocking.
     .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
+        Control object from the catalog.
     .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
+        Environment object (from Get-AmbienteSistema).
     .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
+        PSCustomObject with properties: Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -33,13 +33,13 @@ function Test-FirewallProfiles {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Tutti i profili firewall attivi (Domain, Private, Public) con DefaultInboundAction != Allow"
+        Expected = "All firewall profiles enabled (Domain, Private, Public) with DefaultInboundAction != Allow"
         Evidence = $null
         Error    = $null
     }
 
     try {
-        # Get-NetFirewallProfile restituisce lo stato dei profili
+        # Retrieve Windows Defender Firewall profile states
         $profili = Get-NetFirewallProfile -ErrorAction Stop
 
         $evidenza = @{}
@@ -76,36 +76,36 @@ function Test-FirewallProfiles {
 
         if ($tuttiAttivi) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Tutti i profili attivi con traffico in ingresso bloccato per impostazione predefinita"
+            $risultato.Observed = "All profiles active with inbound traffic blocked by default"
         }
         else {
             $risultato.Status = 'fallito'
             $motivi = @()
             if ($profiliDisattivi.Count -gt 0) {
-                $motivi += "Profili disattivi: $($profiliDisattivi -join ', ')"
+                $motivi += "Disabled profiles: $($profiliDisattivi -join ', ')"
             }
             if ($profiliInboundAllow.Count -gt 0) {
-                $motivi += "Profili che consentono traffico in ingresso: $($profiliInboundAllow -join ', ')"
+                $motivi += "Profiles allowing inbound traffic: $($profiliInboundAllow -join ', ')"
             }
             $risultato.Observed = ($motivi -join '; ')
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
-        # Get-NetFirewallProfile non disponibile
+        # Get-NetFirewallProfile unavailable
         $risultato.Status = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-NetFirewallProfile non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-NetFirewallProfile is not available"
         $risultato.Error = $_.Exception.Message
     }
     catch [System.UnauthorizedAccessException] {
         $risultato.Status = 'sconosciuto'
-        $risultato.Observed = "Privilegi insufficienti per accedere al firewall di Windows"
+        $risultato.Observed = "Insufficient privileges to query Windows Firewall"
         $risultato.Error = $_.Exception.Message
     }
     catch {
-        # Se l'errore e' legato a privilegi mancanti o accesso CIM negato
+        # Handle missing privileges or CIM access denied errors
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per accedere al firewall di Windows"
+            $risultato.Observed = "Insufficient privileges to query Windows Firewall"
             $risultato.Error = $_.Exception.Message
         }
         else {

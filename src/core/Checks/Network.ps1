@@ -1,12 +1,18 @@
 ﻿<#
 .SYNOPSIS
-    Controlli di sicurezza relativi ai protocolli di rete (SMBv1 e NetBIOS).
+    Network protocol and exposure security controls.
 
 .DESCRIPTION
-    Contiene i controlli per:
-    - HOME-NET-001: Protocollo SMBv1 disabilitato (Test-Smb1Disabled)
-    - HOME-NET-002: NetBIOS su TCP/IP disabilitato (Test-NetbiosDisabled)
-    Non modifica mai lo stato del sistema.
+    Implements read-only checks for:
+    - HOME-NET-001: SMBv1 protocol disabled (Test-Smb1Disabled)
+    - HOME-NET-002: NetBIOS over TCP/IP disabled (Test-NetbiosDisabled)
+    - HOME-NET-003: LLMNR multicast name resolution disabled (Test-LlmnrDisabled)
+    - HOME-NET-004: No non-standard SMB shares exposed (Test-CondivisioniSmbPericolose)
+    - HOME-NET-005: Mandatory SMB signing enabled (Test-FirmaSmbObbligatoria)
+    - HOME-NET-006: WinRM service disabled/stopped (Test-WinRmDisabilitatoOSicuro)
+    - HOME-NET-007: WPAD auto-discovery disabled (Test-WpadDisabilitato)
+    - HOME-NET-008: Legacy TLS 1.0/1.1 disabled and DoH supported (Test-LegacyTlsAndDoh)
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -14,13 +20,13 @@ Set-StrictMode -Version 2
 function Test-Smb1Disabled {
     <#
     .SYNOPSIS
-        Verifica che il protocollo SMBv1 sia disabilitato.
+        Verifies that the legacy SMBv1 protocol is disabled.
     .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
+        Control object from the catalog.
     .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
+        Environment object (from Get-AmbienteSistema).
     .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
+        PSCustomObject with properties: Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -34,7 +40,7 @@ function Test-Smb1Disabled {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Protocollo SMBv1 disabilitato (EnableSMB1Protocol = False)"
+        Expected = "SMBv1 protocol disabled (EnableSMB1Protocol = False)"
         Evidence = $null
         Error    = $null
     }
@@ -45,20 +51,20 @@ function Test-Smb1Disabled {
 
         $risultato.Evidence = @{
             EnableSMB1Protocol = $smb1Attivo
-            Fonte              = 'Get-SmbServerConfiguration'
+            Source             = 'Get-SmbServerConfiguration'
         }
 
         if (-not $smb1Attivo) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "SMBv1 disabilitato"
+            $risultato.Observed = "SMBv1 disabled"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "SMBv1 abilitato (EnableSMB1Protocol = True)"
+            $risultato.Observed = "SMBv1 enabled (EnableSMB1Protocol = True)"
         }
     }
     catch {
-        # Fallback su registro (LanmanServer\Parameters e driver mrxsmb10)
+        # Registry fallback (LanmanServer\Parameters and mrxsmb10 driver)
         try {
             $percorsoLanman = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
             $percorsoMrx    = 'HKLM:\SYSTEM\CurrentControlSet\Services\mrxsmb10'
@@ -67,44 +73,44 @@ function Test-Smb1Disabled {
                 $propLanman = Get-ItemProperty -LiteralPath $percorsoLanman -ErrorAction Stop
                 if ($null -ne $propLanman.PSObject.Properties['SMB1'] -and $null -ne $propLanman.SMB1) {
                     $valSmb1 = [int]$propLanman.SMB1
-                    $risultato.Evidence = @{ SMB1Registry = $valSmb1; Fonte = 'LanmanServerRegistry' }
+                    $risultato.Evidence = @{ SMB1Registry = $valSmb1; Source = 'LanmanServerRegistry' }
                     if ($valSmb1 -eq 0) {
                         $risultato.Status   = 'superato'
-                        $risultato.Observed = "SMBv1 disabilitato da registro (SMB1 = 0)"
+                        $risultato.Observed = "SMBv1 disabled via registry (SMB1 = 0)"
                     }
                     else {
                         $risultato.Status   = 'fallito'
-                        $risultato.Observed = "SMBv1 abilitato da registro (SMB1 = $valSmb1)"
+                        $risultato.Observed = "SMBv1 enabled via registry (SMB1 = $valSmb1)"
                     }
                     return $risultato
                 }
             }
 
-            # Se il driver client/server mrxsmb10 non e' installato o ha Start = 4 (Disabled), SMBv1 non e' attivo
+            # If mrxsmb10 driver is absent or has Start = 4 (Disabled), SMBv1 is inactive
             if (-not (Test-Path -LiteralPath $percorsoMrx)) {
-                $risultato.Evidence = @{ MrxSmb10Presente = $false; Fonte = 'ServiceRegistry' }
+                $risultato.Evidence = @{ MrxSmb10Present = $false; Source = 'ServiceRegistry' }
                 $risultato.Status   = 'superato'
-                $risultato.Observed = "Driver SMBv1 (mrxsmb10) non installato sul sistema"
+                $risultato.Observed = "SMBv1 driver (mrxsmb10) is not installed on the system"
                 return $risultato
             }
             else {
                 $propMrx = Get-ItemProperty -LiteralPath $percorsoMrx -ErrorAction Stop
                 $startVal = if ($null -ne $propMrx.PSObject.Properties['Start']) { [int]$propMrx.Start } else { 3 }
-                $risultato.Evidence = @{ MrxSmb10Presente = $true; Start = $startVal; Fonte = 'ServiceRegistry' }
+                $risultato.Evidence = @{ MrxSmb10Present = $true; Start = $startVal; Source = 'ServiceRegistry' }
                 if ($startVal -eq 4) {
                     $risultato.Status   = 'superato'
-                    $risultato.Observed = "Driver SMBv1 disabilitato (Start = 4)"
+                    $risultato.Observed = "SMBv1 driver disabled (Start = 4)"
                 }
                 else {
                     $risultato.Status   = 'fallito'
-                    $risultato.Observed = "Driver SMBv1 presente e non disabilitato (Start = $startVal)"
+                    $risultato.Observed = "SMBv1 driver present and not disabled (Start = $startVal)"
                 }
                 return $risultato
             }
         }
         catch {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Impossibile determinare lo stato di SMBv1"
+            $risultato.Observed = "Unable to determine SMBv1 status"
             $risultato.Error    = $_.Exception.Message
         }
     }
@@ -115,13 +121,13 @@ function Test-Smb1Disabled {
 function Test-NetbiosDisabled {
     <#
     .SYNOPSIS
-        Verifica che NetBIOS su TCP/IP sia disabilitato (NetbiosOptions = 2) sulle interfacce.
+        Verifies that NetBIOS over TCP/IP is disabled (NetbiosOptions = 2) on network interfaces.
     .PARAMETER Controllo
-        L'oggetto controllo dal catalogo.
+        Control object from the catalog.
     .PARAMETER Ambiente
-        L'oggetto ambiente (da Get-AmbienteSistema).
+        Environment object (from Get-AmbienteSistema).
     .OUTPUTS
-        PSCustomObject con proprieta': Status, Observed, Expected, Evidence, Error.
+        PSCustomObject with properties: Status, Observed, Expected, Evidence, Error.
     #>
     [CmdletBinding()]
     param(
@@ -135,7 +141,7 @@ function Test-NetbiosDisabled {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "NetbiosOptions = 2 (Disabilitato) su tutte le interfacce TCP/IP"
+        Expected = "NetbiosOptions = 2 (Disabled) on all TCP/IP interfaces"
         Evidence = $null
         Error    = $null
     }
@@ -144,14 +150,14 @@ function Test-NetbiosDisabled {
         $percorsoInterfacce = 'HKLM:\SYSTEM\CurrentControlSet\Services\NetBT\Parameters\Interfaces'
         if (-not (Test-Path -LiteralPath $percorsoInterfacce)) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Chiave di registro NetBT Interfaces non trovata"
+            $risultato.Observed = "NetBT Interfaces registry key not found"
             return $risultato
         }
 
         $sottoChiavi = @(Get-ChildItem -LiteralPath $percorsoInterfacce -ErrorAction Stop)
         if ($sottoChiavi.Count -eq 0) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Nessuna interfaccia TCP/IP trovata in NetBT"
+            $risultato.Observed = "No TCP/IP interfaces found under NetBT"
             return $risultato
         }
 
@@ -178,16 +184,16 @@ function Test-NetbiosDisabled {
 
         if ($interfacceNonDisabilitate.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "NetBIOS disabilitato (NetbiosOptions=2) su tutte le $($sottoChiavi.Count) interfacce"
+            $risultato.Observed = "NetBIOS disabled (NetbiosOptions=2) on all $($sottoChiavi.Count) interfaces"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "NetBIOS attivo o predefinito su $($interfacceNonDisabilitate.Count)/$($sottoChiavi.Count) interfacce"
+            $risultato.Observed = "NetBIOS enabled or default on $($interfacceNonDisabilitate.Count)/$($sottoChiavi.Count) interfaces"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave di registro NetBT"
+        $risultato.Observed = "Access denied to NetBT registry key"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -201,7 +207,7 @@ function Test-NetbiosDisabled {
 function Test-LlmnrDisabled {
     <#
     .SYNOPSIS
-        Verifica che il protocollo LLMNR (Link-Local Multicast Name Resolution) sia disabilitato (EnableMulticast = 0).
+        Verifies that LLMNR (Link-Local Multicast Name Resolution) is disabled (EnableMulticast = 0).
     #>
     [CmdletBinding()]
     param(
@@ -224,7 +230,7 @@ function Test-LlmnrDisabled {
         $percorsoDns = 'HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\DNSClient'
         if (-not (Test-Path -LiteralPath $percorsoDns)) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Policy DNSClient non configurata (LLMNR attivo per impostazione predefinita)"
+            $risultato.Observed = "DNSClient policy not configured (LLMNR active by default)"
             $risultato.Evidence = @{ Path = $percorsoDns; KeyExists = $false }
             return $risultato
         }
@@ -244,16 +250,16 @@ function Test-LlmnrDisabled {
 
         if ($valore -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "LLMNR disabilitato (EnableMulticast = 0)"
+            $risultato.Observed = "LLMNR disabled (EnableMulticast = 0)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "LLMNR abilitato (EnableMulticast = $valore)"
+            $risultato.Observed = "LLMNR enabled (EnableMulticast = $valore)"
         }
     }
     catch [System.Security.SecurityException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Accesso negato alla chiave DNSClient"
+        $risultato.Observed = "Access denied to DNSClient registry key"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -267,8 +273,8 @@ function Test-LlmnrDisabled {
 function Test-CondivisioniSmbPericolose {
     <#
     .SYNOPSIS
-        Verifica che non vi siano condivisioni di rete (SMB Shares) utente non standard esposte
-        (escludendo le condivisioni di sistema ADMIN$, C$, IPC$, print$) (HOME-NET-004).
+        Verifies that no non-standard user SMB network shares are exposed
+        (excluding default administrative shares ADMIN$, C$, IPC$, print$) (HOME-NET-004).
     #>
     [CmdletBinding()]
     param(
@@ -282,7 +288,7 @@ function Test-CondivisioniSmbPericolose {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "0 condivisioni SMB utente non protette o non necessarie"
+        Expected = "0 unprotected or unnecessary user SMB shares"
         Evidence = $null
         Error    = $null
     }
@@ -298,21 +304,21 @@ function Test-CondivisioniSmbPericolose {
         }
 
         $risultato.Evidence = @{
-            TotaleShares      = $shares.Count
-            SharesNonStandard = $nonStandard
+            TotalShares       = $shares.Count
+            NonStandardShares = $nonStandard
         }
 
         if ($nonStandard.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessuna cartella condivisa non standard esposta in rete"
+            $risultato.Observed = "No non-standard shared folders exposed on the network"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Cartelle condivise in rete rilevate ($($nonStandard.Count)): $($nonStandard -join '; ')"
+            $risultato.Observed = "Network shared folders detected ($($nonStandard.Count)): $($nonStandard -join '; ')"
         }
     }
     catch {
-        # Fallback su registro (HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Shares)
+        # Registry fallback (HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Shares)
         try {
             $chiaveShares = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Shares'
             if (Test-Path -LiteralPath $chiaveShares -ErrorAction SilentlyContinue) {
@@ -324,14 +330,14 @@ function Test-CondivisioniSmbPericolose {
                         $nonStdReg += $p.Name
                     }
                 }
-                $risultato.Evidence = @{ SharesNonStandard = $nonStdReg; Fonte = 'Registry' }
+                $risultato.Evidence = @{ NonStandardShares = $nonStdReg; Source = 'Registry' }
                 if ($nonStdReg.Count -eq 0) {
                     $risultato.Status   = 'superato'
-                    $risultato.Observed = "Nessuna cartella condivisa non standard rilevata nel registro LanmanServer"
+                    $risultato.Observed = "No non-standard shared folders found in LanmanServer registry"
                 }
                 else {
                     $risultato.Status   = 'fallito'
-                    $risultato.Observed = "Cartelle condivise rilevate ($($nonStdReg.Count)): $($nonStdReg -join ', ')"
+                    $risultato.Observed = "Shared folders detected ($($nonStdReg.Count)): $($nonStdReg -join ', ')"
                 }
                 return $risultato
             }
@@ -340,7 +346,7 @@ function Test-CondivisioniSmbPericolose {
 
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per verificare le condivisioni SMB"
+            $risultato.Observed = "Insufficient privileges to inspect SMB shares"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -355,8 +361,8 @@ function Test-CondivisioniSmbPericolose {
 function Test-FirmaSmbObbligatoria {
     <#
     .SYNOPSIS
-        Verifica che la firma digitale dei pacchetti SMB (RequireSecuritySignature = 1) sia attiva
-        per prevenire attacchi Man-in-the-Middle e NTLM Relay sulla rete locale (HOME-NET-005).
+        Verifies that mandatory SMB packet signing (RequireSecuritySignature = 1) is enabled
+        to mitigate Man-in-the-Middle and NTLM Relay attacks on local networks (HOME-NET-005).
     #>
     [CmdletBinding()]
     param(
@@ -370,7 +376,7 @@ function Test-FirmaSmbObbligatoria {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "RequireSecuritySignature = 1 su Server e Client SMB"
+        Expected = "RequireSecuritySignature = 1 on both SMB Server and Client"
         Evidence = $null
         Error    = $null
     }
@@ -402,11 +408,11 @@ function Test-FirmaSmbObbligatoria {
 
         if ($reqSrv -eq 1 -and $reqWrk -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Firma SMB obbligatoria attiva su Server e Client (1)"
+            $risultato.Observed = "Mandatory SMB signing enabled on Server and Client (1)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Firma SMB non obbligatoria (Server=$reqSrv, Client=$reqWrk)"
+            $risultato.Observed = "SMB signing not enforced (Server=$reqSrv, Client=$reqWrk)"
         }
     }
     catch {
@@ -420,8 +426,8 @@ function Test-FirmaSmbObbligatoria {
 function Test-WinRmDisabilitatoOSicuro {
     <#
     .SYNOPSIS
-        Verifica che il servizio Windows Remote Management (WinRM / PowerShell Remoting) sia fermo
-        per non esporre le porte 5985/5986 sulla rete (HOME-NET-006).
+        Verifies that the Windows Remote Management (WinRM / PowerShell Remoting) service is stopped
+        so remote management ports 5985/5986 are not exposed (HOME-NET-006).
     #>
     [CmdletBinding()]
     param(
@@ -435,7 +441,7 @@ function Test-WinRmDisabilitatoOSicuro {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Servizio WinRM fermo (Stopped)"
+        Expected = "WinRM service stopped"
         Evidence = $null
         Error    = $null
     }
@@ -444,7 +450,7 @@ function Test-WinRmDisabilitatoOSicuro {
         $srv = Get-Service -Name 'WinRM' -ErrorAction SilentlyContinue
         if ($null -eq $srv) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Servizio WinRM non presente"
+            $risultato.Observed = "WinRM service not present"
             return $risultato
         }
 
@@ -456,11 +462,11 @@ function Test-WinRmDisabilitatoOSicuro {
 
         if ($statoSrv -ne 'Running') {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Servizio WinRM fermo ($statoSrv)"
+            $risultato.Observed = "WinRM service stopped ($statoSrv)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Servizio WinRM in esecuzione (Running - porta remota 5985 attiva)"
+            $risultato.Observed = "WinRM service is running (remote port 5985 active)"
         }
     }
     catch {
@@ -474,8 +480,8 @@ function Test-WinRmDisabilitatoOSicuro {
 function Test-WpadDisabilitato {
     <#
     .SYNOPSIS
-        Verifica che il protocollo WPAD (Web Proxy Auto-Discovery) sia disabilitato per prevenire
-        attacchi di intercettazione del traffico web su reti locali/Wi-Fi (HOME-NET-007).
+        Verifies that Web Proxy Auto-Discovery (WPAD) is disabled to prevent
+        web traffic interception attacks on local/Wi-Fi networks (HOME-NET-007).
     #>
     [CmdletBinding()]
     param(
@@ -489,7 +495,7 @@ function Test-WpadDisabilitato {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "DisableWpad = 1 oppure servizio WinHttpAutoProxySvc disabilitato"
+        Expected = "DisableWpad = 1 or WinHttpAutoProxySvc service disabled"
         Evidence = $null
         Error    = $null
     }
@@ -514,17 +520,17 @@ function Test-WpadDisabilitato {
         }
 
         $risultato.Evidence = @{
-            DisableWpad            = $disableWpad
-            WinHttpAutoProxyStart  = $startSvc
+            DisableWpad           = $disableWpad
+            WinHttpAutoProxyStart = $startSvc
         }
 
         if ($disableWpad -eq 1 -or $startSvc -eq 4) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "WPAD disabilitato (DisableWpad=$disableWpad, ServiceStart=$startSvc)"
+            $risultato.Observed = "WPAD disabled (DisableWpad=$disableWpad, ServiceStart=$startSvc)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "WPAD attivo (DisableWpad=$disableWpad, ServiceStart=$startSvc)"
+            $risultato.Observed = "WPAD active (DisableWpad=$disableWpad, ServiceStart=$startSvc)"
         }
     }
     catch {
@@ -538,8 +544,8 @@ function Test-WpadDisabilitato {
 function Test-LegacyTlsAndDoh {
     <#
     .SYNOPSIS
-        Verifica che i protocolli crittografici obsoleti TLS 1.0 e TLS 1.1 non siano abilitati in SCHANNEL
-        e controlla la configurazione di DNS over HTTPS (DoH) (HOME-NET-008).
+        Verifies that deprecated TLS 1.0 and TLS 1.1 protocols are not enabled in SCHANNEL
+        and checks DNS over HTTPS (DoH) support (HOME-NET-008).
     #>
     [CmdletBinding()]
     param(
@@ -553,7 +559,7 @@ function Test-LegacyTlsAndDoh {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "TLS 1.0/1.1 non abilitati (Enabled != 1) e supporto DNS over HTTPS (DoH) presente"
+        Expected = "TLS 1.0/1.1 not enabled (Enabled != 1) and DNS over HTTPS (DoH) support present"
         Evidence = $null
         Error    = $null
     }
@@ -581,7 +587,7 @@ function Test-LegacyTlsAndDoh {
             }
         }
 
-        # Verifica configurazione DNS over HTTPS (DoH)
+        # Check DNS over HTTPS (DoH) configuration
         $chiaveDnsCache = 'HKLM:\SYSTEM\CurrentControlSet\Services\Dnscache\Parameters'
         $autoDoh = 0
         if (Test-Path -LiteralPath $chiaveDnsCache -ErrorAction SilentlyContinue) {
@@ -611,15 +617,15 @@ function Test-LegacyTlsAndDoh {
 
         if ($tlsLegacyAttivi.Count -gt 0) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Protocolli crittografici obsoleti abilitati: $($tlsLegacyAttivi -join ', ')"
+            $risultato.Observed = "Legacy cryptographic protocols enabled: $($tlsLegacyAttivi -join ', ')"
         }
         elseif (-not $dohConfigurato) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "TLS 1.0/1.1 disabilitati, ma DNS over HTTPS (DoH) non configurato (EnableAutoDoh=$autoDoh)"
+            $risultato.Observed = "TLS 1.0/1.1 disabled, but DNS over HTTPS (DoH) is not configured (EnableAutoDoh=$autoDoh)"
         }
         else {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "TLS 1.0/1.1 disabilitati e supporto DNS over HTTPS (DoH) attivo (EnableAutoDoh=$autoDoh, ServerDoH=$dohServerCount)"
+            $risultato.Observed = "TLS 1.0/1.1 disabled and DNS over HTTPS (DoH) support active (EnableAutoDoh=$autoDoh, DohServers=$dohServerCount)"
         }
     }
     catch {

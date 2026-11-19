@@ -1,24 +1,23 @@
 ﻿<#
 .SYNOPSIS
-    Scanner di sicurezza per Windows 11 — punto d'ingresso.
+    Windows 11 Security Scanner - Entry point.
 
 .DESCRIPTION
-    Esegue i controlli di sicurezza definiti nel catalogo in modalita' grafica
-    WPF (-Gui, predefinita) oppure in modalita' senza interfaccia (-Headless)
-    producendo un report in formato JSON. Non modifica mai lo stato del sistema.
+    Executes the security controls defined in the catalog in WPF graphical mode
+    (-Gui, default) or headless mode (-Headless), producing a JSON report.
+    Never modifies system state (strictly read-only).
 
 .PARAMETER Gui
-    Avvia l'interfaccia grafica WPF (modalita' predefinita se non si specifica -Headless).
+    Launches the WPF graphical user interface (default when -Headless is not specified).
 
 .PARAMETER Headless
-    Modalita' senza interfaccia: esegue la scansione e scrive il risultato su file JSON.
+    Headless mode: runs the scan without GUI and writes the results to a JSON file.
 
 .PARAMETER OutFile
-    Percorso del file JSON di output. Obbligatorio con -Headless.
+    Output JSON file path. Required when using -Headless.
 
 .PARAMETER ControlId
-    Uno o piu' ID di controllo da eseguire. Se omesso, esegue tutti i
-    controlli del catalogo.
+    One or more control IDs to execute. If omitted, runs all controls in the catalog.
 
 .EXAMPLE
     powershell -STA -ExecutionPolicy Bypass -File src\Invoke-Scanner.ps1
@@ -44,21 +43,21 @@ param(
 Set-StrictMode -Version 2
 $ErrorActionPreference = 'Stop'
 
-# --- Validazione parametri ---
+# --- Parameter validation ---
 if ($Headless -and $Gui) {
-    Write-Error "I parametri -Gui e -Headless sono mutuamente esclusivi."
+    Write-Error "The -Gui and -Headless parameters are mutually exclusive."
     exit 1
 }
 
 if ($Headless -and (-not $OutFile)) {
-    Write-Error "Il parametro -OutFile e' obbligatorio in modalita' -Headless."
+    Write-Error "The -OutFile parameter is required in -Headless mode."
     exit 1
 }
 
-# Modalita' predefinita: GUI quando non e' specificato -Headless
+# Default mode: GUI when -Headless is not specified
 $modalitaGui = ($Gui -or (-not $Headless))
 
-# --- Verifica STA per modalita' GUI (solo se non siamo in sessione SSH / Session 0) ---
+# --- STA check for GUI mode (only when not running over SSH / Session 0) ---
 $isSshSession = (
     (-not [string]::IsNullOrWhiteSpace($env:SSH_CONNECTION)) -or
     (-not [string]::IsNullOrWhiteSpace($env:SSH_CLIENT)) -or
@@ -84,10 +83,10 @@ if ($modalitaGui -and (-not $isSshSession)) {
     }
 }
 
-# --- Costanti ---
+# --- Constants ---
 $VERSIONE_TOOL = '0.1.0'
 
-# --- Percorsi ---
+# --- Paths ---
 $percorsoScript = $PSScriptRoot
 if (-not $percorsoScript) {
     $percorsoScript = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -96,19 +95,19 @@ $percorsoCore   = Join-Path $percorsoScript 'core'
 $percorsoChecks = Join-Path $percorsoCore 'Checks'
 $percorsoUi     = Join-Path $percorsoScript 'ui'
 
-# Il catalogo JSON si trova nella cartella catalog/ alla radice del progetto
+# The JSON catalog is located in the catalog/ directory at the project root
 $percorsoProgetto = Split-Path -Parent $percorsoScript
 $percorsoCatalogo = Join-Path $percorsoProgetto 'catalog'
 $percorsoJson     = Join-Path $percorsoCatalogo 'home_profile.json'
 
-# --- Caricamento moduli core ---
+# --- Load core modules ---
 . (Join-Path $percorsoCore 'Environment.ps1')
 . (Join-Path $percorsoCore 'Catalog.ps1')
 . (Join-Path $percorsoCore 'Runner.ps1')
 . (Join-Path $percorsoCore 'Report.ps1')
 . (Join-Path $percorsoCore 'OllamaClient.ps1')
 
-# Carica i file di controllo
+# Load security check modules
 . (Join-Path $percorsoChecks 'Registry.ps1')
 . (Join-Path $percorsoChecks 'Firewall.ps1')
 . (Join-Path $percorsoChecks 'Accounts.ps1')
@@ -117,7 +116,7 @@ $percorsoJson     = Join-Path $percorsoCatalogo 'home_profile.json'
 . (Join-Path $percorsoChecks 'Network.ps1')
 . (Join-Path $percorsoChecks 'SystemSecurity.ps1')
 
-# --- Modalita' GUI ---
+# --- GUI Mode ---
 if ($modalitaGui) {
     . (Join-Path $percorsoUi 'ViewModel.ps1')
     . (Join-Path $percorsoUi 'Start-ScannerUI.ps1')
@@ -139,27 +138,27 @@ if ($modalitaGui) {
     exit 0
 }
 
-# --- Modalita' Headless ---
-Write-Host "Scanner di sicurezza Windows 11 v$VERSIONE_TOOL"
+# --- Headless Mode ---
+Write-Host "Windows 11 Security Scanner v$VERSIONE_TOOL"
 Write-Host "============================================="
 
-# 1. Rileva l'ambiente
-Write-Host "`nRilevamento ambiente..."
+# 1. Detect execution environment
+Write-Host "`nDetecting environment..."
 $ambiente = Get-AmbienteSistema
-Write-Host "  Edizione:  $($ambiente.Edition) ($($ambiente.EditionId))"
+Write-Host "  Edition:   $($ambiente.Edition) ($($ambiente.EditionId))"
 Write-Host "  Build:     $($ambiente.Build)"
-Write-Host "  Lingua:    $($ambiente.Language)"
+Write-Host "  Language:  $($ambiente.Language)"
 Write-Host "  Admin:     $($ambiente.IsAdmin)"
 Write-Host "  PS:        $($ambiente.PsVersion)"
 
-# 2. Carica il catalogo
-Write-Host "`nCaricamento catalogo..."
+# 2. Load catalog
+Write-Host "`nLoading catalog..."
 $catalogo = Import-Catalogo -PercorsoCatalogo $percorsoJson
 $nControlli = @($catalogo.controls).Count
-Write-Host "  $nControlli controlli nel catalogo."
+Write-Host "  $nControlli controls in catalog."
 
-# 3. Esegui i controlli
-Write-Host "`nEsecuzione controlli..."
+# 3. Execute controls
+Write-Host "`nRunning security controls..."
 $parametriRunner = @{
     Catalogo       = $catalogo
     Ambiente       = $ambiente
@@ -170,18 +169,18 @@ if ($ControlId) {
 }
 $risultati = Invoke-Controlli @parametriRunner
 
-# 4. Costruisci il report
+# 4. Build report
 $report = New-Report -Risultati $risultati -Ambiente $ambiente -Catalogo $catalogo -VersioneTool $VERSIONE_TOOL
 
 # 5. Output
 Export-ReportJson -Report $report -PercorsoFile $OutFile
-Write-Host "`nReport scritto in: $OutFile"
+Write-Host "`nReport written to: $OutFile"
 
-# Riepilogo finale
-Write-Host "`n--- Riepilogo ---"
-Write-Host "  Superato:        $($report.summary.superato)"
-Write-Host "  Fallito:         $($report.summary.fallito)"
-Write-Host "  Non applicabile: $($report.summary.non_applicabile)"
-Write-Host "  Sconosciuto:     $($report.summary.sconosciuto)"
-Write-Host "  Errore:          $($report.summary.errore)"
+# Final summary
+Write-Host "`n--- Summary ---"
+Write-Host "  Passed:         $($report.summary.superato)"
+Write-Host "  Failed:         $($report.summary.fallito)"
+Write-Host "  Not Applicable: $($report.summary.non_applicabile)"
+Write-Host "  Unknown:        $($report.summary.sconosciuto)"
+Write-Host "  Error:          $($report.summary.errore)"
 Write-Host ""

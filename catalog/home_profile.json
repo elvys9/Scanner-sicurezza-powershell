@@ -2,21 +2,21 @@
   "schema_version": "0.2",
   "profile": {
     "name": "home",
-    "description": "Profilo di sicurezza completo per utenti domestici Windows 11 (Antivirus, File, Persistenza e Impostazioni di Sistema)",
+    "description": "Comprehensive Windows 11 security profile for home and workstation systems (Antivirus, File Security, Persistence, Network, and System Hardening)",
     "target_os": "Windows 11"
   },
   "controls": [
     {
       "id": "HOME-FW-001",
-      "title": "Firewall di Windows attivo su tutti i profili",
+      "title": "Windows Firewall active on all profiles",
       "category": "Firewall",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che Windows Defender Firewall sia attivo sui profili Domain, Private e Public.",
-      "rationale": "Il firewall e' la prima linea di difesa contro connessioni non autorizzate. Disattivarlo espone il sistema a rischi di rete.",
+      "description": "Verifies that Windows Defender Firewall is enabled across Domain, Private, and Public profiles with DefaultInboundAction set to Block.",
+      "rationale": "The firewall is the first line of defense against unauthorized inbound connections. Disabling it exposes the system to network-based attacks.",
       "check": {
         "command_ref": "Firewall.ps1#Test-FirewallProfiles"
       },
@@ -26,15 +26,15 @@
     },
     {
       "id": "HOME-UAC-001",
-      "title": "UAC (User Account Control) abilitato",
+      "title": "UAC (User Account Control) enabled",
       "category": "UAC",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il controllo dell'account utente (UAC) sia abilitato tramite il valore EnableLUA nel registro.",
-      "rationale": "UAC protegge il sistema chiedendo conferma prima di eseguire operazioni con privilegi elevati. Disattivarlo permette a qualsiasi programma di agire come amministratore.",
+      "description": "Verifies that User Account Control (UAC) is enabled via the EnableLUA registry value.",
+      "rationale": "UAC protects the operating system by prompting before elevated administrative operations. Disabling it allows any program to run with administrative privileges silently.",
       "check": {
         "registry": {
           "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
@@ -49,15 +49,15 @@
     },
     {
       "id": "HOME-UAC-002",
-      "title": "UAC richiede conferma su Desktop sicuro per elevazione",
+      "title": "UAC prompts for elevation on Secure Desktop",
       "category": "UAC",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che UAC richieda il consenso per l'elevazione (ConsentPromptBehaviorAdmin in 1, 2, 5) sul Desktop sicuro (PromptOnSecureDesktop = 1).",
-      "rationale": "Se UAC non richiede conferma sul Desktop sicuro, processi malevoli possono intercettare o simulare il clic di conferma per ottenere privilegi di amministratore.",
+      "description": "Verifies that UAC requires elevation consent (ConsentPromptBehaviorAdmin in 1, 2, 5) on the Secure Desktop (PromptOnSecureDesktop = 1).",
+      "rationale": "If UAC does not prompt on the Secure Desktop, malicious processes can intercept or spoof confirmation dialogs to gain administrative privileges.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-UacSecureElevation"
       },
@@ -67,15 +67,15 @@
     },
     {
       "id": "HOME-UAC-003",
-      "title": "UAC rileva installazioni applicazioni",
+      "title": "UAC detects application installations",
       "category": "UAC",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che UAC rilevi le installazioni di applicazioni e richieda l'elevazione (EnableInstallerDetection = 1).",
-      "rationale": "Il rilevamento delle installazioni aiuta a prevenire installazioni non autorizzate di software.",
+      "description": "Verifies that UAC detects application installers and prompts for elevation (EnableInstallerDetection = 1).",
+      "rationale": "Installer detection helps prevent unauthorized software installations from running silently without user consent.",
       "check": {
         "registry": {
           "path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
@@ -90,15 +90,15 @@
     },
     {
       "id": "HOME-ACC-001",
-      "title": "Account Guest disabilitato",
-      "category": "Account",
+      "title": "Guest account disabled",
+      "category": "Accounts",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che l'account locale con SID che termina in -501 (Guest) sia disabilitato.",
-      "rationale": "L'account Guest permette accesso anonimo al sistema. Se abilitato, chiunque puo' accedere senza credenziali.",
+      "description": "Verifies that the built-in local Guest account (SID ending in -501) is disabled.",
+      "rationale": "The Guest account allows anonymous local access to the system. If enabled, anyone can sign in without credentials.",
       "check": {
         "command_ref": "Accounts.ps1#Test-GuestAccount"
       },
@@ -108,15 +108,15 @@
     },
     {
       "id": "HOME-ACC-002",
-      "title": "Account Administrator locale disabilitato",
-      "category": "Account",
+      "title": "Built-in local Administrator account disabled",
+      "category": "Accounts",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che l'account locale Administrator predefinito (SID che termina in -500) sia disabilitato.",
-      "rationale": "L'account Administrator predefinito e' un bersaglio comune per attacchi brute-force. Usare un account personale con privilegi di amministratore e' piu' sicuro.",
+      "description": "Verifies that the built-in local Administrator account (SID ending in -500) is disabled.",
+      "rationale": "The built-in Administrator account is a common target for brute-force attacks. Using a dedicated personal administrative account is more secure.",
       "check": {
         "command_ref": "Accounts.ps1#Test-AdminAccount"
       },
@@ -126,15 +126,15 @@
     },
     {
       "id": "HOME-ACC-003",
-      "title": "Nessun account senza password",
-      "category": "Account",
+      "title": "No active local account without a password",
+      "category": "Accounts",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che tutti gli account locali attivi abbiano una password impostata (PasswordRequired = True).",
-      "rationale": "Account senza password permettono a chiunque abbia accesso fisico o di rete al sistema di effettuare il login senza credenziali.",
+      "description": "Verifies that all enabled local accounts require a password (PasswordRequired = True), excluding Microsoft Account / Windows Hello managed accounts.",
+      "rationale": "Accounts without passwords allow anyone with physical or network access to log in without authentication.",
       "check": {
         "command_ref": "Accounts.ps1#Test-AccountsPasswordRequired"
       },
@@ -144,15 +144,15 @@
     },
     {
       "id": "HOME-UPD-001",
-      "title": "Aggiornamenti automatici abilitati",
-      "category": "Aggiornamenti",
+      "title": "Automatic Windows Updates enabled",
+      "category": "Updates",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il servizio Windows Update (wuauserv) non sia disabilitato e che la policy NoAutoUpdate non sia attiva.",
-      "rationale": "Gli aggiornamenti di sicurezza correggono vulnerabilita' note. Disabilitarli lascia il sistema esposto.",
+      "description": "Verifies that the Windows Update service (wuauserv) is not disabled and the NoAutoUpdate policy is not active.",
+      "rationale": "Security updates patch known vulnerabilities. Disabling automatic updates leaves the system exposed to exploitation.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-WindowsUpdateEnabled"
       },
@@ -162,15 +162,15 @@
     },
     {
       "id": "HOME-UPD-002",
-      "title": "Server Windows Update ufficiale (nessun dirottamento WSUS)",
-      "category": "Aggiornamenti",
+      "title": "Official Windows Update server (no WSUS hijacking)",
+      "category": "Updates",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che gli aggiornamenti di Windows non siano rediretti verso un server WSUS esterno non autorizzato (WUServer).",
-      "rationale": "Un malware puo' impostare un falso server di aggiornamento per bloccare le patch di sicurezza di Microsoft.",
+      "description": "Verifies that Windows Updates are not redirected to an unauthorized external WSUS server (WUServer).",
+      "rationale": "Malware can configure a rogue WSUS update server to block official Microsoft security patches or serve malicious payloads.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-WindowsUpdateAuthenticServer"
       },
@@ -180,15 +180,15 @@
     },
     {
       "id": "HOME-AV-001",
-      "title": "Protezione in tempo reale attiva",
+      "title": "Real-time antivirus protection active",
       "category": "Antivirus",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che la protezione in tempo reale di Windows Defender sia attiva.",
-      "rationale": "La protezione in tempo reale analizza i file durante l'accesso e blocca le minacce note prima che possano eseguirsi.",
+      "description": "Verifies that Windows Defender real-time protection is enabled.",
+      "rationale": "Real-time protection inspects files on access and blocks known threats before they can execute.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderRealtime"
       },
@@ -198,15 +198,15 @@
     },
     {
       "id": "HOME-AV-002",
-      "title": "Definizioni antivirus aggiornate",
+      "title": "Antivirus signatures up to date",
       "category": "Antivirus",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che le definizioni di Windows Defender siano state aggiornate negli ultimi 7 giorni.",
-      "rationale": "Definizioni obsolete non rilevano le minacce piu' recenti.",
+      "description": "Verifies that Windows Defender antivirus signatures were updated within the last 7 days.",
+      "rationale": "Outdated antivirus signatures fail to detect recently discovered malware and exploit kits.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderSignatures"
       },
@@ -216,15 +216,15 @@
     },
     {
       "id": "HOME-AV-003",
-      "title": "Nessun virus o minaccia attiva rilevata da Defender",
+      "title": "No active virus or malware threats detected by Defender",
       "category": "Antivirus",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Interroga il catalogo delle minacce di Windows Defender (Get-MpThreat / Get-MpThreatDetection) per verificare che non vi siano virus o malware attivi.",
-      "rationale": "La presenza di minacce attive indica un'infezione in corso o un file malevolo non ancora messo in quarantena.",
+      "description": "Queries Windows Defender threat catalog (Get-MpThreat / Get-MpThreatDetection) to ensure no active viruses or unresolved malware detections exist.",
+      "rationale": "Active threats indicate an ongoing infection or a malicious file that has not yet been quarantined or removed.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderNoActiveThreats"
       },
@@ -234,15 +234,15 @@
     },
     {
       "id": "HOME-AV-004",
-      "title": "Scansione file scaricati (IOAV) e monitoraggio comportamentale attivi",
+      "title": "Downloaded file scanning (IOAV) and behavior monitoring active",
       "category": "Antivirus",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che BehaviorMonitorEnabled e IoavProtectionEnabled siano attivi in Windows Defender.",
-      "rationale": "La protezione IOAV analizza automaticamente tutti i file scaricati dal browser o allegati email, mentre il monitoraggio comportamentale blocca ransomware e attacchi sospetti.",
+      "description": "Verifies that BehaviorMonitorEnabled and IoavProtectionEnabled are active in Windows Defender.",
+      "rationale": "IOAV protection automatically scans all browser downloads and email attachments, while behavior monitoring blocks ransomware and suspicious process activity.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderBehaviorAndIoav"
       },
@@ -252,15 +252,15 @@
     },
     {
       "id": "HOME-AV-005",
-      "title": "Blocco applicazioni potenzialmente indesiderate (PUA) attivo",
+      "title": "Potentially Unwanted Application (PUA) blocking enabled",
       "category": "Antivirus",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che PUAProtection sia impostato su 1 (Blocco) nelle preferenze di Windows Defender.",
-      "rationale": "La protezione PUA blocca adware, cryptominer, barre degli strumenti invasive e software indesiderati inclusi nei programmi scaricati da Internet.",
+      "description": "Verifies that PUAProtection is set to 1 (Enabled / Block) in Windows Defender preferences.",
+      "rationale": "PUA protection blocks adware, cryptominers, intrusive toolbars, and unwanted bundled software downloaded from the Internet.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderPuaProtection"
       },
@@ -270,15 +270,15 @@
     },
     {
       "id": "HOME-AV-006",
-      "title": "Protezione antimanomissione (Tamper Protection) e Cloud MAPS attive",
+      "title": "Tamper Protection and Cloud-delivered protection (MAPS) active",
       "category": "Antivirus",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che IsTamperProtected sia True e che MAPSReporting (Cloud Protection) sia abilitato.",
-      "rationale": "La protezione antimanomissione impedisce ai virus di disattivare Windows Defender tramite registro o comandi, mentre il Cloud MAPS blocca i nuovi malware zero-day.",
+      "description": "Verifies that IsTamperProtected is True and MAPSReporting (Cloud Protection) is enabled.",
+      "rationale": "Tamper Protection prevents malware from disabling Windows Defender via registry or commands, while Cloud MAPS helps block zero-day threats.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderTamperAndCloud"
       },
@@ -288,15 +288,15 @@
     },
     {
       "id": "HOME-AV-007",
-      "title": "Scansione antivirus periodica eseguita negli ultimi 14 giorni",
+      "title": "Periodic antivirus scan completed within the last 14 days",
       "category": "Antivirus",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che una scansione rapida o completa dei file sia stata completata negli ultimi 14 giorni.",
-      "rationale": "Le scansioni periodiche individuano minacce dormienti sui file salvati sul disco prima dell'ultimo aggiornamento delle firme.",
+      "description": "Verifies that a Quick or Full Windows Defender scan has completed within the last 14 days.",
+      "rationale": "Periodic scans detect dormant threats written to disk prior to the latest signature updates.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderRecentScan"
       },
@@ -306,15 +306,15 @@
     },
     {
       "id": "HOME-AV-008",
-      "title": "Nessuna esclusione pericolosa di cartelle o estensioni in Defender",
+      "title": "No dangerous folder or extension exclusions in Defender",
       "category": "Antivirus",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che non siano state escluse dalla scansione antivirus intere unita' (C:\\), cartelle utente (Downloads, Temp, Windows) o estensioni eseguibili (.exe, .ps1, .bat).",
-      "rationale": "Molti trojan e stealer aggiungono l'intera cartella Utenti, Download o l'estensione .exe alle esclusioni di Defender per agire indisturbati.",
+      "description": "Verifies that entire drives (C:\\), user directories (Downloads, Temp, Windows), or executable extensions (.exe, .ps1, .bat) are not excluded from antivirus scanning.",
+      "rationale": "Trojans and infostealers frequently add broad paths or executable extensions to Defender exclusions to evade detection.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderSafeExclusions"
       },
@@ -324,15 +324,15 @@
     },
     {
       "id": "HOME-FIL-001",
-      "title": "Nessun file eseguibile camuffato con doppia estensione (Download, Desktop, Temp)",
-      "category": "Controllo File",
+      "title": "No disguised double-extension executables (Downloads, Desktop, Temp)",
+      "category": "File Security",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Scansiona in sola lettura le cartelle Download, Desktop e Temp alla ricerca di file eseguibili camuffati con doppia estensione (es. fattura.pdf.exe, foto.jpg.scr, doc.txt.vbs).",
-      "rationale": "La doppia estensione e' una delle tecniche piu' usate per indurre l'utente ad aprire un virus convinto che si tratti di un documento PDF o di un'immagine.",
+      "description": "Performs a read-only scan of Downloads, Desktop, and Temp folders for disguised double-extension executables (e.g., invoice.pdf.exe, photo.jpg.scr, doc.txt.vbs).",
+      "rationale": "Double extensions are a common masquerading technique used to trick users into executing malware disguised as PDF documents or images.",
       "check": {
         "command_ref": "FileSecurity.ps1#Test-SuspiciousDoubleExtensionFiles"
       },
@@ -342,15 +342,15 @@
     },
     {
       "id": "HOME-FIL-002",
-      "title": "Nessun programma sospetto o offuscato nelle chiavi di avvio automatico (Run)",
-      "category": "Controllo File",
+      "title": "No suspicious or obfuscated entries in Startup Run keys",
+      "category": "File Security",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Analizza le voci di avvio automatico nel registro (HKCU/HKLM Run e RunOnce) verificando l'assenza di eseguibili in cartelle Temp o comandi PowerShell/script offuscati.",
-      "rationale": "I malware si registrano nelle chiavi Run puntando a cartelle temporanee o usando comandi nascosti (-w hidden, -enc, mshta, wscript) per riavviarsi a ogni accensione del PC.",
+      "description": "Inspects HKCU/HKLM Run and RunOnce registry startup keys for executables launching from Temp directories or obfuscated PowerShell/script commands.",
+      "rationale": "Malware commonly achieves persistence via Run keys pointing to temporary folders or using hidden/encoded commands (-w hidden, -enc, mshta, wscript).",
       "check": {
         "command_ref": "FileSecurity.ps1#Test-StartupPersistenceEntries"
       },
@@ -360,15 +360,15 @@
     },
     {
       "id": "HOME-FIL-003",
-      "title": "Integrita' del file hosts di Windows (nessun dirottamento siti di sicurezza)",
-      "category": "Controllo File",
+      "title": "Windows hosts file integrity (no hijacked security domains)",
+      "category": "File Security",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Analizza il file C:\\Windows\\System32\\drivers\\etc\\hosts verificando che non siano bloccati o dirottati domini di Windows Update, Microsoft o siti antivirus.",
-      "rationale": "Alcuni malware modificano il file hosts per impedire al PC di scaricare aggiornamenti di sicurezza o contattare i siti dei produttori di antivirus.",
+      "description": "Inspects C:\\Windows\\System32\\drivers\\etc\\hosts to verify that Windows Update, Microsoft, or antivirus vendor domains are not blocked or redirected.",
+      "rationale": "Malware modifies the hosts file to block security updates and prevent access to antivirus vendor websites.",
       "check": {
         "command_ref": "FileSecurity.ps1#Test-HostsFileIntegrity"
       },
@@ -378,15 +378,15 @@
     },
     {
       "id": "HOME-SYS-001",
-      "title": "Estensioni dei file conosciuti visibili in Esplora file",
-      "category": "Impostazioni Windows",
+      "title": "Known file extensions visible in File Explorer",
+      "category": "Windows Settings",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che HideFileExt sia impostato a 0 in HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced.",
-      "rationale": "Mostrare sempre le estensioni dei file in Esplora file permette all'utente di accorgersi subito se un file e' in realta' un programma eseguibile (.exe, .scr, .bat).",
+      "description": "Verifies that HideFileExt is set to 0 in HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced.",
+      "rationale": "Always displaying file extensions in File Explorer allows users to immediately identify executable files (.exe, .scr, .bat) disguised as documents.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-FileExtensionsVisible"
       },
@@ -396,15 +396,15 @@
     },
     {
       "id": "HOME-SYS-002",
-      "title": "AutoRun e AutoPlay disabilitati per le unita' rimovibili USB",
-      "category": "Impostazioni Windows",
+      "title": "AutoRun and AutoPlay disabled for removable USB drives",
+      "category": "Windows Settings",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che l'esecuzione automatica all'inserimento di chiavette USB o dischi esterni sia disattivata (NoDriveTypeAutoRun >= 145 o DisableAutoplay = 1).",
-      "rationale": "Disattivare AutoRun e AutoPlay impedisce l'avvio automatico di malware presenti su chiavette USB infette.",
+      "description": "Verifies that automatic execution when inserting USB drives or external media is disabled (NoDriveTypeAutoRun >= 145 or DisableAutoplay = 1).",
+      "rationale": "Disabling AutoRun and AutoPlay prevents malware on infected USB drives from executing automatically upon insertion.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-AutorunDisabled"
       },
@@ -414,15 +414,15 @@
     },
     {
       "id": "HOME-SYS-003",
-      "title": "Filtro Microsoft Defender SmartScreen attivo per app e file",
-      "category": "Impostazioni Windows",
+      "title": "Microsoft Defender SmartScreen enabled for apps and files",
+      "category": "Windows Settings",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che SmartScreen per Esplora file e per le applicazioni web (EnableWebContentEvaluation) sia attivo.",
-      "rationale": "SmartScreen avvisa l'utente prima di eseguire programmi sconosciuti o potenzialmente malevoli scaricati da Internet.",
+      "description": "Verifies that SmartScreen is active for File Explorer and web content evaluation (EnableWebContentEvaluation).",
+      "rationale": "SmartScreen warns users before running unrecognized or potentially malicious applications downloaded from the Internet.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-SmartScreenEnabled"
       },
@@ -432,15 +432,15 @@
     },
     {
       "id": "HOME-SYS-004",
-      "title": "Isolamento core / Integrita' della memoria (HVCI) attivo",
-      "category": "Impostazioni Windows",
+      "title": "Core Isolation / Memory Integrity (HVCI) active",
+      "category": "Windows Settings",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che Hypervisor-Enforced Code Integrity (HVCI) sia abilitato nel registro DeviceGuard.",
-      "rationale": "L'integrita' della memoria usa la virtualizzazione hardware per impedire l'iniezione di codice malevolo nei processi ad alta sicurezza del kernel di Windows.",
+      "description": "Verifies that Hypervisor-Enforced Code Integrity (HVCI) is actively running via Win32_DeviceGuard runtime state.",
+      "rationale": "Memory Integrity uses hardware virtualization to prevent malicious code injection into high-security Windows kernel processes.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-MemoryIntegrityEnabled"
       },
@@ -450,15 +450,15 @@
     },
     {
       "id": "HOME-SYS-005",
-      "title": "Enumerazione anonima degli account locali (SAM) bloccata",
-      "category": "Impostazioni Windows",
+      "title": "Anonymous enumeration of SAM accounts restricted",
+      "category": "Windows Settings",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il valore RestrictAnonymousSAM in HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa sia impostato a 1.",
-      "rationale": "Impedisce a utenti non autenticati sulla rete locale di elencare i nomi degli account presenti sul computer.",
+      "description": "Verifies that RestrictAnonymousSAM in HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Lsa is set to 1.",
+      "rationale": "Prevents unauthenticated users on the local network from enumerating local account names on the system.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-AnonymousSamRestricted"
       },
@@ -468,14 +468,14 @@
     },
     {
       "id": "HOME-RDP-001",
-      "title": "Desktop remoto disabilitato",
-      "category": "Desktop Remoto",
+      "title": "Remote Desktop (RDP) disabled",
+      "category": "Remote Desktop",
       "severity": "alto",
       "editions": [
         "Pro"
       ],
-      "description": "Verifica che il desktop remoto (RDP) sia disabilitato tramite fDenyTSConnections = 1.",
-      "rationale": "RDP e' uno dei vettori di attacco piu' comuni. Se non necessario, va disabilitato.",
+      "description": "Verifies that Remote Desktop (RDP) is disabled via fDenyTSConnections = 1.",
+      "rationale": "RDP is one of the most frequently targeted attack vectors. If remote desktop access is not required, it should remain disabled.",
       "check": {
         "registry": {
           "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server",
@@ -490,15 +490,15 @@
     },
     {
       "id": "HOME-NET-001",
-      "title": "SMBv1 disabilitato",
-      "category": "Rete",
+      "title": "SMBv1 protocol disabled",
+      "category": "Network",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il protocollo SMBv1 sia disabilitato.",
-      "rationale": "SMBv1 ha vulnerabilita' note (EternalBlue/WannaCry). Le versioni moderne di SMB sono piu' sicure.",
+      "description": "Verifies that the legacy SMBv1 protocol is disabled.",
+      "rationale": "SMBv1 has critical known vulnerabilities (EternalBlue/WannaCry). Modern SMBv2/SMBv3 protocols should be used instead.",
       "check": {
         "command_ref": "Network.ps1#Test-Smb1Disabled"
       },
@@ -508,15 +508,15 @@
     },
     {
       "id": "HOME-NET-002",
-      "title": "NetBIOS su TCP/IP disabilitato",
-      "category": "Rete",
+      "title": "NetBIOS over TCP/IP disabled",
+      "category": "Network",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che NetBIOS su TCP/IP sia disabilitato (NetbiosOptions = 2) sulle interfacce di rete.",
-      "rationale": "NetBIOS puo' esporre informazioni sul sistema e facilitare attacchi di spoofing sulla rete locale. Se non necessario, va disabilitato.",
+      "description": "Verifies that NetBIOS over TCP/IP is disabled (NetbiosOptions = 2) on network interfaces.",
+      "rationale": "NetBIOS exposes host information and enables name-resolution spoofing attacks on local networks. It should be disabled when not required.",
       "check": {
         "command_ref": "Network.ps1#Test-NetbiosDisabled"
       },
@@ -526,15 +526,15 @@
     },
     {
       "id": "HOME-NET-003",
-      "title": "Protocollo multicast LLMNR disabilitato",
-      "category": "Rete",
+      "title": "LLMNR multicast name resolution disabled",
+      "category": "Network",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il protocollo Link-Local Multicast Name Resolution (EnableMulticast = 0) sia disabilitato.",
-      "rationale": "LLMNR e' vulnerabile ad attacchi di avvelenamento (es. Responder) su reti locali e Wi-Fi condivise che permettono il furto degli hash delle password.",
+      "description": "Verifies that Link-Local Multicast Name Resolution (EnableMulticast = 0) is disabled.",
+      "rationale": "LLMNR is vulnerable to poisoning attacks (such as Responder) on local and public Wi-Fi networks, allowing attackers to capture NTLMv2 password hashes.",
       "check": {
         "command_ref": "Network.ps1#Test-LlmnrDisabled"
       },
@@ -544,15 +544,15 @@
     },
     {
       "id": "HOME-ENC-001",
-      "title": "BitLocker o Crittografia dispositivo attivo sul disco di sistema",
-      "category": "Crittografia",
+      "title": "BitLocker or Device Encryption active on system drive",
+      "category": "Encryption",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che BitLocker o Crittografia dispositivo (Device Encryption) sia attivo sulla partizione di sistema (C:).",
-      "rationale": "La crittografia del disco protegge i dati in caso di furto o smarrimento del dispositivo.",
+      "description": "Verifies that BitLocker or Windows Device Encryption is enabled on the system partition (C:).",
+      "rationale": "Full-disk encryption protects sensitive data at rest in the event of physical theft or loss of the device.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-BitLockerSystemDrive"
       },
@@ -562,15 +562,15 @@
     },
     {
       "id": "HOME-PRV-001",
-      "title": "Telemetria impostata al livello minimo",
+      "title": "Windows telemetry set to minimum level",
       "category": "Privacy",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il livello di telemetria di Windows (AllowTelemetry) sia impostato al minimo consentito (<= 1).",
-      "rationale": "Ridurre la telemetria limita la quantita' di dati diagnostici raccolti e inviati a Microsoft.",
+      "description": "Verifies that Windows telemetry (AllowTelemetry) is configured to the minimum permitted level (<= 1).",
+      "rationale": "Minimizing telemetry limits the amount of diagnostic and usage data collected and transmitted to Microsoft.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-TelemetryMinimum"
       },
@@ -580,15 +580,15 @@
     },
     {
       "id": "HOME-SEC-001",
-      "title": "Avvio protetto (Secure Boot) attivo",
-      "category": "Sicurezza Avanzata",
+      "title": "UEFI Secure Boot active",
+      "category": "Advanced Security",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che Secure Boot sia abilitato nel firmware UEFI.",
-      "rationale": "Secure Boot impedisce l'esecuzione di bootloader non firmati, proteggendo da rootkit e bootkit.",
+      "description": "Verifies that Secure Boot is enabled in UEFI firmware.",
+      "rationale": "Secure Boot prevents unsigned bootloaders from loading at startup, defending against rootkits and bootkits.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-SecureBoot"
       },
@@ -598,14 +598,14 @@
     },
     {
       "id": "HOME-SEC-002",
-      "title": "Protezione LSA abilitata",
-      "category": "Sicurezza Avanzata",
+      "title": "LSA Protection (RunAsPPL) enabled",
+      "category": "Advanced Security",
       "severity": "alto",
       "editions": [
         "Pro"
       ],
-      "description": "Verifica che la protezione LSA (RunAsPPL) sia abilitata.",
-      "rationale": "La protezione LSA impedisce l'estrazione di credenziali dalla memoria da parte di processi non protetti (attacchi tipo Mimikatz).",
+      "description": "Verifies that Local Security Authority (LSA) Protection (RunAsPPL) is enabled.",
+      "rationale": "LSA Protection blocks non-protected processes from injecting into LSASS and dumping credentials from memory (e.g., Mimikatz).",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-LsaProtection"
       },
@@ -615,15 +615,15 @@
     },
     {
       "id": "HOME-SEC-003",
-      "title": "PowerShell script block logging abilitato",
-      "category": "Sicurezza Avanzata",
+      "title": "PowerShell Script Block Logging enabled",
+      "category": "Advanced Security",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il logging degli script block di PowerShell (EnableScriptBlockLogging) sia abilitato.",
-      "rationale": "Il logging degli script block permette di tracciare nei registri eventi l'esecuzione di comandi PowerShell sospetti o offuscati.",
+      "description": "Verifies that PowerShell Script Block Logging (EnableScriptBlockLogging) is enabled.",
+      "rationale": "Script Block Logging records executed PowerShell code blocks in the Windows Event Log, aiding detection of suspicious or obfuscated scripts.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-PsScriptBlockLogging"
       },
@@ -633,15 +633,15 @@
     },
     {
       "id": "HOME-AV-009",
-      "title": "Protezione ransomware (Accesso alle cartelle controllato) attiva",
+      "title": "Ransomware protection (Controlled Folder Access) enabled",
       "category": "Antivirus",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che l'Accesso alle cartelle controllato (EnableControlledFolderAccess = 1) di Windows Defender sia attivo.",
-      "rationale": "L'accesso alle cartelle controllato impedisce a ransomware e applicazioni non autorizzate di cifrare o modificare i tuoi file personali (Documenti, Immagini, Desktop).",
+      "description": "Verifies that Windows Defender Controlled Folder Access (EnableControlledFolderAccess = 1) is enabled.",
+      "rationale": "Controlled Folder Access prevents ransomware and untrusted applications from encrypting or modifying protected personal directories (Documents, Pictures, Desktop).",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderRansomwareCartelle"
       },
@@ -651,15 +651,15 @@
     },
     {
       "id": "HOME-AV-010",
-      "title": "Protezione di rete di Microsoft Defender (Exploit Guard) attiva",
+      "title": "Microsoft Defender Network Protection (Exploit Guard) active",
       "category": "Antivirus",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che la Protezione di rete di Defender (EnableNetworkProtection = 1) sia attiva in modalita' blocco.",
-      "rationale": "La protezione di rete blocca a livello di sistema le connessioni verso domini di phishing, server C2 malware ed exploit noti in qualsiasi applicazione o browser.",
+      "description": "Verifies that Microsoft Defender Network Protection (EnableNetworkProtection = 1) is active in Block mode.",
+      "rationale": "Network Protection blocks outbound connections to known phishing domains, malware C2 servers, and exploit hosts across all applications and browsers.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderNetworkProtection"
       },
@@ -669,15 +669,15 @@
     },
     {
       "id": "HOME-FIL-004",
-      "title": "Nessuna attivita' pianificata (Scheduled Task) sospetta o offuscata",
-      "category": "Controllo File",
+      "title": "No suspicious or obfuscated Scheduled Tasks",
+      "category": "File Security",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Analizza le Attivita' pianificate non-Microsoft alla ricerca di esecuzioni da cartelle Temp/Public o comandi PowerShell/LOLBin offuscati.",
-      "rationale": "I malware utilizzano frequentemente le Attivita' pianificate di Windows per rieseguirsi automaticamente in background ad ogni accesso o ad orari prestabiliti.",
+      "description": "Audits non-Microsoft Scheduled Tasks for executions from Temp/Public folders or obfuscated PowerShell/LOLBin commands.",
+      "rationale": "Malware frequently abuses Windows Scheduled Tasks to maintain persistent background execution at logon or on recurring timers.",
       "check": {
         "command_ref": "FileSecurity.ps1#Test-TaskPianificatiSospetti"
       },
@@ -687,15 +687,15 @@
     },
     {
       "id": "HOME-FIL-005",
-      "title": "Nessun dirottamento di eseguibili di sistema (IFEO Debugger Hijacking)",
-      "category": "Controllo File",
+      "title": "No system executable hijacking (IFEO Debugger Hijacking)",
+      "category": "File Security",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che nessun eseguibile di sistema o di accessibilita' (sethc.exe, utilman.exe, taskmgr.exe, MsMpEng.exe) abbia un valore Debugger in Image File Execution Options.",
-      "rationale": "Gli attaccanti usano il dirottamento IFEO per creare backdoor nella schermata di login (Sticky Keys) o per impedire l'avvio di Task Manager e Windows Defender.",
+      "description": "Verifies that no critical system or accessibility executable (sethc.exe, utilman.exe, taskmgr.exe, MsMpEng.exe) has a Debugger value in Image File Execution Options.",
+      "rationale": "Attackers abuse IFEO Debugger hijacking to install login-screen backdoors (Sticky Keys) or block security tools such as Task Manager and Defender.",
       "check": {
         "command_ref": "FileSecurity.ps1#Test-HijackingIFEO"
       },
@@ -705,15 +705,15 @@
     },
     {
       "id": "HOME-FIL-006",
-      "title": "Nessuno script o eseguibile sospetto nella cartella Esecuzione automatica",
-      "category": "Controllo File",
+      "title": "No suspicious scripts or executables in Startup folders",
+      "category": "File Security",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Scansiona le cartelle Startup dell'utente e di sistema alla ricerca di script o eseguibili sospetti (.vbs, .js, .bat, .cmd, .ps1, .hta, .scr).",
-      "rationale": "Qualsiasi file o script inserito nella cartella Esecuzione automatica (Startup) viene lanciato automaticamente ad ogni accesso dell'utente.",
+      "description": "Scans user and system Startup folders for suspicious scripts or executables (.vbs, .js, .bat, .cmd, .ps1, .hta, .scr).",
+      "rationale": "Any script or executable placed in the Startup folder is automatically launched every time a user signs in.",
       "check": {
         "command_ref": "FileSecurity.ps1#Test-CartellaStartupUtente"
       },
@@ -723,15 +723,15 @@
     },
     {
       "id": "HOME-ACC-004",
-      "title": "Politica di blocco account contro attacchi brute-force attiva",
-      "category": "Account",
+      "title": "Account lockout policy enabled against brute-force attacks",
+      "category": "Accounts",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che la soglia di blocco account (Account Lockout Threshold) sia impostata tra 1 e 10 tentativi di accesso falliti.",
-      "rationale": "Senza una soglia di blocco account, un attaccante o un malware sulla rete locale puo' tentare migliaia di password al minuto senza essere bloccato.",
+      "description": "Verifies that the Account Lockout Threshold is configured between 1 and 10 failed logon attempts.",
+      "rationale": "Without an account lockout threshold, an attacker or malware on the local network can perform unlimited password-guessing attempts.",
       "check": {
         "command_ref": "Accounts.ps1#Test-PoliticaBloccoAccount"
       },
@@ -741,33 +741,33 @@
     },
     {
       "id": "HOME-ACC-005",
-      "title": "Numero di account nel gruppo Amministratori locali ridotto al minimo (<= 2)",
-      "category": "Account",
+      "title": "Minimal number of local Administrators group members (<= 2)",
+      "category": "Accounts",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il gruppo locale Amministratori (SID S-1-5-32-544) non contenga piu' di 2 account abilitati.",
-      "rationale": "Limitare il numero di account con privilegi di amministratore riduce la superficie d'attacco e il rischio di compromissione totale del sistema.",
+      "description": "Verifies that the local Administrators group (SID S-1-5-32-544) contains no more than 2 enabled accounts.",
+      "rationale": "Minimizing accounts with administrative privileges reduces the attack surface and limits blast radius in the event of account compromise.",
       "check": {
         "command_ref": "Accounts.ps1#Test-LimiteAmministratoriLocali"
       },
       "references": [
-        "Principio del Privilegio Minimo (Least Privilege)"
+        "Principle of Least Privilege"
       ]
     },
     {
       "id": "HOME-NET-004",
-      "title": "Nessuna cartella condivisa di rete (SMB Share) non standard esposta",
-      "category": "Rete",
+      "title": "No non-standard SMB network shares exposed",
+      "category": "Network",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che non vi siano condivisioni SMB utente esposte sulla rete locale oltre a quelle amministrative predefinite.",
-      "rationale": "Le cartelle condivise sulla rete locale possono essere sfruttate da ransomware o utenti sulla stessa rete Wi-Fi per leggere o cifrare file.",
+      "description": "Verifies that no user-defined SMB shares are exposed on the local network beyond default administrative shares.",
+      "rationale": "Exposed local network shares can be abused by ransomware or untrusted devices on the same Wi-Fi network to read or encrypt files.",
       "check": {
         "command_ref": "Network.ps1#Test-CondivisioniSmbPericolose"
       },
@@ -777,15 +777,15 @@
     },
     {
       "id": "HOME-NET-005",
-      "title": "Firma digitale SMB (SMB Signing) obbligatoria contro attacchi NTLM Relay",
-      "category": "Rete",
+      "title": "Mandatory SMB digital signing enabled (anti-NTLM Relay)",
+      "category": "Network",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che RequireSecuritySignature = 1 sia attivo sia per il Server che per il Client SMB.",
-      "rationale": "La firma digitale obbligatoria dei pacchetti SMB impedisce agli attaccanti sulla rete locale di intercettare e inoltrare le tue credenziali (attacchi SMB/NTLM Relay).",
+      "description": "Verifies that RequireSecuritySignature = 1 is enforced for both SMB Server and SMB Client.",
+      "rationale": "Mandatory SMB packet signing prevents local network attackers from intercepting and relaying credentials via SMB/NTLM Relay attacks.",
       "check": {
         "command_ref": "Network.ps1#Test-FirmaSmbObbligatoria"
       },
@@ -795,15 +795,15 @@
     },
     {
       "id": "HOME-NET-006",
-      "title": "Servizio Gestione remota Windows (WinRM / PowerShell Remoting) disabilitato",
-      "category": "Rete",
+      "title": "Windows Remote Management (WinRM / PowerShell Remoting) disabled",
+      "category": "Network",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il servizio WinRM sia fermo (Stopped) per non esporre le porte di amministrazione remota 5985/5986.",
-      "rationale": "Su un PC desktop o portatile, WinRM espone un endpoint di esecuzione remota di comandi PowerShell utilizzato per movimenti laterali.",
+      "description": "Verifies that the WinRM service is stopped so remote administration ports 5985/5986 are not exposed.",
+      "rationale": "On personal desktops and laptops, WinRM exposes a remote PowerShell execution endpoint frequently abused for lateral movement.",
       "check": {
         "command_ref": "Network.ps1#Test-WinRmDisabilitatoOSicuro"
       },
@@ -813,15 +813,15 @@
     },
     {
       "id": "HOME-NET-007",
-      "title": "Risoluzione automatica proxy WPAD disabilitata (anti-MITM)",
-      "category": "Rete",
+      "title": "WPAD automatic web proxy discovery disabled (anti-MITM)",
+      "category": "Network",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il protocollo WPAD (Web Proxy Auto-Discovery) sia disabilitato nel registro o tramite il servizio WinHttpAutoProxySvc.",
-      "rationale": "Un attaccante sulla stessa rete locale/Wi-Fi puo' rispondere alle richieste WPAD per dirottare tutto il traffico web del PC attraverso un proxy malevolo.",
+      "description": "Verifies that Web Proxy Auto-Discovery (WPAD) is disabled in the registry or via the WinHttpAutoProxySvc service.",
+      "rationale": "An attacker on the same LAN or Wi-Fi network can spoof WPAD responses to intercept and proxy all web traffic from the machine.",
       "check": {
         "command_ref": "Network.ps1#Test-WpadDisabilitato"
       },
@@ -831,15 +831,15 @@
     },
     {
       "id": "HOME-SYS-006",
-      "title": "Protezione credenziali WDigest (nessuna password in chiaro in memoria)",
-      "category": "Impostazioni Windows",
+      "title": "WDigest credential protection (no cleartext passwords in memory)",
+      "category": "Windows Settings",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica anti-manomissione che UseLogonCredential in WDigest sia 0 (o assente) per impedire la memorizzazione di password in chiaro in LSASS.",
-      "rationale": "Se WDigest UseLogonCredential viene impostato a 1 da un attaccante, Windows conserva le password utente in chiaro nella memoria RAM.",
+      "description": "Anti-tampering check verifying that WDigest UseLogonCredential is set to 0 (or absent) to prevent cleartext password caching in LSASS.",
+      "rationale": "If an attacker sets WDigest UseLogonCredential to 1, Windows caches user passwords in plaintext in RAM, enabling credential theft.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-WDigestDisabilitato"
       },
@@ -849,15 +849,15 @@
     },
     {
       "id": "HOME-SYS-007",
-      "title": "Assistenza remota di Windows (Remote Assistance) disabilitata",
-      "category": "Impostazioni Windows",
+      "title": "Windows Remote Assistance disabled",
+      "category": "Windows Settings",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che fAllowToGetHelp sia impostato a 0 nella chiave Remote Assistance.",
-      "rationale": "Disabilitare l'Assistenza remota riduce il rischio di connessioni remote non autorizzate verso il PC.",
+      "description": "Verifies that fAllowToGetHelp is set to 0 in the Remote Assistance registry key.",
+      "rationale": "Disabling Remote Assistance reduces the risk of unauthorized remote support connections to the computer.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-AssistenzaRemotaDisabilitata"
       },
@@ -867,15 +867,15 @@
     },
     {
       "id": "HOME-SYS-008",
-      "title": "Servizio Registro di sistema remoto (Remote Registry) disabilitato",
-      "category": "Impostazioni Windows",
+      "title": "Remote Registry service disabled",
+      "category": "Windows Settings",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che il servizio RemoteRegistry sia disabilitato (Start = 4) e non in esecuzione.",
-      "rationale": "Il servizio Remote Registry permette la lettura e modifica del registro di sistema da remoto attraverso la rete.",
+      "description": "Verifies that the RemoteRegistry service is disabled (Start = 4) and not running.",
+      "rationale": "The Remote Registry service allows remote reading and modification of the Windows registry over the network.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-RegistroRemotoDisabilitato"
       },
@@ -885,15 +885,15 @@
     },
     {
       "id": "HOME-SEC-006",
-      "title": "Microsoft Vulnerable Driver Blocklist (anti-BYOVD) abilitata",
-      "category": "Sicurezza Avanzata",
+      "title": "Microsoft Vulnerable Driver Blocklist (anti-BYOVD) enabled",
+      "category": "Advanced Security",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che la blocklist dei driver vulnerabili di Microsoft (VulnerableDriverBlocklistEnable = 1) sia attiva in CI\\Config.",
-      "rationale": "Impedisce il caricamento di driver firmati ma con vulnerabilita' note sfruttati negli attacchi Bring Your Own Vulnerable Driver (BYOVD) per disabilitare EDR/Defender nel kernel.",
+      "description": "Verifies that Microsoft's Vulnerable Driver Blocklist (VulnerableDriverBlocklistEnable = 1) is enabled in CI\\Config.",
+      "rationale": "Prevents loading signed drivers with known vulnerabilities abused in Bring Your Own Vulnerable Driver (BYOVD) attacks to disable EDR/Defender in the kernel.",
       "check": {
         "registry": {
           "path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\CI\\Config",
@@ -909,15 +909,15 @@
     },
     {
       "id": "HOME-SEC-007",
-      "title": "Smart App Control (SAC) attivo",
-      "category": "Sicurezza Avanzata",
+      "title": "Smart App Control (SAC) active",
+      "category": "Advanced Security",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica lo stato di Smart App Control (VerifiedAndReputablePolicyState = 1 Enforced o 2 Evaluation) in Control\\CI\\Policy.",
-      "rationale": "Smart App Control blocca a livello di sistema l'esecuzione di applicazioni non attendibili, non firmate o potenzialmente malevole su Windows 11.",
+      "description": "Verifies Smart App Control status (VerifiedAndReputablePolicyState = 1 Enforced or 2 Evaluation) in Control\\CI\\Policy.",
+      "rationale": "Smart App Control blocks untrusted, unsigned, or potentially malicious applications at the OS level on Windows 11.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-SmartAppControl"
       },
@@ -928,15 +928,15 @@
     },
     {
       "id": "HOME-AV-011",
-      "title": "Regole Attack Surface Reduction (ASR) di Microsoft Defender attive",
+      "title": "Microsoft Defender Attack Surface Reduction (ASR) rules active",
       "category": "Antivirus",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica tramite Get-MpPreference che siano configurate regole ASR in modalita' Block (1) o Warn (6), incluso il blocco furto credenziali LSASS e script offuscati.",
-      "rationale": "Le regole ASR bloccano i vettori di attacco piu' comuni usati da ransomware e malware fileless (estrazione credenziali da LSASS, macro Office, script offuscati).",
+      "description": "Verifies via Get-MpPreference that ASR rules are configured in Block (1) or Warn (6) mode, including LSASS credential theft protection and obfuscated script blocking.",
+      "rationale": "ASR rules block common ransomware and fileless malware techniques such as LSASS credential dumping, malicious Office macros, and obfuscated scripts.",
       "check": {
         "command_ref": "Defender.ps1#Test-DefenderAsrRules"
       },
@@ -947,15 +947,15 @@
     },
     {
       "id": "HOME-SEC-008",
-      "title": "Chip di sicurezza hardware TPM 2.0 presente e pronto",
-      "category": "Sicurezza Avanzata",
+      "title": "Hardware security chip TPM 2.0 present and ready",
+      "category": "Advanced Security",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica tramite Get-Tpm (o Win32_Tpm) che il modulo TPM 2.0 sia presente e pronto all'uso (TpmPresent = True, TpmReady = True).",
-      "rationale": "Il chip TPM 2.0 fornisce la radice di fiducia hardware indispensabile per BitLocker, Windows Hello, Secure Boot e Credential Guard.",
+      "description": "Verifies via Get-Tpm (or Win32_Tpm) that a TPM 2.0 module is present and ready for use (TpmPresent = True, TpmReady = True).",
+      "rationale": "TPM 2.0 provides the hardware root of trust required by BitLocker, Windows Hello, Secure Boot, and Credential Guard.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-Tpm20Ready"
       },
@@ -965,15 +965,15 @@
     },
     {
       "id": "HOME-NET-008",
-      "title": "Protocolli obsoleti TLS 1.0/1.1 disabilitati e DNS over HTTPS (DoH) supportato",
-      "category": "Rete",
+      "title": "Legacy TLS 1.0/1.1 disabled and DNS over HTTPS (DoH) supported",
+      "category": "Network",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che TLS 1.0 e TLS 1.1 non siano forzatamente abilitati in SCHANNEL e che il client DNS supporti DNS over HTTPS (DoH).",
-      "rationale": "Disabilitare TLS 1.0/1.1 previene attacchi di downgrade crittografico (BEAST/POODLE), mentre DNS over HTTPS cifra le query DNS contro intercettazioni e spoofing.",
+      "description": "Verifies that TLS 1.0 and TLS 1.1 are not forced enabled in SCHANNEL and that the DNS client supports DNS over HTTPS (DoH).",
+      "rationale": "Disabling TLS 1.0/1.1 prevents cryptographic downgrade attacks (BEAST/POODLE), while DNS over HTTPS encrypts DNS queries against interception and spoofing.",
       "check": {
         "command_ref": "Network.ps1#Test-LegacyTlsAndDoh"
       },
@@ -984,15 +984,15 @@
     },
     {
       "id": "HOME-SYS-009",
-      "title": "Windows Script Host (WSH) disabilitato contro script .vbs/.js malevoli",
-      "category": "Impostazioni Windows",
+      "title": "Windows Script Host (WSH) disabled against malicious .vbs/.js scripts",
+      "category": "Windows Settings",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che Windows Script Host (wscript.exe/cscript.exe) sia disabilitato impostando Enabled = 0 in Windows Script Host\\Settings.",
-      "rationale": "Disabilitare WSH impedisce l'esecuzione automatica di script VBScript (.vbs/.vbe) e JScript (.js/.jse) comunemente usati come dropper da campagne phishing e malware.",
+      "description": "Verifies that Windows Script Host (wscript.exe/cscript.exe) is disabled by setting Enabled = 0 in Windows Script Host\\Settings.",
+      "rationale": "Disabling WSH blocks automatic execution of VBScript (.vbs/.vbe) and JScript (.js/.jse) droppers commonly delivered via phishing campaigns.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-WshDisabled"
       },
@@ -1003,15 +1003,15 @@
     },
     {
       "id": "HOME-SEC-009",
-      "title": "PowerShell ExecutionPolicy sicura (nessuno scope Unrestricted o Bypass)",
-      "category": "Sicurezza Avanzata",
+      "title": "Secure PowerShell ExecutionPolicy (no Unrestricted or Bypass scopes)",
+      "category": "Advanced Security",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica tramite Get-ExecutionPolicy -List che nessuno scope persistente (MachinePolicy, UserPolicy, LocalMachine, CurrentUser) sia impostato su Unrestricted o Bypass.",
-      "rationale": "Una ExecutionPolicy troppo permissiva consente l'avvio diretto di script PowerShell non firmati o scaricati da Internet senza alcun controllo.",
+      "description": "Verifies via Get-ExecutionPolicy -List that no persistent scope (MachinePolicy, UserPolicy, LocalMachine, CurrentUser) is set to Unrestricted or Bypass.",
+      "rationale": "An overly permissive ExecutionPolicy allows unsigned or Internet-downloaded PowerShell scripts to run without restriction.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-PowerShellExecutionPolicySecure"
       },
@@ -1022,15 +1022,15 @@
     },
     {
       "id": "HOME-UAC-004",
-      "title": "Protezione Amministratore (Administrator Protection) attiva",
+      "title": "Windows 11 Administrator Protection (JIT) active",
       "category": "UAC",
       "severity": "medio",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che la nuova modalita' Administrator Protection just-in-time di Windows 11 24H2/25H2/26H2 sia abilitata tramite TypeOfAdminApprovalMode = 2 in Policies\\System.",
-      "rationale": "Administrator Protection crea un account amministratore nascosto separato con privilegi just-in-time, impedendo ai malware di ereditare silenziosamente il token amministrativo permanente dell'utente.",
+      "description": "Verifies that Windows 11 24H2/25H2/26H2 just-in-time Administrator Protection is enabled via TypeOfAdminApprovalMode = 2 in Policies\\System.",
+      "rationale": "Administrator Protection creates a separate hidden admin account with just-in-time elevation tokens, preventing malware from silently inheriting a standing admin token.",
       "check": {
         "command_ref": "SystemSecurity.ps1#Test-AdministratorProtection"
       },
@@ -1040,15 +1040,15 @@
     },
     {
       "id": "HOME-FIL-007",
-      "title": "Nessuna persistenza fileless tramite WMI Event Subscriptions",
-      "category": "Controllo File",
+      "title": "No fileless persistence via WMI Event Subscriptions",
+      "category": "File Security",
       "severity": "critico",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Interroga in sola lettura il namespace root\\subscription per verificare l'assenza di CommandLineEventConsumer, ActiveScriptEventConsumer ed EventFilter sospetti.",
-      "rationale": "Gli attaccanti utilizzano le sottoscrizioni WMI permanenti per ottenere persistenza fileless invisibile alle normali chiavi Run, eseguendo script o comandi ad ogni evento di sistema.",
+      "description": "Queries the root\\subscription namespace in read-only mode to ensure no suspicious CommandLineEventConsumer, ActiveScriptEventConsumer, or EventFilter objects exist.",
+      "rationale": "Attackers abuse permanent WMI event subscriptions to achieve stealthy fileless persistence outside standard Run keys, executing scripts or commands on system events.",
       "check": {
         "command_ref": "FileSecurity.ps1#Test-WmiEventSubscriptions"
       },
@@ -1058,15 +1058,15 @@
     },
     {
       "id": "HOME-FIL-008",
-      "title": "Nessuna estensione browser forzata da policy (Chrome / Edge)",
-      "category": "Controllo File",
+      "title": "No policy-forced browser extensions (Chrome / Edge)",
+      "category": "File Security",
       "severity": "alto",
       "editions": [
         "Home",
         "Pro"
       ],
-      "description": "Verifica che le chiavi ExtensionInstallForcelist in HKLM/HKCU per Google Chrome e Microsoft Edge non contengano estensioni forzate da policy.",
-      "rationale": "Malware, adware e infostealer forzano spesso l'installazione silenziosa di estensioni browser malevole tramite ExtensionInstallForcelist impedendo all'utente di rimuoverle dall'interfaccia.",
+      "description": "Verifies that ExtensionInstallForcelist registry keys in HKLM/HKCU for Google Chrome and Microsoft Edge do not contain forced extensions.",
+      "rationale": "Malware, adware, and infostealers often force silent installation of malicious browser extensions via ExtensionInstallForcelist, preventing users from removing them via the browser UI.",
       "check": {
         "command_ref": "FileSecurity.ps1#Test-BrowserForcedExtensions"
       },

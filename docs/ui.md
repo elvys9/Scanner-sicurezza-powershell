@@ -1,123 +1,82 @@
-# Interfaccia Grafica (WPF) — Design e Collaudo Manuale
+# Graphical User Interface (WPF) - Design & Manual Verification
 
-## 1. Obiettivo e Filosofia di Design
+## 1. Objective & Design Philosophy
 
-L'interfaccia grafica dello scanner di sicurezza per Windows 11 e' progettata sul modello di **winutil**:
-- **Zero installazione**: utilizza esclusivamente WPF (`PresentationFramework`) incluso nativamente in Windows 11 e Windows PowerShell 5.1.
-- **Separazione netta tra Vista e Motore**: la finestra non contiene alcuna logica di valutazione dei controlli. Invoca `Invoke-Controlli` e `New-Report` del motore (`src/core`) e usa le funzioni pure di `src/ui/ViewModel.ps1` per ordinamento, filtri, conteggi e formattazione dei dettagli.
-- **Sola lettura garantita**: nessun pulsante dell'interfaccia esegue comandi di modifica del sistema o applica rimedi. L'utente puo' solo visualizzare i risultati, copiare i comandi di riferimento negli appunti, esportare il report su file (JSON/HTML) o riavviare l'applicazione come amministratore.
+The Windows 11 Security Scanner GUI follows a **winutil-style** architecture:
+- **Zero installation**: uses only native WPF (`PresentationFramework`) built into Windows 11 and Windows PowerShell 5.1.
+- **Strict separation between View and Engine**: the UI contains no security evaluation logic. It invokes `Invoke-Controlli` and `New-Report` from `src/core` and delegates sorting, filtering, summary counters, and detail formatting to pure functions in `src/ui/ViewModel.ps1`.
+- **Guaranteed read-only mode**: no button modifies Windows configuration or automatically applies remediation. Users can inspect results, copy reference commands to the clipboard, export reports (JSON/HTML/log), or relaunch elevated as Administrator.
 
 ---
 
-## 2. Schermate (Rappresentazione Testuale)
+## 2. Screen Layout Overview
 
-### 2.1 Avvio iniziale (Utente non amministratore, prima della scansione)
-
-```
-+----------------------------------------------------------------------------------+
-| [Lucchetto] Scanner sicurezza Windows (Sola lettura) [Win 11 Pro | Admin: No] [Tema]|
-+----------------------------------------------------------------------------------+
-| [!] Avviato senza privilegi di amministratore. I controlli che richiedono        |
-|     privilegi elevati risulteranno 'Sconosciuto'.    [Riavvia come amministratore]|
-+----------------------------------------------------------------------------------+
-| [ Avvia scansione ]  [Annulla (disattivo)]   [------------------] Pronto (0/18)  |
-+----------------------------------------------------------------------------------+
-| [ [OK] 0 Superati ] [ [X] 0 Falliti ] [ [?] 0 Sconosciuti ] [ [-] 0 N/A ] [ [!] 0]|
-+----------------------------------------------------------------------------------+
-| Stato: [Tutti v]  Gravita': [Tutte v]  Categoria: [Tutte v]  Cerca: [________]   |
-+-----------------------------------------------+----------------------------------+
-|                                               | DETTAGLIO CONTROLLO              |
-|                                               | Seleziona un controllo           |
-|            [Icona Lente]                      | ID: - | Stato: - | Gravita': -   |
-|   Premi 'Avvia scansione' per analizzare      | [Semplice] [Tecnico]             |
-|        la sicurezza del sistema.              | Perche' conta:                   |
-|   La scansione e' in sola lettura e non       | Seleziona una riga nella tabella |
-|   apporta alcuna modifica a Windows.          | Valore atteso: - | Trovato: -    |
-|                                               | Come correggere: -               |
-|                                               | [Spiega con LLM (disattivato)]   |
-+-----------------------------------------------+----------------------------------+
-| [Esporta JSON] [Esporta HTML] [ ] Includi log tecnico    Riepilogo: 0 valutati   |
-| Avviso permanente: l'audit conforme non dimostra l'assenza di compromissioni.    |
-+----------------------------------------------------------------------------------+
-```
-
-### 2.2 Scansione completata e controllo selezionato
+### 2.1 Initial Startup (Non-Administrator, Before Scan)
 
 ```
 +----------------------------------------------------------------------------------+
-| [Lucchetto] Scanner sicurezza Windows (Sola lettura) [Win 11 Pro | Admin: Si] [Tema]|
+| [Lock] Windows 11 Security Scanner (READ-ONLY) [Win 11 Pro | Admin: No] [Lang][Theme]|
 +----------------------------------------------------------------------------------+
-| [ Avvia scansione ]  [Annulla (disattivo)]   [##################] Completata(18/18)|
+| [!] Non-administrator session: some controls will report 'Unknown'.              |
+|                                                         [Relaunch as Admin]      |
 +----------------------------------------------------------------------------------+
-| [ [OK] 2 Superati ] [ [X] 1 Falliti ] [ [?] 15 Sconosciuti ] [ [-] 0 N/A ] [[!] 0]|
+| [1. Security Controls] [2. AI Advisor] [Start Scan] [Cancel] [----] Ready (0/58) |
 +----------------------------------------------------------------------------------+
-| Stato: [Tutti v]  Gravita': [Tutte v]  Categoria: [Tutte v]  Cerca: [________]   |
+| [ [OK] 0 Passed ] [ [X] 0 Failed ] [ [?] 0 Unknown ] [ [-] 0 N/A ] [ [!] 0 Err ] |
++----------------------------------------------------------------------------------+
+| Status: [All v]  Severity: [All v]  Category: [All v]  Search: [________] [Reset]|
 +-----------------------------------------------+----------------------------------+
-| Stato        | Gravita'| Cat.     | ID        | DETTAGLIO CONTROLLO              |
-| > [X] Fallito| Critico | Firewall | HOME-FW.. | Firewall di Windows attivo       |
-|   [?] Scon.  | Alto    | UAC      | HOME-UA.. | ID: HOME-FW-001 | [X] Fallito    |
-|   [OK] Sup.  | Critico | UAC      | HOME-UA.. | [Semplice] [Tecnico]             |
-|   [OK] Sup.  | Critico | Account  | HOME-AC.. | Perche' conta:                   |
-|                                               | Il firewall e' la prima linea... |
-|                                               | Atteso: Attivi | Trovato: Public |
-|                                               | Come correggere:                 |
-|                                               | Attiva Windows Defender Firewall |
-|                                               | [Set-NetFirewallProfile ...]     |
-|                                               | [Copia comando]                  |
-|                                               | [Spiega con LLM] (disattivato)   |
+|                                               | CONTROL DETAILS                  |
+|                                               | No control selected              |
+|            [Magnifier Icon]                   | ID: - | Status: - | Severity: -  |
+|   Click 'Start Scan' to audit Windows 11      | [Simple View] [Technical Details]|
+|        security configurations.               | Why it matters:                  |
+|   The scanner operates strictly in read-only  | Select a row in the table        |
+|   mode and modifies no Windows settings.      | Expected: - | Observed: -        |
+|                                               | How to Remediate: -              |
+|                                               | [Explain with AI (Page 2)]       |
 +-----------------------------------------------+----------------------------------+
-| [Esporta JSON] [Esporta HTML] [ ] Includi log tecnico    Riepilogo: 18 valutati  |
-| Avviso permanente: l'audit conforme non dimostra l'assenza di compromissioni.    |
+| [Export JSON] [Export HTML] [ ] Include technical log    Summary: 0 evaluated    |
+| Permanent Notice: a compliant audit does not guarantee absence of compromise.    |
 +----------------------------------------------------------------------------------+
 ```
 
 ---
 
-## 3. Scelte di Design
+## 3. Key Design Choices
 
-1. **Accessibilita' visiva (mai solo colore)**: ogni stato utilizza contemporaneamente un prefisso simbolico (`[OK]`, `[X]`, `[?]`, `[-]`, `[!]`), un'etichetta testuale (`Superato`, `Fallito`, `Sconosciuto`, `Non applicabile`, `Errore`) e una combinazione cromatica ad alto contrasto.
-2. **Ordinamento orientato alle priorita'**: per evitare che l'utente domestico debba cercare i problemi in fondo alla lista, l'ordinamento predefinito mostra sempre per primi i controlli `falliti` ordinati per gravita' decrescente (`critico` -> `alto` -> `medio` -> `basso` -> `informativo`), seguiti da `errore`/`sconosciuto`, poi `superato` e infine `non_applicabile`.
-3. **Doppia modalita' di spiegazione (`Semplice` / `Tecnico`)**:
-   - La vista **Semplice** mostra il campo `rationale` pensato per l'utente non esperto.
-   - La vista **Tecnico** mostra `description`, ID del controllo, edizioni supportate, durata in millisecondi, evidenza JSON raccolta e riferimenti normativi (es. CIS Benchmark).
-4. **Reattivita' tramite Runspace e Dispatcher**: la scansione viene eseguita in un `[runspace]` dedicato. Al completamento di ciascun controllo, l'hook `-OnProgress` del `Runner.ps1` invia il risultato al thread UI tramite `$Window.Dispatcher.Invoke(...)`, aggiornando barra di avanzamento, contatori e tabella in tempo reale senza bloccare il ridimensionamento o il pulsante `Annulla`.
-5. **Scalabilita' DPI (100%, 125%, 150%)**: il layout usa `Grid` con proporzioni `*`/`Auto`, `UniformGrid`, `WrapPanel` per i filtri e `ScrollViewer` nel pannello di dettaglio, con dimensioni minime `900x600` e `UseLayoutRounding="True"`.
+1. **Visual accessibility (never color alone)**: every status combines a textual symbol (`[OK]`, `[X]`, `[?]`, `[-]`, `[!]`), a localized text label (`Passed`, `Failed`, `Unknown`, `N/A`, `Error`), and high-contrast color tokens.
+2. **Priority-first sorting**: failed controls appear first ordered by descending severity (`Critical` -> `High` -> `Medium` -> `Low` -> `Info`), followed by `Error`/`Unknown`, `Passed`, and `N/A`.
+3. **Dual explanation mode (`Simple` / `Technical`)**:
+   - **Simple View** displays the user-friendly `rationale`.
+   - **Technical Details** displays `description`, control ID, applicable editions, check duration (ms), collected JSON evidence, and compliance references (CIS Benchmark, Microsoft Security Baseline, MITRE ATT&CK).
+4. **Responsiveness via Runspace & Dispatcher**: scanning executes in a background `[runspace]`. After each control, `Runner.ps1` invokes `-OnProgress`, marshaling UI updates through `$Window.Dispatcher.Invoke(...)` without blocking resizing or cancellation.
+5. **DPI scaling & scrolling (100%, 125%, 150%)**: responsive `Grid` proportions (`*`/`Auto`), `UniformGrid`, horizontal/vertical scrollbars on `GridRisultati`, and vertical `ScrollViewer` in the details panel.
 
 ---
 
-## 4. Checklist di Collaudo Manuale (su VM Windows 11)
+## 4. Manual Verification Checklist (Windows 11 VM)
 
-Eseguire i controlli seguenti su una macchina virtuale Windows 11 (Home o Pro):
+Run the following verification checks on a Windows 11 (Home or Pro) virtual machine:
 
-- [ ] **1. Apertura rapida (< 3 secondi)**:
-  - Eseguire `powershell -STA -ExecutionPolicy Bypass -File src\Invoke-Scanner.ps1`.
-  - Verificare che la finestra si apra in meno di 3 secondi, con la tabella vuota e il messaggio guida `"Premi 'Avvia scansione' per analizzare la sicurezza del sistema."`.
-- [ ] **2. Comportamento Utente Non-Admin**:
-  - Avviare lo script da un terminale PowerShell *senza* privilegi di amministratore.
-  - Verificare che nell'intestazione compaia `Admin: No` e che sia visibile il banner giallo con il pulsante **"Riavvia come amministratore"**.
-  - Avviare la scansione e verificare che i controlli che richiedono privilegi (es. `HOME-FW-001`, `HOME-ACC-001`) abbiano stato `[?] Sconosciuto` e mai `[X] Fallito`.
-  - Premere **"Riavvia come amministratore"** e verificare la comparsa del prompt UAC e il riavvio con `Admin: Si`.
-- [ ] **3. Scansione in tempo reale e Reattivita'**:
-  - Premere **"Avvia scansione"**.
-  - Verificare che la finestra resti spostabile e ridimensionabile durante l'esecuzione, che la barra di avanzamento avanzi (`1/18` ... `18/18`) e che i conteggi in alto si aggiornino.
-- [ ] **4. Funzionamento del pulsante "Annulla"**:
-  - Avviare una scansione e premere subito **"Annulla"**.
-  - Verificare che la scansione si interrompa in modo pulito senza blocchi o crash e che lo stato mostri `Annullata (N/18)`.
-- [ ] **5. Filtri combinabili e Ricerca**:
-  - Selezionare `Stato = superato` o `sconosciuto`, `Gravita' = critico`, `Categoria = Firewall` e digitare `FW-001` o `Firewall` nella casella **Cerca**.
-  - Verificare che la tabella si aggiorni istantaneamente e che **"Reimposta filtri"** riporti tutti i controlli.
-- [ ] **6. Pannello Dettaglio e Copia Comando**:
-  - Selezionare `HOME-FW-001`, `HOME-UAC-001` e `HOME-ACC-001`: verificare il passaggio tra **Semplice** e **Tecnico**, la presenza del comando di rimedio e il funzionamento di **"Copia comando"** (incollare in Blocco Note per verificare il contenuto degli appunti).
-  - Selezionare un controllo privo di comando (es. `HOME-UAC-002`): verificare che il riquadro del comando e il pulsante "Copia comando" siano nascosti e venga mostrato solo il testo.
-  - Passare il mouse su **"Spiega con LLM (Ollama)"**: verificare che il pulsante sia disattivato e mostri il tooltip `"Disponibile in una fase successiva"`.
-- [ ] **7. Export JSON, Export HTML e Log Tecnico**:
-  - Premere **"Esporta JSON"**: verificare che il nome file proposto contenga data e ora (`scanner_sicurezza_YYYYMMDD_HHMMSS.json`) e che il contenuto abbia la stessa struttura di `-Headless`.
-  - Premere **"Esporta HTML"**: aprire il file `.html` generato nel browser (senza connessione di rete) e verificare che stili, colori, tabella e avviso permanente siano completi e leggibili.
-  - Spuntare **"Includi file di log tecnico accanto all'export"**, esportare nuovamente e verificare la creazione del file `.errori.log`.
-- [ ] **8. Tema Chiaro / Scuro**:
-  - Premere **"Tema: Scuro"** in alto a destra e verificare il contrasto di testo, tabella, pannello dettaglio e schede riepilogo; premere di nuovo per tornare al tema chiaro.
-- [ ] **9. Scalabilita' DPI (100%, 125%, 150%)**:
-  - Nelle Impostazioni schermo di Windows 11, impostare il ridimensionamento a **125%** e poi a **150%**.
-  - Verificare che i testi non vengano tagliati, che i filtri vadano a capo se necessario (`WrapPanel`) e che il pannello dettaglio scorra verticalmente.
-- [ ] **10. Navigazione da Tastiera**:
-  - Usare il tasto `Tab` e `Shift+Tab` per spostarsi tra i controlli, le frecce `Su`/`Giu'` nella tabella dei risultati, e le scorciatoie `Alt+A` (Avvia), `Alt+N` (Annulla), `Alt+C` (Copia comando), `Alt+J` (Esporta JSON), `Alt+H` (Esporta HTML).
+- [ ] **1. Fast launch (< 3 seconds)**:
+  - Run `powershell -STA -ExecutionPolicy Bypass -File src\Invoke-Scanner.ps1`.
+  - Verify the window opens quickly with the empty-state prompt visible.
+- [ ] **2. Non-Admin Behavior**:
+  - Launch from a standard (non-elevated) PowerShell terminal.
+  - Verify `Admin: No` appears in the header and the yellow warning banner with **"Relaunch as Administrator"** is displayed.
+  - Verify privilege-restricted controls report `[?] Unknown` rather than `[X] Failed`.
+- [ ] **3. Live Scan & Responsiveness**:
+  - Click **"Start Scan"** and confirm real-time progress bar updates, live KPI counter increments, and smooth window resizing.
+- [ ] **4. Cancellation**:
+  - Start a scan and immediately click **"Cancel"**; confirm clean stop without errors or UI freeze.
+- [ ] **5. Combined Filters & Search**:
+  - Combine Status, Severity, Category, and Search text filters, then click **"Reset Filters"**.
+- [ ] **6. Details Panel & Copy Command**:
+  - Switch between **Simple View** and **Technical Details**, verify copy-to-clipboard works, and verify controls without a command hide the command box.
+- [ ] **7. JSON / HTML Export & Technical Log**:
+  - Export both JSON and HTML reports, open the HTML report offline in a browser, and verify `.log` generation when the technical log checkbox is enabled.
+- [ ] **8. Theme & Language Switching**:
+  - Toggle **Light / Dark** theme and switch between **IT / EN / DE** languages; verify labels and contrast update cleanly.
+- [ ] **9. Horizontal & Vertical Scrolling**:
+  - Resize the window to non-fullscreen dimensions and verify the horizontal scrollbar on the results table allows reading full control titles and IDs without clipping.

@@ -1,11 +1,11 @@
 ﻿<#
 .SYNOPSIS
-    Rileva le informazioni sull'ambiente di esecuzione.
+    Detects execution environment metadata.
 
 .DESCRIPTION
-    Raccoglie edizione di Windows, build e UBR, lingua di sistema,
-    stato di amministratore e versione di PowerShell.
-    Non modifica mai lo stato del sistema.
+    Collects Windows edition, build and UBR, OS display language,
+    administrator privilege status, and PowerShell version.
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -13,37 +13,37 @@ Set-StrictMode -Version 2
 function Get-AmbienteSistema {
     <#
     .SYNOPSIS
-        Restituisce un oggetto con le informazioni sull'ambiente.
+        Returns an object with system environment details.
     .OUTPUTS
-        PSCustomObject con proprieta': Edition, Build, Language, IsAdmin, PsVersion
+        PSCustomObject with properties: Edition, EditionId, Build, Language, IsAdmin, PsVersion
     #>
     [CmdletBinding()]
     param()
 
-    # Edizione: EditionID dal registro (es. "Core" = Home, "Professional" = Pro)
+    # Edition: EditionID from registry (e.g., "Core" = Home, "Professional" = Pro)
     $editionId = $null
     try {
         $regPath = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
         $editionId = (Get-ItemProperty -Path $regPath -Name 'EditionID' -ErrorAction Stop).EditionID
     }
     catch {
-        $editionId = 'Sconosciuta'
+        $editionId = 'Unknown'
     }
 
-    # Mappa EditionID ai nomi usati nel catalogo
+    # Map EditionID to catalog edition names
     $editionMap = @{
-        'Core'              = 'Home'
-        'CoreSingleLanguage'= 'Home'
-        'Professional'      = 'Pro'
-        'Education'         = 'Pro'   # trattata come Pro per i controlli
-        'Enterprise'        = 'Pro'   # trattata come Pro per i controlli
+        'Core'               = 'Home'
+        'CoreSingleLanguage' = 'Home'
+        'Professional'       = 'Pro'
+        'Education'          = 'Pro'   # treated as Pro for control applicability
+        'Enterprise'         = 'Pro'   # treated as Pro for control applicability
     }
     $editionName = $editionId
     if ($editionMap.ContainsKey($editionId)) {
         $editionName = $editionMap[$editionId]
     }
 
-    # Build e UBR
+    # Build and UBR
     $build = $null
     $ubr = $null
     try {
@@ -53,14 +53,14 @@ function Get-AmbienteSistema {
             $build = $ntVer.CurrentBuildNumber
         }
         else {
-            $build = 'Sconosciuto'
+            $build = 'Unknown'
         }
         if ($ntVer.PSObject.Properties['UBR']) {
             $ubr = $ntVer.UBR
         }
     }
     catch {
-        $build = 'Sconosciuto'
+        $build = 'Unknown'
         $ubr = $null
     }
 
@@ -69,17 +69,17 @@ function Get-AmbienteSistema {
         $buildString = "$build.$ubr"
     }
 
-    # Lingua di sistema (codice LCID -> nome cultura)
+    # System UI language (culture name, e.g., "en-US", "it-IT")
     $language = $null
     try {
         $culture = [System.Globalization.CultureInfo]::InstalledUICulture
-        $language = $culture.Name  # es. "it-IT", "en-US"
+        $language = $culture.Name
     }
     catch {
-        $language = 'Sconosciuta'
+        $language = 'Unknown'
     }
 
-    # Stato di amministratore
+    # Administrator privilege check
     $isAdmin = $false
     try {
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -90,10 +90,10 @@ function Get-AmbienteSistema {
         $isAdmin = $false
     }
 
-    # Versione PowerShell
+    # PowerShell version
     $psVersion = $PSVersionTable.PSVersion.ToString()
 
-    # Costruisci l'oggetto risultato
+    # Build result object
     $ambiente = [PSCustomObject]@{
         Edition   = $editionName
         EditionId = $editionId

@@ -1,17 +1,17 @@
 ﻿<#
 .SYNOPSIS
-    Controlli di sicurezza relativi agli account utente locali.
+    Local user account security controls.
 
 .DESCRIPTION
-    Contiene i controlli per:
-    - HOME-ACC-001: Account Guest disabilitato (SID -501)
-    - HOME-ACC-002: Account Administrator predefinito disabilitato (SID -500)
-    - HOME-ACC-003: Nessun account locale attivo senza password (PasswordRequired)
-    - HOME-ACC-004: Politica di blocco account contro brute-force (LockoutThreshold)
-    - HOME-ACC-005: Numero di account nel gruppo Amministratori locali ridotto al minimo (<= 2)
-    Include catena di fallback multi-livello (Get-LocalUser -> CIM Win32_UserAccount -> ADSI WinNT -> Registro ProfileList/SAM)
-    per evitare stati 'Sconosciuto' su sessioni non-admin, PowerShell a 32-bit o PC con Microsoft Account.
-    Non modifica mai lo stato del sistema.
+    Implements read-only checks for:
+    - HOME-ACC-001: Built-in Guest account disabled (SID -501)
+    - HOME-ACC-002: Built-in local Administrator account disabled (SID -500)
+    - HOME-ACC-003: No active local account without a password (PasswordRequired)
+    - HOME-ACC-004: Account lockout policy enabled against brute-force attacks (LockoutThreshold)
+    - HOME-ACC-005: Local Administrators group member count minimized (<= 2)
+    Includes a multi-tier fallback chain (Get-LocalUser -> CIM Win32_UserAccount -> ADSI WinNT -> Registry ProfileList/SAM)
+    to avoid 'Unknown' results in non-admin sessions, 32-bit PowerShell, or Microsoft Account systems.
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -19,14 +19,14 @@ Set-StrictMode -Version 2
 function Test-FallbackUtentiLocali {
     <#
     .SYNOPSIS
-        Funzione helper in sola lettura (prefisso Test- per passaggio automatico al Runspace GUI)
-        che recupera la lista degli account locali tramite CIM, ADSI o Registro ProfileList
-        quando Get-LocalUser fallisce per restrizioni SAMR non-admin o assenza del modulo.
+        Read-only helper function (Test- prefix for automatic GUI Runspace injection)
+        that enumerates local user accounts via CIM, ADSI, or Registry ProfileList
+        when Get-LocalUser fails due to non-admin SAMR restrictions or missing module.
     #>
     [CmdletBinding()]
     param()
 
-    # 1. Tentativo tramite CIM Win32_UserAccount
+    # 1. Attempt via CIM Win32_UserAccount
     try {
         $cimUsers = @(Get-CimInstance -ClassName Win32_UserAccount -Filter "LocalAccount = True" -ErrorAction Stop)
         if ($cimUsers.Count -gt 0) {
@@ -38,7 +38,7 @@ function Test-FallbackUtentiLocali {
                     Enabled          = (-not [bool]$cu.Disabled)
                     PasswordRequired = [bool]$cu.PasswordRequired
                     PrincipalSource  = 'Local'
-                    Fonte            = 'Win32_UserAccount'
+                    Source           = 'Win32_UserAccount'
                 }
             }
             return $listaCim
@@ -46,7 +46,7 @@ function Test-FallbackUtentiLocali {
     }
     catch { }
 
-    # 2. Tentativo tramite ADSI WinNT
+    # 2. Attempt via ADSI WinNT
     try {
         $computer = if ($env:COMPUTERNAME) { $env:COMPUTERNAME } else { 'localhost' }
         $adsi = [ADSI]"WinNT://$computer"
@@ -64,7 +64,7 @@ function Test-FallbackUtentiLocali {
                     Enabled          = (-not $disab)
                     PasswordRequired = (-not $noPwd)
                     PrincipalSource  = 'Local'
-                    Fonte            = 'ADSI'
+                    Source           = 'ADSI'
                 }
             }
             if ($listaAdsi.Count -gt 0) {
@@ -74,7 +74,7 @@ function Test-FallbackUtentiLocali {
     }
     catch { }
 
-    # 3. Fallback deterministico tramite Registro ProfileList + SID Translation + Winlogon/IdentityStore
+    # 3. Deterministic fallback via Registry ProfileList + SID Translation + Winlogon/IdentityStore
     try {
         $chiaveProfiles = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList'
         if (Test-Path -LiteralPath $chiaveProfiles -ErrorAction SilentlyContinue) {
@@ -103,7 +103,7 @@ function Test-FallbackUtentiLocali {
 
                 $listaReg = @()
 
-                # Ricostruisci stato Built-in Administrator (-500) e Guest (-501)
+                # Reconstruct Built-in Administrator (-500) and Guest (-501) states
                 foreach ($ridBuiltin in @('500', '501')) {
                     $sidB = "$prefissoDom-$ridBuiltin"
                     $nomeB = if ($ridBuiltin -eq '500') { 'Administrator' } else { 'Guest' }
@@ -120,11 +120,11 @@ function Test-FallbackUtentiLocali {
                         Enabled          = $attivoB
                         PasswordRequired = $true
                         PrincipalSource  = 'Local'
-                        Fonte            = 'RegistryProfileList'
+                        Source           = 'RegistryProfileList'
                     }
                 }
 
-                # Aggiungi i profili utente attivi presenti in ProfileList
+                # Append active user profiles found in ProfileList
                 foreach ($sk in $sottoChiavi) {
                     $sidU = $sk.PSChildName
                     if ($sidU -match '-(500|501)$') { continue }
@@ -147,7 +147,7 @@ function Test-FallbackUtentiLocali {
                         Enabled          = $true
                         PasswordRequired = ($autoLogon -eq 0)
                         PrincipalSource  = $srcU
-                        Fonte            = 'RegistryProfileList'
+                        Source           = 'RegistryProfileList'
                     }
                 }
 
@@ -163,7 +163,7 @@ function Test-FallbackUtentiLocali {
 function Test-GuestAccount {
     <#
     .SYNOPSIS
-        Verifica che l'account Guest (SID -501) sia disabilitato (HOME-ACC-001).
+        Verifies that the built-in Guest account (SID -501) is disabled (HOME-ACC-001).
     #>
     [CmdletBinding()]
     param(
@@ -177,7 +177,7 @@ function Test-GuestAccount {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Account Guest (SID -501) disabilitato"
+        Expected = "Guest account (SID -501) disabled"
         Evidence = $null
         Error    = $null
     }
@@ -190,9 +190,9 @@ function Test-GuestAccount {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $erroreIniziale = $_
-        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto') {
+        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto|not recognized as the name of a cmdlet') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Il cmdlet Get-LocalUser non e' disponibile"
+            $risultato.Observed = "Cmdlet Get-LocalUser is not available"
             $risultato.Error    = $_.Exception.Message
             return $risultato
         }
@@ -214,8 +214,8 @@ function Test-GuestAccount {
 
     if ($null -eq $utenti -or $utenti.Count -eq 0) {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Nessun account con SID che termina in -501 trovato"
-        $risultato.Evidence = @{ AccountTrovato = $false }
+        $risultato.Observed = "No account with SID ending in -501 found"
+        $risultato.Evidence = @{ AccountFound = $false }
         if ($null -ne $erroreIniziale) { $risultato.Error = $erroreIniziale.Exception.Message }
         return $risultato
     }
@@ -230,24 +230,24 @@ function Test-GuestAccount {
 
     if ($null -eq $guest) {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Nessun account con SID che termina in -501 trovato"
-        $risultato.Evidence = @{ AccountTrovato = $false }
+        $risultato.Observed = "No account with SID ending in -501 found"
+        $risultato.Evidence = @{ AccountFound = $false }
         return $risultato
     }
 
     $risultato.Evidence = @{
-        Nome      = $guest.Name
-        SID       = $guest.SID.Value
-        Abilitato = [bool]$guest.Enabled
+        Name    = $guest.Name
+        SID     = $guest.SID.Value
+        Enabled = [bool]$guest.Enabled
     }
 
     if ($guest.Enabled) {
         $risultato.Status   = 'fallito'
-        $risultato.Observed = "Account Guest ($($guest.Name)) abilitato"
+        $risultato.Observed = "Guest account ($($guest.Name)) is enabled"
     }
     else {
         $risultato.Status   = 'superato'
-        $risultato.Observed = "Account Guest ($($guest.Name)) disabilitato"
+        $risultato.Observed = "Guest account ($($guest.Name)) is disabled"
     }
 
     return $risultato
@@ -256,7 +256,7 @@ function Test-GuestAccount {
 function Test-AdminAccount {
     <#
     .SYNOPSIS
-        Verifica che l'account Administrator locale predefinito (SID -500) sia disabilitato (HOME-ACC-002).
+        Verifies that the built-in local Administrator account (SID -500) is disabled (HOME-ACC-002).
     #>
     [CmdletBinding()]
     param(
@@ -270,7 +270,7 @@ function Test-AdminAccount {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Account Administrator predefinito (SID -500) disabilitato"
+        Expected = "Built-in Administrator account (SID -500) disabled"
         Evidence = $null
         Error    = $null
     }
@@ -283,9 +283,9 @@ function Test-AdminAccount {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $erroreIniziale = $_
-        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto') {
+        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto|not recognized as the name of a cmdlet') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Il cmdlet Get-LocalUser non e' disponibile"
+            $risultato.Observed = "Cmdlet Get-LocalUser is not available"
             $risultato.Error    = $_.Exception.Message
             return $risultato
         }
@@ -307,8 +307,8 @@ function Test-AdminAccount {
 
     if ($null -eq $utenti -or $utenti.Count -eq 0) {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Nessun account con SID che termina in -500 trovato"
-        $risultato.Evidence = @{ AccountTrovato = $false }
+        $risultato.Observed = "No account with SID ending in -500 found"
+        $risultato.Evidence = @{ AccountFound = $false }
         if ($null -ne $erroreIniziale) { $risultato.Error = $erroreIniziale.Exception.Message }
         return $risultato
     }
@@ -323,24 +323,24 @@ function Test-AdminAccount {
 
     if ($null -eq $adminBuiltin) {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Nessun account con SID che termina in -500 trovato"
-        $risultato.Evidence = @{ AccountTrovato = $false }
+        $risultato.Observed = "No account with SID ending in -500 found"
+        $risultato.Evidence = @{ AccountFound = $false }
         return $risultato
     }
 
     $risultato.Evidence = @{
-        Nome      = $adminBuiltin.Name
-        SID       = $adminBuiltin.SID.Value
-        Abilitato = [bool]$adminBuiltin.Enabled
+        Name    = $adminBuiltin.Name
+        SID     = $adminBuiltin.SID.Value
+        Enabled = [bool]$adminBuiltin.Enabled
     }
 
     if ($adminBuiltin.Enabled) {
         $risultato.Status   = 'fallito'
-        $risultato.Observed = "Account Administrator predefinito ($($adminBuiltin.Name)) abilitato"
+        $risultato.Observed = "Built-in Administrator account ($($adminBuiltin.Name)) is enabled"
     }
     else {
         $risultato.Status   = 'superato'
-        $risultato.Observed = "Account Administrator predefinito ($($adminBuiltin.Name)) disabilitato"
+        $risultato.Observed = "Built-in Administrator account ($($adminBuiltin.Name)) is disabled"
     }
 
     return $risultato
@@ -349,8 +349,8 @@ function Test-AdminAccount {
 function Test-AccountsPasswordRequired {
     <#
     .SYNOPSIS
-        Verifica che tutti gli account locali abilitati richiedano una password
-        (escludendo dai falsi positivi gli account collegati a Microsoft Account / Windows Hello) (HOME-ACC-003).
+        Verifies that all enabled local accounts require a password, excluding
+        Microsoft Account / Windows Hello managed accounts from false positives (HOME-ACC-003).
     #>
     [CmdletBinding()]
     param(
@@ -364,7 +364,7 @@ function Test-AccountsPasswordRequired {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Tutti gli account locali attivi hanno PasswordRequired = True (o usano MicrosoftAccount/Windows Hello)"
+        Expected = "All active local accounts have PasswordRequired = True (or use MicrosoftAccount / Windows Hello)"
         Evidence = $null
         Error    = $null
     }
@@ -377,9 +377,9 @@ function Test-AccountsPasswordRequired {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $erroreIniziale = $_
-        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto') {
+        if ($_.Exception.Message -match 'Il termine .* non e'' riconosciuto|not recognized as the name of a cmdlet') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Il cmdlet Get-LocalUser non e' disponibile"
+            $risultato.Observed = "Cmdlet Get-LocalUser is not available"
             $risultato.Error    = $_.Exception.Message
             return $risultato
         }
@@ -401,7 +401,7 @@ function Test-AccountsPasswordRequired {
 
     if ($null -eq $utenti -or $utenti.Count -eq 0) {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Dati account locali non disponibili"
+        $risultato.Observed = "Local account data unavailable"
         if ($null -ne $erroreIniziale) { $risultato.Error = $erroreIniziale.Exception.Message }
         return $risultato
     }
@@ -421,7 +421,7 @@ function Test-AccountsPasswordRequired {
             }
 
             $dettaglioAttivi += @{
-                Nome             = $u.Name
+                Name             = $u.Name
                 SID              = $u.SID.Value
                 PasswordRequired = $pwdReq
                 PrincipalSource  = $sorgente
@@ -437,23 +437,23 @@ function Test-AccountsPasswordRequired {
     }
 
     $risultato.Evidence = @{
-        AccountAttivi              = $dettaglioAttivi
-        AccountMicrosoft           = $accountMicrosoft
-        AccountSenzaPasswordObblig = $attiviSenzaObbligo
+        ActiveAccounts          = $dettaglioAttivi
+        MicrosoftAccounts       = $accountMicrosoft
+        AccountsWithoutPassword = $attiviSenzaObbligo
     }
 
     if ($attiviSenzaObbligo.Count -eq 0) {
         $risultato.Status = 'superato'
         if ($accountMicrosoft.Count -gt 0) {
-            $risultato.Observed = "Tutti gli account attivi ($($dettaglioAttivi.Count)) richiedono autenticazione (Account Microsoft/Windows Hello: $($accountMicrosoft -join ', '))"
+            $risultato.Observed = "All active accounts ($($dettaglioAttivi.Count)) require authentication (Microsoft Account/Windows Hello: $($accountMicrosoft -join ', '))"
         }
         else {
-            $risultato.Observed = "Tutti gli account attivi ($($dettaglioAttivi.Count)) richiedono una password"
+            $risultato.Observed = "All active accounts ($($dettaglioAttivi.Count)) require a password"
         }
     }
     else {
         $risultato.Status   = 'fallito'
-        $risultato.Observed = "Account locali attivi con PasswordRequired=False: $($attiviSenzaObbligo -join ', ')"
+        $risultato.Observed = "Active local accounts with PasswordRequired=False: $($attiviSenzaObbligo -join ', ')"
     }
 
     return $risultato
@@ -462,8 +462,8 @@ function Test-AccountsPasswordRequired {
 function Test-PoliticaBloccoAccount {
     <#
     .SYNOPSIS
-        Verifica che sia attiva una soglia di blocco account (Account Lockout Threshold 1..10 tentativi)
-        contro attacchi di forza bruta locali/rete (HOME-ACC-004).
+        Verifies that an Account Lockout Threshold (1..10 failed attempts) is active
+        against local and network brute-force attacks (HOME-ACC-004).
     #>
     [CmdletBinding()]
     param(
@@ -477,7 +477,7 @@ function Test-PoliticaBloccoAccount {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Soglia blocco account (Lockout threshold) tra 1 e 10 tentativi falliti"
+        Expected = "Account lockout threshold between 1 and 10 failed logon attempts"
         Evidence = $null
         Error    = $null
     }
@@ -505,19 +505,19 @@ function Test-PoliticaBloccoAccount {
 
         if ($soglia -ge 1 -and $soglia -le 10) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Blocco account attivo dopo $soglia tentativi falliti"
+            $risultato.Observed = "Account lockout active after $soglia failed attempts"
         }
         elseif ($soglia -gt 10) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Soglia blocco account troppo permissiva ($soglia tentativi; consigliato <= 10)"
+            $risultato.Observed = "Account lockout threshold too permissive ($soglia attempts; recommended <= 10)"
         }
         elseif ($soglia -eq 0) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Blocco account disabilitato (Mai / 0 tentativi)"
+            $risultato.Observed = "Account lockout disabled (Never / 0 attempts)"
         }
         else {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Impossibile determinare la soglia di blocco account"
+            $risultato.Observed = "Unable to determine account lockout threshold"
         }
     }
     catch {
@@ -531,8 +531,8 @@ function Test-PoliticaBloccoAccount {
 function Test-LimiteAmministratoriLocali {
     <#
     .SYNOPSIS
-        Verifica che il gruppo Amministratori locali (SID S-1-5-32-544) non contenga un numero
-        eccessivo di account abilitati (consigliato <= 2 amministratori attivi) (HOME-ACC-005).
+        Verifies that the local Administrators group (SID S-1-5-32-544) does not contain
+        an excessive number of enabled accounts (recommended <= 2 active admins) (HOME-ACC-005).
     #>
     [CmdletBinding()]
     param(
@@ -546,7 +546,7 @@ function Test-LimiteAmministratoriLocali {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Massimo 2 account amministratori locali attivi (principio del privilegio minimo)"
+        Expected = "At most 2 active local Administrator accounts (Principle of Least Privilege)"
         Evidence = $null
         Error    = $null
     }
@@ -575,7 +575,7 @@ function Test-LimiteAmministratoriLocali {
         $adminAttivi = @()
         $lettoConSuccesso = $false
 
-        # 1. Tentativo primario con Get-LocalGroupMember
+        # 1. Primary attempt with Get-LocalGroupMember
         try {
             $membri = @(Get-LocalGroupMember -SID 'S-1-5-32-544' -ErrorAction Stop)
             foreach ($m in $membri) {
@@ -589,10 +589,10 @@ function Test-LimiteAmministratoriLocali {
             $lettoConSuccesso = $true
         }
         catch {
-            # Fallback quando Get-LocalGroupMember fallisce per bug su MicrosoftAccount o restrizioni SAMR
+            # Fallback when Get-LocalGroupMember fails on MicrosoftAccount or SAMR restrictions
         }
 
-        # 2. Fallback tramite ADSI WinNT Group Members
+        # 2. Fallback via ADSI WinNT Group Members
         if (-not $lettoConSuccesso) {
             try {
                 $sidAdmin   = New-Object System.Security.Principal.SecurityIdentifier('S-1-5-32-544')
@@ -615,7 +615,7 @@ function Test-LimiteAmministratoriLocali {
             catch { }
         }
 
-        # 3. Fallback tramite profilo attivo in ProfileList (quando SAMR e' bloccato in sessione non-admin)
+        # 3. Fallback via active ProfileList entries (when SAMR is restricted in non-admin sessions)
         if (-not $lettoConSuccesso -and $utentiLocali.Count -gt 0) {
             foreach ($u in $utentiLocali) {
                 if ($u.Enabled -and ($u.Name -notlike 'CodexSandbox*') -and ($u.Name -notlike 'WDAGUtilityAccount') -and ($u.Name -notlike 'DefaultAccount')) {
@@ -629,22 +629,22 @@ function Test-LimiteAmministratoriLocali {
 
         if (-not $lettoConSuccesso) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Impossibile enumerare i membri del gruppo Amministratori"
+            $risultato.Observed = "Unable to enumerate local Administrators group members"
             return $risultato
         }
 
         $risultato.Evidence = @{
-            TotaleAdminAttivi = $adminAttivi.Count
-            AdminAttivi       = $adminAttivi
+            TotalActiveAdmins = $adminAttivi.Count
+            ActiveAdmins      = $adminAttivi
         }
 
         if ($adminAttivi.Count -le 2) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "$($adminAttivi.Count) amministratori attivi: $($adminAttivi -join ', ')"
+            $risultato.Observed = "$($adminAttivi.Count) active administrators: $($adminAttivi -join ', ')"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Rilevati $($adminAttivi.Count) account nel gruppo Amministratori: $($adminAttivi -join ', ')"
+            $risultato.Observed = "Found $($adminAttivi.Count) accounts in local Administrators group: $($adminAttivi -join ', ')"
         }
     }
     catch {

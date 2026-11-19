@@ -1,18 +1,21 @@
 ﻿<#
 .SYNOPSIS
-    Controlli di sicurezza relativi a Windows Defender Antivirus e protezione minacce.
+    Windows Defender Antivirus and threat protection security checks.
 
 .DESCRIPTION
-    Contiene i controlli per:
-    - HOME-AV-001: Protezione in tempo reale attiva (Test-DefenderRealtime)
-    - HOME-AV-002: Definizioni antivirus aggiornate negli ultimi 7 giorni (Test-DefenderSignatures)
-    - HOME-AV-003: Nessuna minaccia attiva o rilevata sui file (Test-DefenderNoActiveThreats)
-    - HOME-AV-004: Scansione file scaricati (IOAV) e monitoraggio comportamentale attivi (Test-DefenderBehaviorAndIoav)
-    - HOME-AV-005: Protezione da applicazioni potenzialmente indesiderate PUA attiva (Test-DefenderPuaProtection)
-    - HOME-AV-006: Protezione antimanomissione (Tamper Protection) e Cloud MAPS attive (Test-DefenderTamperAndCloud)
-    - HOME-AV-007: Scansione antivirus eseguita negli ultimi 14 giorni (Test-DefenderRecentScan)
-    - HOME-AV-008: Nessuna esclusione pericolosa in Windows Defender (Test-DefenderSafeExclusions)
-    Non modifica mai lo stato del sistema.
+    Implements read-only checks for:
+    - HOME-AV-001: Real-time protection active (Test-DefenderRealtime)
+    - HOME-AV-002: Antivirus signatures updated within the last 7 days (Test-DefenderSignatures)
+    - HOME-AV-003: No active virus or malware threats detected (Test-DefenderNoActiveThreats)
+    - HOME-AV-004: Downloaded file scanning (IOAV) and behavior monitoring active (Test-DefenderBehaviorAndIoav)
+    - HOME-AV-005: Potentially Unwanted Application (PUA) blocking enabled (Test-DefenderPuaProtection)
+    - HOME-AV-006: Tamper Protection and Cloud MAPS active (Test-DefenderTamperAndCloud)
+    - HOME-AV-007: Periodic antivirus scan completed within the last 14 days (Test-DefenderRecentScan)
+    - HOME-AV-008: No dangerous folder or extension exclusions in Defender (Test-DefenderSafeExclusions)
+    - HOME-AV-009: Ransomware protection / Controlled Folder Access active (Test-DefenderRansomwareCartelle)
+    - HOME-AV-010: Defender Network Protection active (Test-DefenderNetworkProtection)
+    - HOME-AV-011: Attack Surface Reduction (ASR) rules active (Test-DefenderAsrRules)
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -20,7 +23,7 @@ Set-StrictMode -Version 2
 function Test-DefenderRealtime {
     <#
     .SYNOPSIS
-        Verifica che la protezione in tempo reale di Windows Defender sia attiva.
+        Verifies that Windows Defender real-time protection is active.
     #>
     [CmdletBinding()]
     param(
@@ -34,7 +37,7 @@ function Test-DefenderRealtime {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "AntivirusEnabled = True e RealTimeProtectionEnabled = True"
+        Expected = "AntivirusEnabled = True and RealTimeProtectionEnabled = True"
         Evidence = $null
         Error    = $null
     }
@@ -47,12 +50,12 @@ function Test-DefenderRealtime {
         $risultato.Evidence = @{
             AntivirusEnabled          = $avAttivo
             RealTimeProtectionEnabled = $rtAttivo
-            Fonte                     = 'Get-MpComputerStatus'
+            Source                    = 'Get-MpComputerStatus'
         }
 
         if ($avAttivo -and $rtAttivo) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Protezione in tempo reale e antivirus attivi"
+            $risultato.Observed = "Real-time protection and antivirus are active"
         }
         else {
             $risultato.Status   = 'fallito'
@@ -61,7 +64,7 @@ function Test-DefenderRealtime {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpComputerStatus non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpComputerStatus is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -84,16 +87,16 @@ function Test-DefenderRealtime {
                     DisableAntiVirus          = $disAv
                     DisableAntiSpyware        = $disAs
                     DisableRealtimeMonitoring = $disRt
-                    Fonte                     = 'RegistryFallback'
+                    Source                    = 'RegistryFallback'
                 }
 
                 if ($disAv -eq 0 -and $disAs -eq 0 -and $disRt -eq 0) {
                     $risultato.Status   = 'superato'
-                    $risultato.Observed = "Protezione in tempo reale attiva (rilevato da registro)"
+                    $risultato.Observed = "Real-time protection active (verified via registry fallback)"
                 }
                 else {
                     $risultato.Status   = 'fallito'
-                    $risultato.Observed = "Protezione disattivata nel registro (DisableRealtimeMonitoring=$disRt)"
+                    $risultato.Observed = "Real-time protection disabled in registry (DisableRealtimeMonitoring=$disRt)"
                 }
                 return $risultato
             }
@@ -102,7 +105,7 @@ function Test-DefenderRealtime {
 
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per interrogare Windows Defender"
+            $risultato.Observed = "Insufficient privileges to query Windows Defender"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -117,7 +120,7 @@ function Test-DefenderRealtime {
 function Test-DefenderSignatures {
     <#
     .SYNOPSIS
-        Verifica che le definizioni di Windows Defender siano aggiornate (<= 7 giorni).
+        Verifies that Windows Defender antivirus signatures are up to date (<= 7 days old).
     #>
     [CmdletBinding()]
     param(
@@ -131,7 +134,7 @@ function Test-DefenderSignatures {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Eta' definizioni antivirus <= 7 giorni"
+        Expected = "Antivirus signature age <= 7 days"
         Evidence = $null
         Error    = $null
     }
@@ -142,21 +145,21 @@ function Test-DefenderSignatures {
 
         $risultato.Evidence = @{
             AntivirusSignatureAge = $etaGiorni
-            Fonte                 = 'Get-MpComputerStatus'
+            Source                = 'Get-MpComputerStatus'
         }
 
         if ($etaGiorni -le 7) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Definizioni aggiornate ($etaGiorni giorni fa)"
+            $risultato.Observed = "Signatures up to date ($etaGiorni days old)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Definizioni obsolete ($etaGiorni giorni fa, soglia massima: 7 giorni)"
+            $risultato.Observed = "Outdated signatures ($etaGiorni days old; max threshold: 7 days)"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpComputerStatus non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpComputerStatus is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
@@ -176,15 +179,15 @@ function Test-DefenderSignatures {
                             $risultato.Evidence = @{
                                 AntivirusSignatureAge = $giorni
                                 LastUpdatedUtc        = $dataAgg.ToString('o')
-                                Fonte                 = 'RegistryFallback'
+                                Source                = 'RegistryFallback'
                             }
                             if ($giorni -le 7) {
                                 $risultato.Status   = 'superato'
-                                $risultato.Observed = "Definizioni aggiornate ($giorni giorni fa)"
+                                $risultato.Observed = "Signatures up to date ($giorni days old)"
                             }
                             else {
                                 $risultato.Status   = 'fallito'
-                                $risultato.Observed = "Definizioni obsolete ($giorni giorni fa)"
+                                $risultato.Observed = "Outdated signatures ($giorni days old)"
                             }
                             return $risultato
                         }
@@ -196,7 +199,7 @@ function Test-DefenderSignatures {
 
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per verificare le firme di Windows Defender"
+            $risultato.Observed = "Insufficient privileges to check Windows Defender signatures"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -211,7 +214,7 @@ function Test-DefenderSignatures {
 function Test-DefenderNoActiveThreats {
     <#
     .SYNOPSIS
-        Verifica che Windows Defender non abbia rilevato minacce o malware attivi sui file.
+        Verifies that Windows Defender has no active or unresolved malware threats.
     #>
     [CmdletBinding()]
     param(
@@ -225,7 +228,7 @@ function Test-DefenderNoActiveThreats {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "0 minacce attive rilevate da Windows Defender"
+        Expected = "0 active threats detected by Windows Defender"
         Evidence = $null
         Error    = $null
     }
@@ -237,35 +240,35 @@ function Test-DefenderNoActiveThreats {
         $minacceAttive = @()
         foreach ($m in $minacceCat) {
             if ($null -ne $m.PSObject.Properties['IsActive'] -and $m.IsActive) {
-                $nomeMinaccia = if ($null -ne $m.PSObject.Properties['ThreatName']) { [string]$m.ThreatName } else { 'Minaccia' }
+                $nomeMinaccia = if ($null -ne $m.PSObject.Properties['ThreatName']) { [string]$m.ThreatName } else { 'Threat' }
                 $minacceAttive += $nomeMinaccia
             }
         }
 
         $risultato.Evidence = @{
-            TotaleRilevamentiStorici = $rilevamenti.Count
-            MinacceAttiveCount       = $minacceAttive.Count
-            MinacceAttive            = $minacceAttive
+            HistoricalDetectionsCount = $rilevamenti.Count
+            ActiveThreatsCount        = $minacceAttive.Count
+            ActiveThreats             = $minacceAttive
         }
 
         if ($minacceAttive.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessuna minaccia attiva presente sul sistema (0 minacce attive)"
+            $risultato.Observed = "No active threats present on the system (0 active threats)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Rilevate $($minacceAttive.Count) minacce attive: $($minacceAttive -join ', ')"
+            $risultato.Observed = "Detected $($minacceAttive.Count) active threats: $($minacceAttive -join ', ')"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpThreatDetection non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpThreatDetection is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per interrogare il catalogo minacce di Defender"
+            $risultato.Observed = "Insufficient privileges to query Defender threat catalog"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -280,7 +283,7 @@ function Test-DefenderNoActiveThreats {
 function Test-DefenderBehaviorAndIoav {
     <#
     .SYNOPSIS
-        Verifica che il monitoraggio comportamentale e la scansione dei file scaricati (IOAV) siano attivi.
+        Verifies that behavior monitoring and downloaded file scanning (IOAV) are active.
     #>
     [CmdletBinding()]
     param(
@@ -294,7 +297,7 @@ function Test-DefenderBehaviorAndIoav {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "BehaviorMonitorEnabled = True e IoavProtectionEnabled = True"
+        Expected = "BehaviorMonitorEnabled = True and IoavProtectionEnabled = True"
         Evidence = $null
         Error    = $null
     }
@@ -311,7 +314,7 @@ function Test-DefenderBehaviorAndIoav {
 
         if ($behav -and $ioav) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Monitoraggio comportamentale e scansione file scaricati attivi"
+            $risultato.Observed = "Behavior monitoring and downloaded file scanning (IOAV) are active"
         }
         else {
             $risultato.Status   = 'fallito'
@@ -320,13 +323,13 @@ function Test-DefenderBehaviorAndIoav {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpComputerStatus non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpComputerStatus is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per interrogare Windows Defender"
+            $risultato.Observed = "Insufficient privileges to query Windows Defender"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -341,7 +344,7 @@ function Test-DefenderBehaviorAndIoav {
 function Test-DefenderPuaProtection {
     <#
     .SYNOPSIS
-        Verifica che il blocco delle applicazioni potenzialmente indesiderate (PUAProtection = 1) sia attivo.
+        Verifies that Potentially Unwanted Application blocking (PUAProtection = 1) is enabled.
     #>
     [CmdletBinding()]
     param(
@@ -355,7 +358,7 @@ function Test-DefenderPuaProtection {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "PUAProtection = 1 (Blocco attivo)"
+        Expected = "PUAProtection = 1 (Block mode active)"
         Evidence = $null
         Error    = $null
     }
@@ -370,26 +373,26 @@ function Test-DefenderPuaProtection {
 
         if ($pua -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Protezione PUA attiva in modalita' blocco (PUAProtection = 1)"
+            $risultato.Observed = "PUA protection active in Block mode (PUAProtection = 1)"
         }
         elseif ($pua -eq 2) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Protezione PUA solo in modalita' audit, non blocca i file (PUAProtection = 2)"
+            $risultato.Observed = "PUA protection in Audit mode only, not blocking files (PUAProtection = 2)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Protezione PUA disattivata (PUAProtection = $pua)"
+            $risultato.Observed = "PUA protection disabled (PUAProtection = $pua)"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpPreference is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per leggere le preferenze PUA di Defender"
+            $risultato.Observed = "Insufficient privileges to read Defender PUA preferences"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -404,7 +407,7 @@ function Test-DefenderPuaProtection {
 function Test-DefenderTamperAndCloud {
     <#
     .SYNOPSIS
-        Verifica che la protezione antimanomissione (IsTamperProtected) e la protezione Cloud (MAPSReporting) siano attive.
+        Verifies that Tamper Protection (IsTamperProtected) and Cloud Protection (MAPSReporting) are enabled.
     #>
     [CmdletBinding()]
     param(
@@ -418,7 +421,7 @@ function Test-DefenderTamperAndCloud {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "IsTamperProtected = True e MAPSReporting >= 1"
+        Expected = "IsTamperProtected = True and MAPSReporting >= 1"
         Evidence = $null
         Error    = $null
     }
@@ -437,7 +440,7 @@ function Test-DefenderTamperAndCloud {
 
         if ($tamper -and ($maps -ge 1)) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Tamper Protection attiva e Cloud MAPS abilitato (livello $maps)"
+            $risultato.Observed = "Tamper Protection active and Cloud MAPS enabled (level $maps)"
         }
         else {
             $risultato.Status   = 'fallito'
@@ -446,13 +449,13 @@ function Test-DefenderTamperAndCloud {
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Cmdlet di Windows Defender non disponibili"
+        $risultato.Observed = "Windows Defender cmdlets are not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per verificare Tamper Protection e Cloud MAPS"
+            $risultato.Observed = "Insufficient privileges to check Tamper Protection and Cloud MAPS"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -467,7 +470,7 @@ function Test-DefenderTamperAndCloud {
 function Test-DefenderRecentScan {
     <#
     .SYNOPSIS
-        Verifica che una scansione antivirus (rapida o completa) sia stata eseguita negli ultimi 14 giorni.
+        Verifies that a Quick or Full antivirus scan has completed within the last 14 days.
     #>
     [CmdletBinding()]
     param(
@@ -481,7 +484,7 @@ function Test-DefenderRecentScan {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Scansione rapida o completa eseguita negli ultimi 14 giorni"
+        Expected = "Quick or Full scan completed within the last 14 days"
         Evidence = $null
         Error    = $null
     }
@@ -500,26 +503,26 @@ function Test-DefenderRecentScan {
 
         if ($minAge -le 14) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Ultima scansione eseguita $minAge giorni fa"
+            $risultato.Observed = "Last scan completed $minAge days ago"
         }
         elseif ($minAge -eq [uint32]::MaxValue) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Nessuna scansione periodica registrata di recente"
+            $risultato.Observed = "No recent periodic scan recorded"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Ultima scansione risale a $minAge giorni fa (soglia consigliata: <= 14 giorni)"
+            $risultato.Observed = "Last scan was $minAge days ago (recommended threshold: <= 14 days)"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpComputerStatus non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpComputerStatus is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per verificare la data dell'ultima scansione"
+            $risultato.Observed = "Insufficient privileges to check last scan age"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -534,7 +537,7 @@ function Test-DefenderRecentScan {
 function Test-DefenderSafeExclusions {
     <#
     .SYNOPSIS
-        Verifica che non vi siano esclusioni pericolose (es. C:\, Downloads, .exe, .ps1) in Windows Defender.
+        Verifies that no dangerous exclusions (e.g., C:\, Downloads, .exe, .ps1) are configured in Windows Defender.
     #>
     [CmdletBinding()]
     param(
@@ -548,7 +551,7 @@ function Test-DefenderSafeExclusions {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Nessuna cartella critica o estensione eseguibile esclusa da Windows Defender"
+        Expected = "No critical folders or executable extensions excluded from Windows Defender"
         Evidence = $null
         Error    = $null
     }
@@ -564,12 +567,12 @@ function Test-DefenderSafeExclusions {
             $exts = @($pref.ExclusionExtension | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         }
 
-        # Se non si e' amministratori, Defender restituisce il messaggio "N/A: Must be an administrator..."
+        # When running without admin privileges, Defender returns "N/A: Must be an administrator..."
         if (($paths.Count -gt 0 -and $paths[0] -match 'Must be an administrator|amministratore') -or
             ($exts.Count -gt 0 -and $exts[0] -match 'Must be an administrator|amministratore')) {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Richiede privilegi di amministratore per leggere l'elenco delle esclusioni di Defender"
-            $risultato.Evidence = @{ RichiedeAdmin = $true }
+            $risultato.Observed = "Administrator privileges required to read Defender exclusions"
+            $risultato.Evidence = @{ RequiresAdmin = $true }
             return $risultato
         }
 
@@ -582,41 +585,41 @@ function Test-DefenderSafeExclusions {
                 $pNorm -match '(?i)\\Downloads$' -or
                 $pNorm -match '(?i)\\Temp$' -or
                 $pNorm -match '(?i)\\AppData$') {
-                $esclusioniPericolose += "Percorso: $p"
+                $esclusioniPericolose += "Path: $p"
             }
         }
 
         foreach ($e in $exts) {
             $eNorm = $e.Trim().TrimStart('.').ToLowerInvariant()
             if ($eNorm -in @('exe', 'dll', 'ps1', 'bat', 'cmd', 'vbs', 'js', 'scr', 'hta', 'msi', '*')) {
-                $esclusioniPericolose += "Estensione: .$eNorm"
+                $esclusioniPericolose += "Extension: .$eNorm"
             }
         }
 
         $risultato.Evidence = @{
             ExclusionPathCount      = $paths.Count
             ExclusionExtensionCount = $exts.Count
-            EsclusioniPericolose    = $esclusioniPericolose
+            DangerousExclusions     = $esclusioniPericolose
         }
 
         if ($esclusioniPericolose.Count -eq 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Nessuna esclusione critica trovata ($($paths.Count) percorsi, $($exts.Count) estensioni)"
+            $risultato.Observed = "No high-risk exclusions found ($($paths.Count) paths, $($exts.Count) extensions)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Esclusioni ad alto rischio rilevate: $($esclusioniPericolose -join '; ')"
+            $risultato.Observed = "High-risk exclusions detected: $($esclusioniPericolose -join '; ')"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpPreference is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per verificare le esclusioni di Windows Defender"
+            $risultato.Observed = "Insufficient privileges to inspect Windows Defender exclusions"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -631,7 +634,7 @@ function Test-DefenderSafeExclusions {
 function Test-DefenderRansomwareCartelle {
     <#
     .SYNOPSIS
-        Verifica che l'Accesso alle cartelle controllato (Controlled Folder Access anti-ransomware) sia attivo (HOME-AV-009).
+        Verifies that Controlled Folder Access (ransomware protection) is enabled (HOME-AV-009).
     #>
     [CmdletBinding()]
     param(
@@ -645,7 +648,7 @@ function Test-DefenderRansomwareCartelle {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "EnableControlledFolderAccess = 1 (Blocco anti-ransomware attivo)"
+        Expected = "EnableControlledFolderAccess = 1 (Ransomware blocking active)"
         Evidence = $null
         Error    = $null
     }
@@ -660,26 +663,26 @@ function Test-DefenderRansomwareCartelle {
 
         if ($cfa -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Protezione ransomware (Accesso alle cartelle controllato) attiva (1)"
+            $risultato.Observed = "Ransomware protection (Controlled Folder Access) active (1)"
         }
         elseif ($cfa -eq 2) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Accesso alle cartelle controllato solo in modalita' audit (2)"
+            $risultato.Observed = "Controlled Folder Access in Audit mode only (2)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Accesso alle cartelle controllato disattivato ($cfa)"
+            $risultato.Observed = "Controlled Folder Access disabled ($cfa)"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpPreference is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per leggere EnableControlledFolderAccess"
+            $risultato.Observed = "Insufficient privileges to read EnableControlledFolderAccess"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -694,7 +697,7 @@ function Test-DefenderRansomwareCartelle {
 function Test-DefenderNetworkProtection {
     <#
     .SYNOPSIS
-        Verifica che la Protezione di rete di Microsoft Defender Exploit Guard (EnableNetworkProtection = 1) sia attiva (HOME-AV-010).
+        Verifies that Microsoft Defender Exploit Guard Network Protection (EnableNetworkProtection = 1) is enabled (HOME-AV-010).
     #>
     [CmdletBinding()]
     param(
@@ -708,7 +711,7 @@ function Test-DefenderNetworkProtection {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "EnableNetworkProtection = 1 (Blocco domini malevoli attivo)"
+        Expected = "EnableNetworkProtection = 1 (Malicious domain blocking active)"
         Evidence = $null
         Error    = $null
     }
@@ -723,26 +726,26 @@ function Test-DefenderNetworkProtection {
 
         if ($netP -eq 1) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "Protezione di rete Defender Exploit Guard attiva in modalita' blocco (1)"
+            $risultato.Observed = "Defender Exploit Guard Network Protection active in Block mode (1)"
         }
         elseif ($netP -eq 2) {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Protezione di rete solo in modalita' audit (2)"
+            $risultato.Observed = "Network Protection in Audit mode only (2)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Protezione di rete disattivata ($netP)"
+            $risultato.Observed = "Network Protection disabled ($netP)"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpPreference is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per leggere EnableNetworkProtection"
+            $risultato.Observed = "Insufficient privileges to read EnableNetworkProtection"
             $risultato.Error    = $_.Exception.Message
         }
         else {
@@ -757,8 +760,8 @@ function Test-DefenderNetworkProtection {
 function Test-DefenderAsrRules {
     <#
     .SYNOPSIS
-        Verifica che le regole Attack Surface Reduction (ASR) di Microsoft Defender siano attive
-        in modalita' Block (1) o Warn (6) (in particolare blocco furto credenziali LSASS e script offuscati) (HOME-AV-011).
+        Verifies that Microsoft Defender Attack Surface Reduction (ASR) rules are active
+        in Block (1) or Warn (6) mode, including LSASS credential theft and obfuscated script rules (HOME-AV-011).
     #>
     [CmdletBinding()]
     param(
@@ -772,7 +775,7 @@ function Test-DefenderAsrRules {
     $risultato = [PSCustomObject]@{
         Status   = 'sconosciuto'
         Observed = $null
-        Expected = "Regole ASR attive in modalita' Block (1) o Warn (6) (incluso LSASS 9e6c4e1f-... e Script 5beb7efe-...)"
+        Expected = "ASR rules active in Block (1) or Warn (6) mode (including LSASS 9e6c4e1f-... and Obfuscated Scripts 5beb7efe-...)"
         Evidence = $null
         Error    = $null
     }
@@ -790,8 +793,8 @@ function Test-DefenderAsrRules {
 
         if ($ids.Count -gt 0 -and ([string]$ids[0]) -match 'Must be an administrator|amministratore') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi di amministratore richiesti per leggere le regole ASR di Defender"
-            $risultato.Evidence = @{ RichiedeAdmin = $true }
+            $risultato.Observed = "Administrator privileges required to read Defender ASR rules"
+            $risultato.Evidence = @{ RequiresAdmin = $true }
             return $risultato
         }
 
@@ -811,31 +814,31 @@ function Test-DefenderAsrRules {
         }
 
         $risultato.Evidence = @{
-            TotaleConfigurate = $ids.Count
-            TotaleAttive      = $regoleAttive.Count
-            LsassProtected    = $lsassAttiva
-            ScriptsProtected  = $scriptAttiva
-            RegoleAttive      = $regoleAttive
+            TotalConfigured  = $ids.Count
+            TotalActive      = $regoleAttive.Count
+            LsassProtected   = $lsassAttiva
+            ScriptsProtected = $scriptAttiva
+            ActiveRules      = $regoleAttive
         }
 
         if ($regoleAttive.Count -gt 0) {
             $risultato.Status   = 'superato'
-            $risultato.Observed = "$($regoleAttive.Count) regole ASR attive in modalita' Block/Warn (LSASS=$lsassAttiva, ObfuscatedScripts=$scriptAttiva)"
+            $risultato.Observed = "$($regoleAttive.Count) ASR rules active in Block/Warn mode (LSASS=$lsassAttiva, ObfuscatedScripts=$scriptAttiva)"
         }
         else {
             $risultato.Status   = 'fallito'
-            $risultato.Observed = "Nessuna regola Attack Surface Reduction (ASR) attiva in modalita' Block/Warn ($($ids.Count) configurate)"
+            $risultato.Observed = "No Attack Surface Reduction (ASR) rules active in Block/Warn mode ($($ids.Count) configured)"
         }
     }
     catch [System.Management.Automation.CommandNotFoundException] {
         $risultato.Status   = 'sconosciuto'
-        $risultato.Observed = "Il cmdlet Get-MpPreference non e' disponibile"
+        $risultato.Observed = "Cmdlet Get-MpPreference is not available"
         $risultato.Error    = $_.Exception.Message
     }
     catch {
         if ($_.Exception.Message -match 'CIM resource|Access is denied|Accesso negato|privilegi|privilege') {
             $risultato.Status   = 'sconosciuto'
-            $risultato.Observed = "Privilegi insufficienti per verificare le regole ASR di Defender"
+            $risultato.Observed = "Insufficient privileges to check Defender ASR rules"
             $risultato.Error    = $_.Exception.Message
         }
         else {

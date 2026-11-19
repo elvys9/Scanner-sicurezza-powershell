@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Converte il catalogo YAML in JSON e lo valida con schema.json.
+"""Converts the YAML catalog to JSON and validates it against schema.json.
 
-Uso:
+Usage:
     python tools/yaml_to_json.py
 
-Genera catalog/home_profile.json a partire da catalog/home_profile.yaml.
-Richiede: pip install pyyaml jsonschema
+Generates catalog/home_profile.json from catalog/home_profile.yaml.
+Requires: pip install pyyaml jsonschema
 """
 
 import json
@@ -16,53 +16,53 @@ import os
 try:
     import yaml
 except ImportError:
-    print("ERRORE: installa PyYAML con 'pip install pyyaml'", file=sys.stderr)
+    print("ERROR: install PyYAML with 'pip install pyyaml'", file=sys.stderr)
     sys.exit(1)
 
 try:
     import jsonschema
 except ImportError:
-    print("ERRORE: installa jsonschema con 'pip install jsonschema'", file=sys.stderr)
+    print("ERROR: install jsonschema with 'pip install jsonschema'", file=sys.stderr)
     sys.exit(1)
 
 
 def main():
-    # Percorsi relativi alla root del progetto
-    dir_script = os.path.dirname(os.path.abspath(__file__))
-    dir_progetto = os.path.dirname(dir_script)
+    # Paths relative to the project root
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_dir = os.path.dirname(script_dir)
 
-    percorso_yaml = os.path.join(dir_progetto, "catalog", "home_profile.yaml")
-    percorso_json = os.path.join(dir_progetto, "catalog", "home_profile.json")
-    percorso_schema = os.path.join(dir_progetto, "catalog", "schema.json")
+    yaml_path = os.path.join(project_dir, "catalog", "home_profile.yaml")
+    json_path = os.path.join(project_dir, "catalog", "home_profile.json")
+    schema_path = os.path.join(project_dir, "catalog", "schema.json")
 
-    # Carica YAML
-    print(f"Lettura di {percorso_yaml}...")
-    with open(percorso_yaml, "r", encoding="utf-8") as f:
-        catalogo = yaml.safe_load(f)
+    # Load YAML
+    print(f"Reading {yaml_path}...")
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        catalog = yaml.safe_load(f)
 
-    # Carica schema
-    print(f"Validazione con {percorso_schema}...")
-    with open(percorso_schema, "r", encoding="utf-8") as f:
+    # Load schema
+    print(f"Validating against {schema_path}...")
+    with open(schema_path, "r", encoding="utf-8") as f:
         schema = json.load(f)
 
-    # Valida
-    jsonschema.validate(instance=catalogo, schema=schema)
+    # Validate
+    jsonschema.validate(instance=catalog, schema=schema)
 
-    # Controlla ID duplicati
-    ids = [c["id"] for c in catalogo["controls"]]
-    duplicati = [x for x in set(ids) if ids.count(x) > 1]
-    if duplicati:
-        print(f"ERRORE: ID duplicati: {duplicati}", file=sys.stderr)
+    # Check duplicate IDs
+    ids = [c["id"] for c in catalog["controls"]]
+    duplicates = [x for x in set(ids) if ids.count(x) > 1]
+    if duplicates:
+        print(f"ERROR: Duplicate IDs found: {duplicates}", file=sys.stderr)
         sys.exit(1)
 
-    # Scrivi JSON (UTF-8 senza BOM, indentato)
-    print(f"Scrittura di {percorso_json}...")
-    with open(percorso_json, "w", encoding="utf-8") as f:
-        json.dump(catalogo, f, ensure_ascii=False, indent=2)
+    # Write JSON (UTF-8 without BOM, indented)
+    print(f"Writing {json_path}...")
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(catalog, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
-    n_controlli = len(catalogo["controls"])
-    print(f"Fatto: {n_controlli} controlli convertiti e validati.")
+    control_count = len(catalog["controls"])
+    print(f"Done: {control_count} controls converted and validated.")
 
 
 if __name__ == "__main__":

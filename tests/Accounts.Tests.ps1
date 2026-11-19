@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Test Pester 5 per i controlli sugli account locali (Accounts.ps1):
+    Pester 5 tests for local account checks (Accounts.ps1):
     HOME-ACC-001 (Guest), HOME-ACC-002 (Administrator), HOME-ACC-003 (PasswordRequired).
 #>
 
@@ -24,17 +24,17 @@ Describe 'Test-GuestAccount (HOME-ACC-001)' {
         }
     }
 
-    Context 'Guest disabilitato (superato)' {
-        It 'Restituisce superato quando Guest e disabilitato' {
+    Context 'Guest disabled (passed)' {
+        It 'Returns superato when Guest is disabled' {
             Mock Get-LocalUser {
                 return @(
                     [PSCustomObject]@{
-                        Name    = 'Ospite'
+                        Name    = 'Guest'
                         SID     = [PSCustomObject]@{ Value = 'S-1-5-21-1234567890-1234567890-1234567890-501' }
                         Enabled = $false
                     }
                     [PSCustomObject]@{
-                        Name    = 'Utente1'
+                        Name    = 'User1'
                         SID     = [PSCustomObject]@{ Value = 'S-1-5-21-1234567890-1234567890-1234567890-1001' }
                         Enabled = $true
                     }
@@ -46,8 +46,8 @@ Describe 'Test-GuestAccount (HOME-ACC-001)' {
         }
     }
 
-    Context 'Guest abilitato (fallito)' {
-        It 'Restituisce fallito quando Guest e abilitato' {
+    Context 'Guest enabled (failed)' {
+        It 'Returns fallito when Guest is enabled' {
             Mock Get-LocalUser {
                 return @(
                     [PSCustomObject]@{
@@ -60,16 +60,16 @@ Describe 'Test-GuestAccount (HOME-ACC-001)' {
 
             $risultato = Test-GuestAccount -Controllo $controlloFittizio -Ambiente $ambienteFittizio
             $risultato.Status | Should -Be 'fallito'
-            $risultato.Observed | Should -Match 'abilitato'
+            $risultato.Observed | Should -Match 'enabled'
         }
     }
 
-    Context 'Account non trovato (sconosciuto)' {
-        It 'Restituisce sconosciuto se nessun SID -501' {
+    Context 'Account not found (unknown)' {
+        It 'Returns sconosciuto when no SID -501 exists' {
             Mock Get-LocalUser {
                 return @(
                     [PSCustomObject]@{
-                        Name    = 'Utente1'
+                        Name    = 'User1'
                         SID     = [PSCustomObject]@{ Value = 'S-1-5-21-1234567890-1234567890-1234567890-1001' }
                         Enabled = $true
                     }
@@ -81,11 +81,11 @@ Describe 'Test-GuestAccount (HOME-ACC-001)' {
         }
     }
 
-    Context 'Cmdlet non disponibile (sconosciuto)' {
-        It 'Restituisce sconosciuto se Get-LocalUser non esiste' {
+    Context 'Cmdlet unavailable (unknown)' {
+        It 'Returns sconosciuto when Get-LocalUser is not recognized' {
             Mock Get-LocalUser {
                 throw [System.Management.Automation.CommandNotFoundException]::new(
-                    "Il termine 'Get-LocalUser' non e' riconosciuto."
+                    "The term 'Get-LocalUser' is not recognized as the name of a cmdlet."
                 )
             }
 
@@ -94,10 +94,10 @@ Describe 'Test-GuestAccount (HOME-ACC-001)' {
         }
     }
 
-    Context 'Eccezione generica (errore)' {
-        It 'Restituisce errore per eccezioni non previste' {
+    Context 'Unexpected exception (error)' {
+        It 'Returns errore for unhandled exceptions' {
             Mock Get-LocalUser {
-                throw [System.InvalidOperationException]::new("Errore imprevisto nel modulo")
+                throw [System.InvalidOperationException]::new("Unexpected module error")
             }
 
             $risultato = Test-GuestAccount -Controllo $controlloFittizio -Ambiente $ambienteFittizio
@@ -117,7 +117,7 @@ Describe 'Test-AdminAccount (HOME-ACC-002)' {
         $ambiente = [PSCustomObject]@{ Edition = 'Home'; IsAdmin = $true }
     }
 
-    It 'Restituisce superato quando Administrator predefinito (-500) e disabilitato' {
+    It 'Returns superato when built-in Administrator (-500) is disabled' {
         Mock Get-LocalUser {
             return @(
                 [PSCustomObject]@{
@@ -131,7 +131,7 @@ Describe 'Test-AdminAccount (HOME-ACC-002)' {
         $res.Status | Should -Be 'superato'
     }
 
-    It 'Restituisce fallito quando Administrator predefinito (-500) e abilitato' {
+    It 'Returns fallito when built-in Administrator (-500) is enabled' {
         Mock Get-LocalUser {
             return @(
                 [PSCustomObject]@{
@@ -145,7 +145,7 @@ Describe 'Test-AdminAccount (HOME-ACC-002)' {
         $res.Status | Should -Be 'fallito'
     }
 
-    It 'Restituisce sconosciuto se nessun account con SID -500 viene trovato' {
+    It 'Returns sconosciuto when no account with SID -500 is found' {
         Mock Get-LocalUser { return @() }
         $res = Test-AdminAccount -Controllo $controlloAdmin -Ambiente $ambiente
         $res.Status | Should -Be 'sconosciuto'
@@ -162,11 +162,11 @@ Describe 'Test-AccountsPasswordRequired (HOME-ACC-003)' {
         $ambiente = [PSCustomObject]@{ Edition = 'Pro'; IsAdmin = $true }
     }
 
-    It 'Restituisce superato se tutti gli account attivi richiedono una password' {
+    It 'Returns superato when all active accounts require a password' {
         Mock Get-LocalUser {
             return @(
                 [PSCustomObject]@{
-                    Name             = 'UtenteSicuro'
+                    Name             = 'SecureUser'
                     SID              = [PSCustomObject]@{ Value = 'S-1-5-21-111-1001' }
                     Enabled          = $true
                     PasswordRequired = $true
@@ -183,11 +183,11 @@ Describe 'Test-AccountsPasswordRequired (HOME-ACC-003)' {
         $res.Status | Should -Be 'superato'
     }
 
-    It 'Restituisce fallito se un account attivo ha PasswordRequired = False' {
+    It 'Returns fallito when an active local account has PasswordRequired = False' {
         Mock Get-LocalUser {
             return @(
                 [PSCustomObject]@{
-                    Name             = 'UtenteSenzaPwd'
+                    Name             = 'NoPasswordUser'
                     SID              = [PSCustomObject]@{ Value = 'S-1-5-21-111-1002' }
                     Enabled          = $true
                     PasswordRequired = $false
@@ -196,14 +196,14 @@ Describe 'Test-AccountsPasswordRequired (HOME-ACC-003)' {
         }
         $res = Test-AccountsPasswordRequired -Controllo $controlloPwd -Ambiente $ambiente
         $res.Status   | Should -Be 'fallito'
-        $res.Observed | Should -Match 'UtenteSenzaPwd'
+        $res.Observed | Should -Match 'NoPasswordUser'
     }
 
-    It 'Restituisce superato (nessun falso positivo) se un account attivo ha PasswordRequired = False ma PrincipalSource = MicrosoftAccount' {
+    It 'Returns superato (no false positive) when PasswordRequired = False but PrincipalSource = MicrosoftAccount' {
         Mock Get-LocalUser {
             return @(
                 [PSCustomObject]@{
-                    Name             = 'UtenteMicrosoftHello'
+                    Name             = 'MicrosoftHelloUser'
                     SID              = [PSCustomObject]@{ Value = 'S-1-5-21-111-1003' }
                     Enabled          = $true
                     PasswordRequired = $false
@@ -213,6 +213,6 @@ Describe 'Test-AccountsPasswordRequired (HOME-ACC-003)' {
         }
         $res = Test-AccountsPasswordRequired -Controllo $controlloPwd -Ambiente $ambiente
         $res.Status   | Should -Be 'superato'
-        $res.Observed | Should -Match 'UtenteMicrosoftHello'
+        $res.Observed | Should -Match 'MicrosoftHelloUser'
     }
 }

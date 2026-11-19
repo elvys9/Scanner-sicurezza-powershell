@@ -1,12 +1,12 @@
 ﻿<#
 .SYNOPSIS
-    Runner: esegue i controlli di sicurezza dal catalogo.
+    Runner: executes security controls from the catalog.
 
 .DESCRIPTION
-    Itera sui controlli del catalogo, determina il tipo (registro o funzione),
-    li esegue e raccoglie i risultati. Un errore in un controllo NON ferma
-    gli altri.
-    Non modifica mai lo stato del sistema.
+    Iterates through catalog controls, determines the check type (registry or function),
+    executes each check, and collects the results. An error in a single control
+    NEVER stops the remaining controls.
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -14,21 +14,21 @@ Set-StrictMode -Version 2
 function Invoke-Controlli {
     <#
     .SYNOPSIS
-        Esegue i controlli specificati e restituisce un array di risultati.
+        Executes the specified controls and returns an array of results.
     .PARAMETER Catalogo
-        L'oggetto catalogo caricato da Import-Catalogo.
+        The catalog object loaded by Import-Catalogo.
     .PARAMETER Ambiente
-        L'oggetto ambiente da Get-AmbienteSistema.
+        The environment object returned by Get-AmbienteSistema.
     .PARAMETER ControlId
-        Array opzionale di ID di controllo da eseguire. Se vuoto, esegue tutti.
+        Optional array of control IDs to run. If empty, all controls are executed.
     .PARAMETER CartellaChecks
-        Percorso della cartella contenente gli script di controllo.
+        Path to the directory containing check script files.
     .PARAMETER OnProgress
-        Scriptblock opzionale invocato dopo ogni controllo: riceve ($IndiceCorrente, $Totale, $Risultato).
+        Optional scriptblock invoked after each control: receives ($CurrentIndex, $Total, $Result).
     .PARAMETER ShouldCancel
-        Scriptblock opzionale invocato prima di ogni controllo: se restituisce $true interrompe la scansione.
+        Optional scriptblock invoked before each control: if it returns $true, scanning stops.
     .OUTPUTS
-        Array di PSCustomObject con i risultati dei controlli.
+        Array of PSCustomObject control results.
     #>
     [CmdletBinding()]
     param(
@@ -53,7 +53,7 @@ function Invoke-Controlli {
 
     $risultati = @()
 
-    # Normalizza ControlId (gestisce stringhe separate da virgola)
+    # Normalize ControlId (handles comma-separated strings)
     $idFiltro = @()
     if ($null -ne $ControlId) {
         foreach ($id in $ControlId) {
@@ -66,7 +66,7 @@ function Invoke-Controlli {
         }
     }
 
-    # Determina la lista di controlli da eseguire per avere il totale esatto
+    # Build the list of controls to execute to know the exact total count
     $controlliDaEseguire = @()
     foreach ($c in $Catalogo.controls) {
         if ($idFiltro.Count -gt 0 -and ($idFiltro -notcontains $c.id)) {
@@ -79,7 +79,7 @@ function Invoke-Controlli {
     $indiceCorrente = 0
 
     foreach ($controllo in $controlliDaEseguire) {
-        # Verifica eventuale richiesta di annullamento prima di iniziare il controllo
+        # Check for cancellation request before starting the control
         if ($null -ne $ShouldCancel) {
             $annulla = & $ShouldCancel
             if ($annulla) {
@@ -90,20 +90,20 @@ function Invoke-Controlli {
         $indiceCorrente++
         $elementoRisultato = $null
 
-        # Verifica se il controllo ha i campi check necessari
+        # Verify whether the control defines a check block
         $haCheck = ($null -ne $controllo.PSObject.Properties['check'] -and $null -ne $controllo.check)
         $haRegistry = $false
         $haCommandRef = $false
 
         if ($haCheck) {
-            # Verifica se ha check.registry
+            # Check for check.registry
             if ($null -ne $controllo.check.PSObject.Properties['registry'] -and
                 $null -ne $controllo.check.registry -and
                 $null -ne $controllo.check.registry.PSObject.Properties['path'] -and
                 $null -ne $controllo.check.registry.path) {
                 $haRegistry = $true
             }
-            # Verifica se ha check.command_ref
+            # Check for check.command_ref
             if ($null -ne $controllo.check.PSObject.Properties['command_ref'] -and
                 $null -ne $controllo.check.command_ref -and
                 $null -ne $controllo.check.command_ref -ne '') {
@@ -111,12 +111,12 @@ function Invoke-Controlli {
             }
         }
 
-        # Se non ha ne' registry ne' command_ref, il controllo non e' implementato
+        # If neither registry nor command_ref is defined, the control is not implemented yet
         if (-not $haRegistry -and -not $haCommandRef) {
             $elementoRisultato = [PSCustomObject]@{
                 control_id  = $controllo.id
                 status      = 'sconosciuto'
-                observed    = 'Controllo non ancora implementato'
+                observed    = 'Control not yet implemented'
                 expected    = $null
                 evidence    = $null
                 error       = $null
@@ -129,7 +129,7 @@ function Invoke-Controlli {
             continue
         }
 
-        # Verifica applicabilita' per edizione
+        # Check edition applicability
         $edizioni = @()
         foreach ($ed in $controllo.editions) {
             $edizioni += $ed
@@ -138,9 +138,9 @@ function Invoke-Controlli {
             $elementoRisultato = [PSCustomObject]@{
                 control_id  = $controllo.id
                 status      = 'non_applicabile'
-                observed    = "Edizione $($Ambiente.Edition) non in: $($edizioni -join ', ')"
+                observed    = "Edition $($Ambiente.Edition) not in: $($edizioni -join ', ')"
                 expected    = $null
-                evidence    = @{ EditioneMacchina = $Ambiente.Edition; EdizioniControllo = $edizioni }
+                evidence    = @{ MachineEdition = $Ambiente.Edition; ControlEditions = $edizioni }
                 error       = $null
                 duration_ms = 0
             }
@@ -151,35 +151,35 @@ function Invoke-Controlli {
             continue
         }
 
-        # Esegui il controllo con gestione errori
+        # Execute the control with isolated error handling
         $cronometro = [System.Diagnostics.Stopwatch]::StartNew()
         try {
             $risultatoControllo = $null
 
             if ($haRegistry) {
-                # Controllo basato su registro: usa il valutatore generico
+                # Declarative registry check: use the generic evaluator
                 $risultatoControllo = Test-RegistryValue -RegistryCheck $controllo.check.registry -Ambiente $Ambiente
             }
             elseif ($haCommandRef) {
-                # Controllo basato su funzione: risolvi il riferimento
+                # Function-based check: resolve file and function reference
                 $parti = $controllo.check.command_ref -split '#'
                 if ($parti.Count -ne 2) {
-                    throw "Formato command_ref non valido: $($controllo.check.command_ref). Atteso: 'File.ps1#Nome-Funzione'"
+                    throw "Invalid command_ref format: $($controllo.check.command_ref). Expected: 'File.ps1#Function-Name'"
                 }
 
                 $nomeFile = $parti[0]
                 $nomeFunzione = $parti[1]
 
-                # Carica il file (dot-source) se la funzione non e' gia' disponibile in memoria
+                # Dot-source the file if the function is not already loaded in memory
                 if (-not (Get-Command -Name $nomeFunzione -ErrorAction SilentlyContinue)) {
                     $percorsoFile = if ($CartellaChecks) { Join-Path $CartellaChecks $nomeFile } else { $nomeFile }
                     if (-not (Test-Path -LiteralPath $percorsoFile)) {
-                        throw "File di controllo non trovato: $percorsoFile"
+                        throw "Check file not found: $percorsoFile"
                     }
                     . $percorsoFile
                 }
 
-                # Esegui la funzione
+                # Invoke the check function
                 $risultatoControllo = & $nomeFunzione -Controllo $controllo -Ambiente $Ambiente
             }
 
@@ -197,7 +197,7 @@ function Invoke-Controlli {
         }
         catch {
             $cronometro.Stop()
-            # Un errore nel controllo produce status "errore", non ferma gli altri
+            # A check failure produces status "errore" and does not halt remaining controls
             $elementoRisultato = [PSCustomObject]@{
                 control_id  = $controllo.id
                 status      = 'errore'

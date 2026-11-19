@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Valida il catalogo home_profile.yaml contro schema.json."""
+"""Validates the home_profile.yaml catalog against schema.json."""
 
 import json
 import sys
@@ -9,50 +9,49 @@ import os
 try:
     import jsonschema
 except ImportError:
-    print("ERRORE: installa jsonschema con 'pip install jsonschema'", file=sys.stderr)
+    print("ERROR: install jsonschema with 'pip install jsonschema'", file=sys.stderr)
     sys.exit(1)
 
 try:
     import yaml
 except ImportError:
-    print("ERRORE: installa PyYAML con 'pip install pyyaml'", file=sys.stderr)
+    print("ERROR: install PyYAML with 'pip install pyyaml'", file=sys.stderr)
     sys.exit(1)
 
 
-def valida_catalogo(percorso_yaml, percorso_schema):
-    """Carica il catalogo YAML e lo valida contro lo schema JSON."""
-    with open(percorso_yaml, "r", encoding="utf-8") as f:
-        catalogo = yaml.safe_load(f)
+def validate_catalog(yaml_path, schema_path):
+    """Loads the YAML catalog and validates it against the JSON schema."""
+    with open(yaml_path, "r", encoding="utf-8") as f:
+        catalog = yaml.safe_load(f)
 
-    with open(percorso_schema, "r", encoding="utf-8") as f:
+    with open(schema_path, "r", encoding="utf-8") as f:
         schema = json.load(f)
 
-    jsonschema.validate(instance=catalogo, schema=schema)
-    return catalogo
+    jsonschema.validate(instance=catalog, schema=schema)
+    return catalog
 
 
-def controlla_id_duplicati(catalogo):
-    """Verifica che non ci siano ID duplicati nel catalogo."""
-    ids = [c["id"] for c in catalogo["controls"]]
-    duplicati = [x for x in ids if ids.count(x) > 1]
-    if duplicati:
-        raise ValueError(f"ID duplicati nel catalogo: {set(duplicati)}")
+def check_duplicate_ids(catalog):
+    """Verifies that there are no duplicate control IDs in the catalog."""
+    ids = [c["id"] for c in catalog["controls"]]
+    duplicates = [x for x in ids if ids.count(x) > 1]
+    if duplicates:
+        raise ValueError(f"Duplicate IDs in catalog: {set(duplicates)}")
 
 
 def main():
-    dir_catalogo = os.path.dirname(os.path.abspath(__file__))
-    # Lo script si trova in tools/, il catalogo in catalog/
-    dir_progetto = os.path.dirname(dir_catalogo)
-    percorso_yaml = os.path.join(dir_progetto, "catalog", "home_profile.yaml")
-    percorso_schema = os.path.join(dir_progetto, "catalog", "schema.json")
+    catalog_dir = os.path.dirname(os.path.abspath(__file__))
+    project_dir = os.path.dirname(catalog_dir)
+    yaml_path = os.path.join(project_dir, "catalog", "home_profile.yaml")
+    schema_path = os.path.join(project_dir, "catalog", "schema.json")
 
-    print(f"Validazione di {percorso_yaml}...")
+    print(f"Validating {yaml_path}...")
 
-    catalogo = valida_catalogo(percorso_yaml, percorso_schema)
-    controlla_id_duplicati(catalogo)
+    catalog = validate_catalog(yaml_path, schema_path)
+    check_duplicate_ids(catalog)
 
-    n_controlli = len(catalogo["controls"])
-    print(f"Validazione superata: {n_controlli} controlli trovati.")
+    control_count = len(catalog["controls"])
+    print(f"Validation passed: {control_count} controls found.")
 
 
 if __name__ == "__main__":

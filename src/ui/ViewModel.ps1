@@ -1,19 +1,17 @@
 ﻿<#
 .SYNOPSIS
-    ViewModel puro per l'interfaccia grafica dello scanner di sicurezza.
+    Pure ViewModel for the Windows 11 Security Scanner GUI.
 
 .DESCRIPTION
-    Contiene esclusivamente funzioni PURE (senza dipendenze da WPF o
-    PresentationFramework) per:
-    - Unione dei risultati di scansione con i metadati del catalogo
-    - Ordinamento predefinito (falliti per gravita', poi sconosciuti, poi superati)
-    - Filtri combinabili (stato, gravita', categoria, ricerca testuale)
-    - Calcolo dei conteggi di riepilogo
-    - Costruzione del dettaglio del controllo (modalita' semplice/tecnica,
-      gestione sicura di campi mancanti o null)
-    - Generazione del nome file predefinito per l'export
+    Contains strictly PURE functions (zero WPF / PresentationFramework dependencies) for:
+    - Merging scan results with catalog metadata
+    - Priority-first sorting (failed by severity, then errors/unknown, passed, N/A)
+    - Combinable filters (status, severity, category, text search)
+    - Summary counter computation
+    - Control detail formatting (Simple/Technical modes, safe null handling)
+    - Default export filename generation
 
-    Non modifica mai lo stato del sistema.
+    Never modifies system state.
 #>
 
 Set-StrictMode -Version 2
@@ -976,21 +974,21 @@ function Format-DettaglioControllo {
     $sbTecnico = New-Object System.Text.StringBuilder
     [void]$sbTecnico.AppendLine([string]$descrizioneTecnica)
     [void]$sbTecnico.AppendLine("")
-    [void]$sbTecnico.AppendLine("ID Controllo: $id")
+    [void]$sbTecnico.AppendLine("Control ID: $id")
     if ($null -ne $edizioni -and @($edizioni).Count -gt 0) {
-        [void]$sbTecnico.AppendLine("Edizioni applicabili: $(@($edizioni) -join ', ')")
+        [void]$sbTecnico.AppendLine("Applicable editions: $(@($edizioni) -join ', ')")
     }
-    [void]$sbTecnico.AppendLine("Durata rilevamento: $durata ms")
+    [void]$sbTecnico.AppendLine("Check duration: $durata ms")
     if ($null -ne $evidenza) {
         $evidenzaJson = ($evidenza | ConvertTo-Json -Compress -Depth 4)
-        [void]$sbTecnico.AppendLine("Evidenza raccolta: $evidenzaJson")
+        [void]$sbTecnico.AppendLine("Collected evidence: $evidenzaJson")
     }
     if ($null -ne $riferimenti -and @($riferimenti).Count -gt 0) {
-        [void]$sbTecnico.AppendLine("Riferimenti: $(@($riferimenti) -join '; ')")
+        [void]$sbTecnico.AppendLine("References: $(@($riferimenti) -join '; ')")
     }
     $spiegazioneTecnica = $sbTecnico.ToString().Trim()
 
-    # Valore atteso e trovato
+    # Expected and observed values
     $attesoRaw = Get-ValoreProprietaSicuro -Oggetto $Elemento -NomeProprieta 'Expected' -ValorePredefinito (
         Get-ValoreProprietaSicuro -Oggetto $raw -NomeProprieta 'expected' -ValorePredefinito $null
     )
@@ -1001,22 +999,22 @@ function Format-DettaglioControllo {
         Get-ValoreProprietaSicuro -Oggetto $raw -NomeProprieta 'error' -ValorePredefinito $null
     )
 
-    $valoreAtteso = if ($null -ne $attesoRaw -and [string]$attesoRaw -ne '') { [string]$attesoRaw } else { 'Non specificato' }
+    $valoreAtteso = if ($null -ne $attesoRaw -and [string]$attesoRaw -ne '') { [string]$attesoRaw } else { 'Not specified' }
 
-    # Gestione messaggio comprensibile per errori (mai stack trace nella UI)
+    # User-friendly error message (never expose raw stack traces in the UI)
     $messaggioErrore = $null
     if ($infoStato.Status -eq 'errore') {
-        $messaggioErrore = "Si e' verificato un imprevisto durante la verifica di questo controllo. Il sistema non e' stato modificato. Esporta il report con il log tecnico per i dettagli."
+        $messaggioErrore = "An unexpected error occurred while evaluating this control. The system was not modified. Export the report with the technical log for details."
     }
 
     $valoreOsservato = if ($null -ne $osservatoRaw -and [string]$osservatoRaw -ne '') {
         [string]$osservatoRaw
     }
     elseif ($infoStato.Status -eq 'errore') {
-        "Verifica non completata a causa di un errore del collettore"
+        "Check did not complete due to a collector error"
     }
     else {
-        'Non disponibile'
+        'Not available'
     }
 
     # Rimedio: controlla prima se il controllo ha proprieta' esplicite (remediation / command)

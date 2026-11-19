@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Test Pester 5 per il modulo Catalog.
+    Pester 5 tests for the Catalog module.
 #>
 
 Set-StrictMode -Version 2
@@ -11,12 +11,12 @@ Describe 'Import-Catalogo' {
         $percorsoModulo = Join-Path $PSScriptRoot '..\src\core\Catalog.ps1'
         . $percorsoModulo
 
-        # Crea un catalogo di test valido
+        # Create a valid test catalog
         $catalogoValido = @{
             schema_version = '0.2'
             profile = @{
                 name = 'test'
-                description = 'Profilo di test'
+                description = 'Test profile'
                 target_os = 'Windows 11'
             }
             controls = @(
@@ -33,28 +33,28 @@ Describe 'Import-Catalogo' {
             )
         }
 
-        $percorsoTemp = Join-Path $TestDrive 'catalogo_valido.json'
+        $percorsoTemp = Join-Path $TestDrive 'valid_catalog.json'
         $catalogoValido | ConvertTo-Json -Depth 10 | Out-File -FilePath $percorsoTemp -Encoding UTF8
     }
 
-    It 'Carica un catalogo JSON valido' {
-        $percorsoTemp = Join-Path $TestDrive 'catalogo_valido.json'
+    It 'Loads a valid JSON catalog' {
+        $percorsoTemp = Join-Path $TestDrive 'valid_catalog.json'
         $catalogo = Import-Catalogo -PercorsoCatalogo $percorsoTemp
         $catalogo | Should -Not -BeNullOrEmpty
         $catalogo.schema_version | Should -Be '0.2'
     }
 
-    It 'Lancia eccezione se il file non esiste' {
-        { Import-Catalogo -PercorsoCatalogo 'C:\inesistente\catalogo.json' } | Should -Throw '*non esiste*'
+    It 'Throws when the catalog file does not exist' {
+        { Import-Catalogo -PercorsoCatalogo 'C:\nonexistent\catalog.json' } | Should -Throw '*not found*'
     }
 
-    It 'Lancia eccezione per JSON non valido' {
-        $percorsoInvalido = Join-Path $TestDrive 'invalido.json'
-        'questo non e json' | Out-File -FilePath $percorsoInvalido -Encoding UTF8
+    It 'Throws on invalid JSON content' {
+        $percorsoInvalido = Join-Path $TestDrive 'invalid.json'
+        'this is not json' | Out-File -FilePath $percorsoInvalido -Encoding UTF8
         { Import-Catalogo -PercorsoCatalogo $percorsoInvalido } | Should -Throw '*JSON*'
     }
 
-    It 'Lancia eccezione per ID duplicati' {
+    It 'Throws on duplicate control IDs' {
         $catalogoDuplicati = @{
             schema_version = '0.2'
             profile = @{ name = 'test'; description = 'Test'; target_os = 'Win11' }
@@ -63,12 +63,12 @@ Describe 'Import-Catalogo' {
                 @{ id = 'DUP-001'; title = 'B'; category = 'Test'; severity = 'medio'; editions = @('Home'); description = 'x'; rationale = 'x'; check = @{} }
             )
         }
-        $percorsoDup = Join-Path $TestDrive 'duplicati.json'
+        $percorsoDup = Join-Path $TestDrive 'duplicates.json'
         $catalogoDuplicati | ConvertTo-Json -Depth 10 | Out-File -FilePath $percorsoDup -Encoding UTF8
-        { Import-Catalogo -PercorsoCatalogo $percorsoDup } | Should -Throw '*duplicato*'
+        { Import-Catalogo -PercorsoCatalogo $percorsoDup } | Should -Throw '*Duplicate*'
     }
 
-    It 'Lancia eccezione per schema_version non supportata' {
+    It 'Throws on unsupported schema_version' {
         $catalogoVecchio = @{
             schema_version = '99.0'
             profile = @{ name = 'test'; description = 'Test'; target_os = 'Win11' }
@@ -76,19 +76,19 @@ Describe 'Import-Catalogo' {
                 @{ id = 'OLD-001'; title = 'Old'; category = 'Test'; severity = 'medio'; editions = @('Home'); description = 'x'; rationale = 'x'; check = @{} }
             )
         }
-        $percorsoVecchio = Join-Path $TestDrive 'vecchio.json'
+        $percorsoVecchio = Join-Path $TestDrive 'old.json'
         $catalogoVecchio | ConvertTo-Json -Depth 10 | Out-File -FilePath $percorsoVecchio -Encoding UTF8
-        { Import-Catalogo -PercorsoCatalogo $percorsoVecchio } | Should -Throw '*non supportata*'
+        { Import-Catalogo -PercorsoCatalogo $percorsoVecchio } | Should -Throw '*Unsupported*'
     }
 
-    It 'Carica il catalogo reale del progetto' {
+    It 'Loads the real project catalog' {
         $percorsoReale = Join-Path $PSScriptRoot '..\catalog\home_profile.json'
         if (Test-Path $percorsoReale) {
             $catalogo = Import-Catalogo -PercorsoCatalogo $percorsoReale
             $catalogo.controls.Count | Should -BeGreaterThan 0
         }
         else {
-            Set-ItResult -Skipped -Because "Il file home_profile.json non esiste (eseguire yaml_to_json.py)"
+            Set-ItResult -Skipped -Because "home_profile.json does not exist (run tools/yaml_to_json.py)"
         }
     }
 }

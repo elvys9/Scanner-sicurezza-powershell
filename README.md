@@ -147,18 +147,18 @@ src/
       Network.ps1          SMBv1, NetBIOS over TCP/IP, and LLMNR checks
       SystemSecurity.ps1   Windows Update, BitLocker, Telemetry, Secure Boot, LSA, HVCI, SmartScreen
   ui/
-    MainWindow.xaml        Two-page WPF XAML layout (Light/Dark themes, EN/IT support)
+    MainWindow.xaml        Two-page WPF XAML layout (Light/Dark themes, IT/EN/DE support)
     Start-ScannerUI.ps1    WPF controller, asynchronous Runspace execution & Ollama integration
     ViewModel.ps1          Pure functions for sorting, filtering, counters, and detail formatting
 catalog/
-  home_profile.yaml        Source security catalog (YAML, 34 controls)
+  home_profile.yaml        Source security catalog (YAML, 58 controls)
   home_profile.json        Generated runtime catalog (JSON)
   schema.json              JSON Schema v0.2 validation specification
 tools/
-  Build.ps1                Compiles all modules into dist/scanner-win11.ps1 & dist/scanner-win11-en.ps1
+  Build.ps1                Compiles all modules into dist/scanner-win11*.ps1 (IT/EN/DE)
   yaml_to_json.py          Converts YAML catalog to JSON and validates against schema.json
 tests/
-  *.Tests.ps1              125 Pester 5 automated tests (Unit, AST Read-Only, ViewModel, Ollama, E2E)
+  *.Tests.ps1              153 Pester 5 automated tests (Unit, AST Read-Only, ViewModel, Ollama, E2E)
 ```
 
 ---
@@ -172,6 +172,6 @@ python tools/yaml_to_json.py
 # 2. Rebuild the standalone single-file scripts in dist/:
 powershell -ExecutionPolicy Bypass -File tools\Build.ps1
 
-# 3. Run the entire Pester 5 test suite (125 tests):
+# 3. Run the entire Pester 5 test suite (153 tests):
 Invoke-Pester tests -Output Detailed
 ```

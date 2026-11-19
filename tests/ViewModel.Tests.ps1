@@ -229,7 +229,7 @@ Describe 'ViewModel — Funzioni pure (senza WPF)' {
             $det.HaComando      | Should -Be $false
         }
 
-        It 'Gestisce senza errori un controllo con campi mancanti (StrictMode v2)' {
+        It 'Handles a control with missing fields without throwing (StrictMode v2)' {
             $oggettoIncompleto = [PSCustomObject]@{
                 control_id = 'HOME-INCOMPLETO-999'
                 status     = 'sconosciuto'
@@ -240,8 +240,8 @@ Describe 'ViewModel — Funzioni pure (senza WPF)' {
 
             $det = Format-DettaglioControllo -Elemento $oggettoIncompleto
             $det.ControlId       | Should -Be 'HOME-INCOMPLETO-999'
-            $det.ValoreAtteso    | Should -Be 'Non specificato'
-            $det.ValoreOsservato | Should -Be 'Non disponibile'
+            $det.ValoreAtteso    | Should -Be 'Not specified'
+            $det.ValoreOsservato | Should -Be 'Not available'
             $det.HaComando       | Should -Be $false
         }
 
@@ -353,7 +353,7 @@ Describe 'Runner (-OnProgress / -ShouldCancel) e Report HTML' {
         $contenutoHtml | Should -Match '<!DOCTYPE html>'
         $contenutoHtml | Should -Match '<style>'
         $contenutoHtml | Should -Match 'HOME-UAC-001'
-        $contenutoHtml | Should -Match 'non dimostra l''assenza di compromissioni'
+        $contenutoHtml | Should -Match 'does not prove the absence of compromise'
         $contenutoHtml | Should -Not -Match 'https?://'
     }
 }
