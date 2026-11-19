@@ -91,9 +91,10 @@ $percorsoScript = $PSScriptRoot
 if (-not $percorsoScript) {
     $percorsoScript = Split-Path -Parent $MyInvocation.MyCommand.Path
 }
-$percorsoCore   = Join-Path $percorsoScript 'core'
-$percorsoChecks = Join-Path $percorsoCore 'Checks'
-$percorsoUi     = Join-Path $percorsoScript 'ui'
+$percorsoCore        = Join-Path $percorsoScript 'core'
+$percorsoChecks      = Join-Path $percorsoCore 'Checks'
+$percorsoUi          = Join-Path $percorsoScript 'ui'
+$percorsoRemediation = Join-Path $percorsoScript 'remediation'
 
 # The JSON catalog is located in the catalog/ directory at the project root
 $percorsoProgetto = Split-Path -Parent $percorsoScript
@@ -118,6 +119,11 @@ $percorsoJson     = Join-Path $percorsoCatalogo 'home_profile.json'
 
 # --- GUI Mode ---
 if ($modalitaGui) {
+    if (Test-Path -LiteralPath $percorsoRemediation) {
+        . (Join-Path $percorsoRemediation 'BackupManager.ps1')
+        . (Join-Path $percorsoRemediation 'RemediationCatalog.ps1')
+        . (Join-Path $percorsoRemediation 'FixRunner.ps1')
+    }
     . (Join-Path $percorsoUi 'ViewModel.ps1')
     . (Join-Path $percorsoUi 'Start-ScannerUI.ps1')
 

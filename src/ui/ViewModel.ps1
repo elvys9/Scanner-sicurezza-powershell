@@ -1164,7 +1164,7 @@ function Get-NomeFileExport {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $false)]
-        [ValidateSet('json', 'html', 'log')]
+        [ValidateSet('json', 'html', 'log', 'ps1')]
         [string]$Estensione = 'json',
 
         [Parameter(Mandatory = $false)]
@@ -1173,4 +1173,334 @@ function Get-NomeFileExport {
 
     $timbro = $DataRiferimento.ToString('yyyyMMdd_HHmmss')
     return "scanner_sicurezza_${timbro}.${Estensione}"
+}
+
+function Test-SafeSettingsUri {
+    <#
+    .SYNOPSIS
+        Validates that a Windows Settings / Windows Security deep-link URI matches the strict allowlist.
+
+    .PARAMETER Uri
+        Candidate URI string (only ms-settings: and windowsdefender:// are allowed).
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [string]$Uri = ''
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Uri)) {
+        return $false
+    }
+
+    return ($Uri.Trim() -match '^(?i)(ms-settings:[a-z0-9\-_]+|windowsdefender://[a-z0-9\-_/]+)$')
+}
+
+function ConvertTo-AutoFixItems {
+    <#
+    .SYNOPSIS
+        Builds localized, prioritized Auto-Fix view items from failed scan results.
+
+    .PARAMETER ElementiVista
+        Array of formatted view items returned by ConvertTo-RisultatiVista.
+
+    .PARAMETER Lingua
+        UI language ('IT', 'EN', or 'DE').
+
+    .PARAMETER EsitiFixPerId
+        Optional hashtable mapping ControlId to the latest remediation outcome object.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [array]$ElementiVista = @(),
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN', 'DE')]
+        [string]$Lingua = 'IT',
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [hashtable]$EsitiFixPerId = @{}
+    )
+
+    if ($null -eq $ElementiVista -or $ElementiVista.Count -eq 0) {
+        return @()
+    }
+
+    $hasDefCmd = ($null -ne (Get-Command -Name 'Get-RemediationDefinition' -ErrorAction SilentlyContinue))
+    $esitiMap  = if ($null -ne $EsitiFixPerId) { $EsitiFixPerId } else { @{} }
+    $items     = @()
+
+    foreach ($el in $ElementiVista) {
+        if ($null -eq $el) { continue }
+        $elStatus = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Status' -ValorePredefinito '')
+        if ($elStatus -ne 'fallito') {
+            continue
+        }
+
+        $cid       = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'ControlId' -ValorePredefinito '')
+        $title     = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Title' -ValorePredefinito $cid)
+        $category  = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'Category' -ValorePredefinito '')
+        $sevLabel  = [string](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'SeverityLabel' -ValorePredefinito '')
+        $sevRank   = [int](Get-ValoreProprietaSicuro -Oggetto $el -NomeProprieta 'SeverityRank' -ValorePredefinito 99)
+
+        $def = if ($hasDefCmd -and -not [string]::IsNullOrWhiteSpace($cid)) {
+            Get-RemediationDefinition -ControlId $cid
+        }
+        else {
+            $null
+        }
+
+        $fixMode       = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'FixMode' -ValorePredefinito 'Manual') } else { 'Manual' }
+        $applyBlock    = if ($null -ne $def) { Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Apply' -ValorePredefinito $null } else { $null }
+        $canAutoFix    = ($null -ne $def -and $fixMode -eq 'AutoSafe' -and $null -ne $applyBlock)
+        $requiresAdmin = if ($null -ne $def) { [bool](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'RequiresAdmin' -ValorePredefinito $false) } else { $false }
+        $requiresReboot = if ($null -ne $def) { [bool](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'RequiresReboot' -ValorePredefinito $false) } else { $false }
+        $summary       = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'Summary' -ValorePredefinito '') } else { '' }
+        $rawUri        = if ($null -ne $def) { [string](Get-ValoreProprietaSicuro -Oggetto $def -NomeProprieta 'SettingsUri' -ValorePredefinito '') } else { '' }
+        $settingsUri   = if (Test-SafeSettingsUri -Uri $rawUri) { $rawUri.Trim() } else { $null }
+        $hasUri        = (-not [string]::IsNullOrWhiteSpace($settingsUri))
+
+        $fixModeLabel = if ($canAutoFix) {
+            switch ($Lingua) {
+                'EN' { 'Safe Auto-Fix' }
+                'DE' { 'Sicherer Auto-Fix' }
+                default { 'Auto-Fix Sicuro' }
+            }
+        }
+        else {
+            switch ($Lingua) {
+                'EN' { 'Manual' }
+                'DE' { 'Manuell' }
+                default { 'Manuale' }
+            }
+        }
+
+        $settingsBtnLabel = switch ($Lingua) {
+            'EN' { 'Open Settings' }
+            'DE' { 'Einstellungen' }
+            default { 'Impostazioni' }
+        }
+
+        $fixStatus = if ($esitiMap.ContainsKey($cid) -and $null -ne $esitiMap[$cid]) {
+            [string](Get-ValoreProprietaSicuro -Oggetto $esitiMap[$cid] -NomeProprieta 'Status' -ValorePredefinito 'Pending')
+        }
+        elseif ($canAutoFix) {
+            'Pending'
+        }
+        else {
+            'ManualOnly'
+        }
+
+        $fixStatusLabel = switch ($fixStatus) {
+            'Fixed'              { switch ($Lingua) { 'EN' { 'Fixed & Verified' } 'DE' { 'Behoben & Geprueft' } default { 'Riparato e Verificato' } } }
+            'Applied'            { switch ($Lingua) { 'EN' { 'Applied' }          'DE' { 'Angewendet' }         default { 'Applicato' } } }
+            'RebootRequired'     { switch ($Lingua) { 'EN' { 'Reboot Required' }  'DE' { 'Neustart noetig' }    default { 'Riavvio Richiesto' } } }
+            'RequiresAdmin'      { switch ($Lingua) { 'EN' { 'Requires Admin' }   'DE' { 'Admin erforderlich' } default { 'Richiede Admin' } } }
+            'Blocked'            { switch ($Lingua) { 'EN' { 'Blocked' }          'DE' { 'Blockiert' }          default { 'Bloccato' } } }
+            'VerificationFailed' { switch ($Lingua) { 'EN' { 'Verify Failed' }    'DE' { 'Pruefung fehlgeschlagen' } default { 'Verifica Fallita' } } }
+            'Failed'             { switch ($Lingua) { 'EN' { 'Failed' }           'DE' { 'Fehlgeschlagen' }     default { 'Fallito' } } }
+            'Skipped'            { switch ($Lingua) { 'EN' { 'Skipped' }          'DE' { 'Uebersprungen' }      default { 'Saltato' } } }
+            'RolledBack'         { switch ($Lingua) { 'EN' { 'Rolled Back' }      'DE' { 'Zurueckgesetzt' }     default { 'Ripristinato' } } }
+            'ManualOnly'         { switch ($Lingua) { 'EN' { 'Manual Guidance' }  'DE' { 'Manuelle Pruefung' }  default { 'Solo Manuale' } } }
+            default              { switch ($Lingua) { 'EN' { 'Ready' }            'DE' { 'Bereit' }             default { 'Pronto' } } }
+        }
+
+        $items += [PSCustomObject]@{
+            ControlId             = $cid
+            Title                 = $title
+            Category              = $category
+            SeverityLabel         = $sevLabel
+            SeverityRank          = $sevRank
+            FixMode               = $fixMode
+            FixModeLabel          = $fixModeLabel
+            CanAutoFix            = $canAutoFix
+            AutoRank              = if ($canAutoFix) { 0 } else { 1 }
+            UriRank               = if ($hasUri) { 0 } else { 1 }
+            RequiresAdmin         = $requiresAdmin
+            RequiresReboot        = $requiresReboot
+            AdminBadgeVisibility  = if ($requiresAdmin -and $canAutoFix) { 'Visible' } else { 'Collapsed' }
+            Summary               = $summary
+            SettingsUri           = $settingsUri
+            HasSettingsUri        = $hasUri
+            SettingsBtnVisibility = if ($hasUri) { 'Visible' } else { 'Collapsed' }
+            SettingsBtnLabel      = $settingsBtnLabel
+            FixStatus             = $fixStatus
+            FixStatusLabel        = $fixStatusLabel
+            IsSelected            = $false
+        }
+    }
+
+    $sorted = @($items | Sort-Object -Property @(
+        @{ Expression = { $_.AutoRank };     Ascending = $true },
+        @{ Expression = { $_.UriRank };      Ascending = $true },
+        @{ Expression = { $_.SeverityRank }; Ascending = $true },
+        @{ Expression = { $_.ControlId };    Ascending = $true }
+    ))
+
+    return $sorted
+}
+
+function Format-RemediationScriptExport {
+    <#
+    .SYNOPSIS
+        Generates a standalone, human-readable PowerShell remediation script from preview items.
+
+    .PARAMETER PreviewItems
+        Array of preview objects returned by Get-RemediationPreview.
+
+    .PARAMETER Lingua
+        Script comment language ('IT', 'EN', or 'DE').
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [array]$PreviewItems = @(),
+
+        [Parameter(Mandatory = $false)]
+        [ValidateSet('IT', 'EN', 'DE')]
+        [string]$Lingua = 'IT'
+    )
+
+    $itemsList = if ($null -eq $PreviewItems) { @() } else { @($PreviewItems) }
+    $needsAdmin = $false
+    foreach ($item in $itemsList) {
+        if ($null -eq $item) { continue }
+        $reqAdm = [bool](Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'RequiresAdmin' -ValorePredefinito $false)
+        $mode   = [string](Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'FixMode' -ValorePredefinito '')
+        if ($reqAdm -and $mode -ne 'Manual' -and $mode -ne 'Unsupported') {
+            $needsAdmin = $true
+            break
+        }
+    }
+
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine('# =============================================================================')
+    switch ($Lingua) {
+        'EN' {
+            [void]$sb.AppendLine("# Windows 11 Security Scanner - Exported Remediation Script ($(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))")
+            [void]$sb.AppendLine('# Review every command carefully before running on your system.')
+        }
+        'DE' {
+            [void]$sb.AppendLine("# Windows 11 Sicherheitsscanner - Exportiertes Massnahmen-Skript ($(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))")
+            [void]$sb.AppendLine('# Bitte pruefen Sie jeden Befehl vor der Ausfuehrung sorgfaeltig.')
+        }
+        default {
+            [void]$sb.AppendLine("# Scanner Sicurezza Windows 11 - Script di Remediation Esportato ($(Get-Date -Format 'yyyy-MM-dd HH:mm:ss'))")
+            [void]$sb.AppendLine('# Verifica attentamente ogni comando prima di eseguirlo sul sistema.')
+        }
+    }
+    [void]$sb.AppendLine('# =============================================================================')
+    [void]$sb.AppendLine('')
+
+    if ($needsAdmin) {
+        [void]$sb.AppendLine('#Requires -RunAsAdministrator')
+        [void]$sb.AppendLine('')
+    }
+
+    foreach ($item in $itemsList) {
+        if ($null -eq $item) { continue }
+        $cid     = [string](Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'ControlId' -ValorePredefinito '')
+        $mode    = [string](Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'FixMode' -ValorePredefinito '')
+        $summary = [string](Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'Summary' -ValorePredefinito '')
+        $uri     = [string](Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'SettingsUri' -ValorePredefinito '')
+        $cmds    = @(Get-ValoreProprietaSicuro -Oggetto $item -NomeProprieta 'PreviewCommands' -ValorePredefinito @())
+
+        if ($cmds.Count -gt 0) {
+            [void]$sb.AppendLine("# [$cid] $summary")
+            foreach ($cmd in $cmds) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$cmd)) {
+                    [void]$sb.AppendLine([string]$cmd)
+                }
+            }
+            [void]$sb.AppendLine('')
+        }
+        else {
+            [void]$sb.AppendLine("# [$cid] ($mode) $summary")
+            if (-not [string]::IsNullOrWhiteSpace($uri)) {
+                [void]$sb.AppendLine("# Settings URI: $uri")
+            }
+            [void]$sb.AppendLine('')
+        }
+    }
+
+    return $sb.ToString()
+}
+
+function Update-RisultatiDopoFix {
+    <#
+    .SYNOPSIS
+        Returns an updated copy of raw scan results merged with post-fix re-verification outcomes.
+
+    .PARAMETER RisultatiGrezzi
+        Original array of raw result objects from Invoke-Controlli.
+
+    .PARAMETER FixResults
+        Array of remediation result objects containing PostCheckStatus and PostCheckObserved.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [array]$RisultatiGrezzi = @(),
+
+        [Parameter(Mandatory = $false)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [array]$FixResults = @()
+    )
+
+    if ($null -eq $RisultatiGrezzi -or $RisultatiGrezzi.Count -eq 0) {
+        return @()
+    }
+
+    $fixById = @{}
+    if ($null -ne $FixResults) {
+        foreach ($fix in $FixResults) {
+            if ($null -eq $fix) { continue }
+            $fid        = [string](Get-ValoreProprietaSicuro -Oggetto $fix -NomeProprieta 'ControlId' -ValorePredefinito '')
+            $postStatus = [string](Get-ValoreProprietaSicuro -Oggetto $fix -NomeProprieta 'PostCheckStatus' -ValorePredefinito '')
+            if (-not [string]::IsNullOrWhiteSpace($fid) -and (-not [string]::IsNullOrWhiteSpace($postStatus))) {
+                $fixById[$fid] = $fix
+            }
+        }
+    }
+
+    if ($fixById.Count -eq 0) {
+        return @($RisultatiGrezzi)
+    }
+
+    $updated = @()
+    foreach ($res in $RisultatiGrezzi) {
+        $cid = [string](Get-ValoreProprietaSicuro -Oggetto $res -NomeProprieta 'control_id' -ValorePredefinito '')
+        if (-not [string]::IsNullOrWhiteSpace($cid) -and $fixById.ContainsKey($cid)) {
+            $fixMatch = $fixById[$cid]
+            $clone = [PSCustomObject]@{}
+            foreach ($prop in $res.PSObject.Properties) {
+                Add-Member -InputObject $clone -MemberType NoteProperty -Name $prop.Name -Value $prop.Value -Force
+            }
+            $newStatus   = [string](Get-ValoreProprietaSicuro -Oggetto $fixMatch -NomeProprieta 'PostCheckStatus' -ValorePredefinito $res.status)
+            $newObserved = Get-ValoreProprietaSicuro -Oggetto $fixMatch -NomeProprieta 'PostCheckObserved' -ValorePredefinito $null
+            $newError    = Get-ValoreProprietaSicuro -Oggetto $fixMatch -NomeProprieta 'Error' -ValorePredefinito $null
+
+            Add-Member -InputObject $clone -MemberType NoteProperty -Name 'status'   -Value $newStatus   -Force
+            Add-Member -InputObject $clone -MemberType NoteProperty -Name 'observed' -Value $newObserved -Force
+            Add-Member -InputObject $clone -MemberType NoteProperty -Name 'error'    -Value $newError    -Force
+            $updated += $clone
+        }
+        else {
+            $updated += $res
+        }
+    }
+
+    return $updated
 }

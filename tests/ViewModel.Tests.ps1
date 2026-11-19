@@ -265,13 +265,95 @@ Describe 'ViewModel — Funzioni pure (senza WPF)' {
 
     Context 'Nome file export predefinito (Get-NomeFileExport)' {
 
-        It 'Genera un nome file con data e ora per json e html' {
+        It 'Genera un nome file con data e ora per json, html e ps1' {
             $dataFissa = [datetime]::new(2026, 11, 17, 14, 30, 45)
             $nomeJson = Get-NomeFileExport -Estensione 'json' -DataRiferimento $dataFissa
             $nomeHtml = Get-NomeFileExport -Estensione 'html' -DataRiferimento $dataFissa
+            $nomePs1  = Get-NomeFileExport -Estensione 'ps1'  -DataRiferimento $dataFissa
 
             $nomeJson | Should -Be 'scanner_sicurezza_20261117_143045.json'
             $nomeHtml | Should -Be 'scanner_sicurezza_20261117_143045.html'
+            $nomePs1  | Should -Be 'scanner_sicurezza_20261117_143045.ps1'
+        }
+    }
+
+    Context 'Auto-Fix ViewModel helpers (Phase 2)' {
+        BeforeAll {
+            . (Join-Path $PSScriptRoot '..\src\remediation\BackupManager.ps1')
+            . (Join-Path $PSScriptRoot '..\src\remediation\RemediationCatalog.ps1')
+            . (Join-Path $PSScriptRoot '..\src\remediation\FixRunner.ps1')
+        }
+
+        It 'Test-SafeSettingsUri allows valid Windows Settings URIs and blocks unsafe strings' {
+            Test-SafeSettingsUri -Uri 'ms-settings:signinoptions' | Should -Be $true
+            Test-SafeSettingsUri -Uri 'ms-settings:deviceencryption' | Should -Be $true
+            Test-SafeSettingsUri -Uri 'windowsdefender://threatsettings' | Should -Be $true
+
+            Test-SafeSettingsUri -Uri 'cmd.exe' | Should -Be $false
+            Test-SafeSettingsUri -Uri 'powershell.exe' | Should -Be $false
+            Test-SafeSettingsUri -Uri 'https://evil.example/payload' | Should -Be $false
+            Test-SafeSettingsUri -Uri 'file:///C:/Windows/calc.exe' | Should -Be $false
+            Test-SafeSettingsUri -Uri '' | Should -Be $false
+            Test-SafeSettingsUri -Uri $null | Should -Be $false
+        }
+
+        It 'ConvertTo-AutoFixItems filters failed items, sorts AutoSafe before Manual deep-links, and localizes labels' {
+            $vistaSample = @(
+                [PSCustomObject]@{ ControlId = 'HOME-UAC-001'; Title = 'UAC';         Category = 'UAC';      SeverityLabel = 'Critical'; SeverityRank = 1; Status = 'superato' }
+                [PSCustomObject]@{ ControlId = 'HOME-ACC-003'; Title = 'No Password'; Category = 'Accounts'; SeverityLabel = 'High';     SeverityRank = 2; Status = 'fallito'  }
+                [PSCustomObject]@{ ControlId = 'HOME-PRV-001'; Title = 'Telemetry';   Category = 'Privacy';  SeverityLabel = 'Medium';   SeverityRank = 3; Status = 'fallito'  }
+                [PSCustomObject]@{ ControlId = 'HOME-SEC-001'; Title = 'Secure Boot'; Category = 'Security'; SeverityLabel = 'High';     SeverityRank = 2; Status = 'fallito'  }
+            )
+
+            $itemsEn = @(ConvertTo-AutoFixItems -ElementiVista $vistaSample -Lingua 'EN')
+            $itemsEn.Count | Should -Be 3
+
+            # AutoSafe comes first, then Manual with SettingsUri, then Manual without URI
+            $itemsEn[0].ControlId             | Should -Be 'HOME-PRV-001'
+            $itemsEn[0].CanAutoFix            | Should -Be $true
+            $itemsEn[0].FixModeLabel          | Should -Be 'Safe Auto-Fix'
+            $itemsEn[0].SettingsBtnVisibility | Should -Be 'Collapsed'
+
+            $itemsEn[1].ControlId             | Should -Be 'HOME-ACC-003'
+            $itemsEn[1].CanAutoFix            | Should -Be $false
+            $itemsEn[1].SettingsUri           | Should -Be 'ms-settings:signinoptions'
+            $itemsEn[1].SettingsBtnVisibility | Should -Be 'Visible'
+
+            $itemsEn[2].ControlId             | Should -Be 'HOME-SEC-001'
+            $itemsEn[2].SettingsBtnVisibility | Should -Be 'Collapsed'
+
+            $itemsDe = @(ConvertTo-AutoFixItems -ElementiVista $vistaSample -Lingua 'DE')
+            $itemsDe[0].FixModeLabel | Should -Be 'Sicherer Auto-Fix'
+        }
+
+        It 'Format-RemediationScriptExport emits #Requires -RunAsAdministrator only when admin fixes are included' {
+            $userOnlyPreview = @(Get-RemediationPreview -ControlIds @('HOME-SYS-001'))
+            $scriptUserOnly  = Format-RemediationScriptExport -PreviewItems $userOnlyPreview -Lingua 'EN'
+            $scriptUserOnly | Should -Not -Match '#Requires -RunAsAdministrator'
+            $scriptUserOnly | Should -Match 'HideFileExt'
+
+            $adminPreview = @(Get-RemediationPreview -ControlIds @('HOME-NET-003', 'HOME-ACC-003'))
+            $scriptAdmin  = Format-RemediationScriptExport -PreviewItems $adminPreview -Lingua 'EN'
+            $scriptAdmin | Should -Match '#Requires -RunAsAdministrator'
+            $scriptAdmin | Should -Match 'EnableMulticast'
+            $scriptAdmin | Should -Match 'ms-settings:signinoptions'
+        }
+
+        It 'Update-RisultatiDopoFix merges verified post-fix and rollback outcomes without mutating unrelated items' {
+            $orig = @(
+                [PSCustomObject]@{ control_id = 'HOME-NET-003'; status = 'fallito';  observed = 'EnableMulticast=1'; expected = '0'; evidence = $null; error = $null; duration_ms = 5 }
+                [PSCustomObject]@{ control_id = 'HOME-SYS-001'; status = 'superato'; observed = 'HideFileExt=0';     expected = '0'; evidence = $null; error = $null; duration_ms = 4 }
+            )
+            $fixResults = @(
+                [PSCustomObject]@{ ControlId = 'HOME-NET-003'; PostCheckStatus = 'superato'; PostCheckObserved = 'LLMNR disabled'; Error = $null }
+            )
+
+            $updated = @(Update-RisultatiDopoFix -RisultatiGrezzi $orig -FixResults $fixResults)
+            $updated.Count | Should -Be 2
+            $updated[0].status   | Should -Be 'superato'
+            $updated[0].observed | Should -Be 'LLMNR disabled'
+            $updated[1].status   | Should -Be 'superato'
+            $updated[1].observed | Should -Be 'HideFileExt=0'
         }
     }
 }
@@ -403,12 +485,46 @@ Describe 'MainWindow.xaml — Coerenza strutturale XAML' {
             'BtnEsportaJson',
             'BtnEsportaHtml',
             'TxtRiepilogoFooter',
-            'TxtDisclaimerPermanente'
+            'TxtDisclaimerPermanente',
+            'BtnNavAutoFix',
+            'GridPaginaAutoFix',
+            'PanelAzioneRapidaDettaglio',
+            'BtnRiparaSingolo',
+            'BtnApriImpostazioni',
+            'TxtEsitoFixDettaglio',
+            'LblAutoFixPresetTitle',
+            'BtnSelezionaFixSicuri',
+            'BtnDeselezionaTuttiFix',
+            'TxtConteggioSelezionati',
+            'LblAutoFixSicurezzaTitle',
+            'ChkCreaRestorePoint',
+            'TxtChkCreaRestorePoint',
+            'TxtInfoBackupPath',
+            'BtnAnteprimaComandi',
+            'BtnEsportaScriptFix',
+            'BtnApplicaFixSelezionati',
+            'LblAutoFixRollbackTitle',
+            'TxtUltimoBackup',
+            'BtnRollbackUltimo',
+            'LblAutoFixListaTitle',
+            'BtnTornaDaAutoFix',
+            'ListAutoFixControlli',
+            'PanelAutoFixVuoto',
+            'TxtAutoFixVuoto',
+            'LblAutoFixLogTitle',
+            'TxtStatoAutoFix',
+            'TxtLogAutoFix'
         )
 
         $contenutoRaw = Get-Content -LiteralPath $percorsoXaml -Raw -Encoding UTF8
         foreach ($nome in $nomiRichiesti) {
             $contenutoRaw | Should -Match "x:Name=`"$nome`""
         }
+
+        $bodyRaw = ($contenutoRaw -split '</Window\.Resources>', 2)[1]
+        $xNames = @([regex]::Matches($bodyRaw, 'x:Name="([^"]+)"') | ForEach-Object { $_.Groups[1].Value })
+        $uniqueSet = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::Ordinal)
+        foreach ($xn in $xNames) { [void]$uniqueSet.Add($xn) }
+        $xNames.Count | Should -Be $uniqueSet.Count
     }
 }

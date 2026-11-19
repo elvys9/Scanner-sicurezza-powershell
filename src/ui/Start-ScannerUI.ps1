@@ -6,8 +6,8 @@
     Loads the XAML layout from src/ui/MainWindow.xaml via XamlReader,
     binds controls via FindName, manages Dark/Light themes, trilingual
     localization (IT / EN / DE), filters, details panel, JSON/HTML export,
-    and asynchronous background Runspace execution for scanning and Ollama AI.
-    Strictly READ-ONLY and reuses the core engine in src/core.
+    opt-in WinUtil-style remediation / rollback, and asynchronous Runspace execution.
+    The audit phase operates strictly in read-only mode via src/core.
 #>
 
 Set-StrictMode -Version 2
@@ -519,9 +519,10 @@ function Start-ScannerUI {
 
     Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
-    $percorsoUi     = if ($PercorsoProgetto) { Join-Path $PercorsoProgetto 'src\ui' } else { '' }
-    $percorsoCore   = if ($PercorsoProgetto) { Join-Path $PercorsoProgetto 'src\core' } else { '' }
-    $percorsoChecks = if ($percorsoCore) { Join-Path $percorsoCore 'Checks' } else { '' }
+    $percorsoUi          = if ($PercorsoProgetto) { Join-Path $PercorsoProgetto 'src\ui' } else { '' }
+    $percorsoCore        = if ($PercorsoProgetto) { Join-Path $PercorsoProgetto 'src\core' } else { '' }
+    $percorsoChecks      = if ($percorsoCore) { Join-Path $percorsoCore 'Checks' } else { '' }
+    $percorsoRemediation = if ($PercorsoProgetto) { Join-Path $PercorsoProgetto 'src\remediation' } else { '' }
 
     if ([string]::IsNullOrWhiteSpace($ContenutoXaml)) {
         $percorsoXaml = Join-Path $percorsoUi 'MainWindow.xaml'
@@ -599,13 +600,41 @@ function Start-ScannerUI {
         TxtComandoRimedio      = $finestra.FindName('TxtComandoRimedio')
         BtnCopiaComando        = $finestra.FindName('BtnCopiaComando')
         TxtFeedbackCopia       = $finestra.FindName('TxtFeedbackCopia')
+        PanelAzioneRapidaDettaglio = $finestra.FindName('PanelAzioneRapidaDettaglio')
+        BtnRiparaSingolo       = $finestra.FindName('BtnRiparaSingolo')
+        BtnApriImpostazioni    = $finestra.FindName('BtnApriImpostazioni')
+        TxtEsitoFixDettaglio   = $finestra.FindName('TxtEsitoFixDettaglio')
         LblNoteRischi          = $finestra.FindName('LblNoteRischi')
         TxtDettaglioRischi     = $finestra.FindName('TxtDettaglioRischi')
         BtnNavScansione        = $finestra.FindName('BtnNavScansione')
         BtnNavIA               = $finestra.FindName('BtnNavIA')
+        BtnNavAutoFix          = $finestra.FindName('BtnNavAutoFix')
         BtnTornaScansione      = $finestra.FindName('BtnTornaScansione')
         GridPaginaScansione    = $finestra.FindName('GridPaginaScansione')
         GridPaginaIA           = $finestra.FindName('GridPaginaIA')
+        GridPaginaAutoFix      = $finestra.FindName('GridPaginaAutoFix')
+        LblAutoFixPresetTitle  = $finestra.FindName('LblAutoFixPresetTitle')
+        BtnSelezionaFixSicuri  = $finestra.FindName('BtnSelezionaFixSicuri')
+        BtnDeselezionaTuttiFix = $finestra.FindName('BtnDeselezionaTuttiFix')
+        TxtConteggioSelezionati = $finestra.FindName('TxtConteggioSelezionati')
+        LblAutoFixSicurezzaTitle = $finestra.FindName('LblAutoFixSicurezzaTitle')
+        ChkCreaRestorePoint    = $finestra.FindName('ChkCreaRestorePoint')
+        TxtChkCreaRestorePoint = $finestra.FindName('TxtChkCreaRestorePoint')
+        TxtInfoBackupPath      = $finestra.FindName('TxtInfoBackupPath')
+        BtnAnteprimaComandi    = $finestra.FindName('BtnAnteprimaComandi')
+        BtnEsportaScriptFix    = $finestra.FindName('BtnEsportaScriptFix')
+        BtnApplicaFixSelezionati = $finestra.FindName('BtnApplicaFixSelezionati')
+        LblAutoFixRollbackTitle = $finestra.FindName('LblAutoFixRollbackTitle')
+        TxtUltimoBackup        = $finestra.FindName('TxtUltimoBackup')
+        BtnRollbackUltimo      = $finestra.FindName('BtnRollbackUltimo')
+        LblAutoFixListaTitle   = $finestra.FindName('LblAutoFixListaTitle')
+        BtnTornaDaAutoFix      = $finestra.FindName('BtnTornaDaAutoFix')
+        ListAutoFixControlli   = $finestra.FindName('ListAutoFixControlli')
+        PanelAutoFixVuoto      = $finestra.FindName('PanelAutoFixVuoto')
+        TxtAutoFixVuoto        = $finestra.FindName('TxtAutoFixVuoto')
+        LblAutoFixLogTitle     = $finestra.FindName('LblAutoFixLogTitle')
+        TxtStatoAutoFix        = $finestra.FindName('TxtStatoAutoFix')
+        TxtLogAutoFix          = $finestra.FindName('TxtLogAutoFix')
         LblMotoreIaTitle       = $finestra.FindName('LblMotoreIaTitle')
         LblIndirizzoOllama     = $finestra.FindName('LblIndirizzoOllama')
         TxtEndpointOllama      = $finestra.FindName('TxtEndpointOllama')
@@ -647,6 +676,24 @@ function Start-ScannerUI {
         SyncRunspace        = $null
         PsInstance          = $null
         Runspace            = $null
+        ElementiAutoFix     = @()
+        UltimoBackupPath    = $null
+        FixInCorso          = $false
+        EsitiFixPerId       = @{}
+        UriImpostazioniCorr = $null
+    }
+
+    if ($null -ne (Get-Command -Name 'Get-DefaultBackupDirectory' -ErrorAction SilentlyContinue)) {
+        try {
+            $dirBackupsInit = Get-DefaultBackupDirectory
+            if ([System.IO.Directory]::Exists($dirBackupsInit)) {
+                $ultimoFileBackup = Get-ChildItem -LiteralPath $dirBackupsInit -Filter 'rollback_*.json' -File -ErrorAction SilentlyContinue | Sort-Object -Property LastWriteTime -Descending | Select-Object -First 1
+                if ($null -ne $ultimoFileBackup) {
+                    $statoUI.UltimoBackupPath = $ultimoFileBackup.FullName
+                }
+            }
+        }
+        catch { }
     }
 
     Update-TemaFinestra -Finestra $finestra -Tema $statoUI.TemaCorrente
@@ -683,7 +730,7 @@ function Start-ScannerUI {
             }
         }
 
-        # Evidenzia la scheda pagina attiva (Tab 1 vs Tab 2)
+        # Evidenzia la scheda pagina attiva (Tab 1 vs Tab 2 vs Tab 3)
         if ($statoUI.PaginaCorrente -eq 'IA') {
             $ctrl.BtnNavIA.Background        = $convBrush.ConvertFromString('#7C3AED')
             $ctrl.BtnNavIA.Foreground        = $convBrush.ConvertFromString('#FFFFFF')
@@ -691,6 +738,20 @@ function Start-ScannerUI {
             $ctrl.BtnNavScansione.Background = $convBrush.ConvertFromString('Transparent')
             $ctrl.BtnNavScansione.Foreground = $finestra.Resources['TextSecondary']
             $ctrl.BtnNavScansione.FontWeight = [System.Windows.FontWeights]::SemiBold
+            $ctrl.BtnNavAutoFix.Background   = $convBrush.ConvertFromString('Transparent')
+            $ctrl.BtnNavAutoFix.Foreground   = $finestra.Resources['TextSecondary']
+            $ctrl.BtnNavAutoFix.FontWeight   = [System.Windows.FontWeights]::SemiBold
+        }
+        elseif ($statoUI.PaginaCorrente -eq 'AutoFix') {
+            $ctrl.BtnNavAutoFix.Background   = $convBrush.ConvertFromString('#059669')
+            $ctrl.BtnNavAutoFix.Foreground   = $convBrush.ConvertFromString('#FFFFFF')
+            $ctrl.BtnNavAutoFix.FontWeight   = [System.Windows.FontWeights]::Bold
+            $ctrl.BtnNavScansione.Background = $convBrush.ConvertFromString('Transparent')
+            $ctrl.BtnNavScansione.Foreground = $finestra.Resources['TextSecondary']
+            $ctrl.BtnNavScansione.FontWeight = [System.Windows.FontWeights]::SemiBold
+            $ctrl.BtnNavIA.Background        = $convBrush.ConvertFromString('Transparent')
+            $ctrl.BtnNavIA.Foreground        = $finestra.Resources['TextSecondary']
+            $ctrl.BtnNavIA.FontWeight        = [System.Windows.FontWeights]::SemiBold
         }
         else {
             $ctrl.BtnNavScansione.Background = $convBrush.ConvertFromString('#2563EB')
@@ -699,6 +760,9 @@ function Start-ScannerUI {
             $ctrl.BtnNavIA.Background        = $convBrush.ConvertFromString('Transparent')
             $ctrl.BtnNavIA.Foreground        = $finestra.Resources['TextSecondary']
             $ctrl.BtnNavIA.FontWeight        = [System.Windows.FontWeights]::SemiBold
+            $ctrl.BtnNavAutoFix.Background   = $convBrush.ConvertFromString('Transparent')
+            $ctrl.BtnNavAutoFix.Foreground   = $finestra.Resources['TextSecondary']
+            $ctrl.BtnNavAutoFix.FontWeight   = [System.Windows.FontWeights]::SemiBold
         }
     }
 
@@ -827,6 +891,129 @@ function Start-ScannerUI {
             $ctrl.TxtComandoRimedio.Text = ''
             $ctrl.PanelComandoRimedio.Visibility = [System.Windows.Visibility]::Collapsed
         }
+
+        # Azioni rapide contestuali nel pannello dettagli (Auto-Fix 1-Click / Impostazioni Windows)
+        $mostraRipara = $false
+        $mostraUri    = $false
+        $mostraEsito  = $false
+        $statoUI.UriImpostazioniCorr = $null
+
+        if ($dettaglio.Selezionato) {
+            $defDet = $null
+            if ($null -ne (Get-Command -Name 'Get-RemediationDefinition' -ErrorAction SilentlyContinue)) {
+                $defDet = Get-RemediationDefinition -ControlId $dettaglio.ControlId
+            }
+
+            if ($null -ne $defDet -and $dettaglio.Status -eq 'fallito' -and $defDet.FixMode -eq 'AutoSafe' -and $null -ne $defDet.Apply) {
+                $mostraRipara = $true
+            }
+
+            if ($null -ne $defDet -and (Test-SafeSettingsUri -Uri ([string]$defDet.SettingsUri))) {
+                $statoUI.UriImpostazioniCorr = ([string]$defDet.SettingsUri).Trim()
+                $mostraUri = $true
+            }
+
+            if ($statoUI.EsitiFixPerId.ContainsKey($dettaglio.ControlId)) {
+                $esitoRecente = $statoUI.EsitiFixPerId[$dettaglio.ControlId]
+                $msgRecente = Get-ValoreProprietaSicuro -Oggetto $esitoRecente -NomeProprieta 'Message' -ValorePredefinito ''
+                if (-not [string]::IsNullOrWhiteSpace([string]$msgRecente)) {
+                    $ctrl.TxtEsitoFixDettaglio.Text = "[$($esitoRecente.Status)] $msgRecente"
+                    $mostraEsito = $true
+                }
+            }
+        }
+
+        $ctrl.BtnRiparaSingolo.Visibility        = if ($mostraRipara) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+        $ctrl.BtnRiparaSingolo.IsEnabled         = (-not $statoUI.FixInCorso) -and (-not $statoUI.ScansioneInCorso)
+        $ctrl.BtnApriImpostazioni.Visibility     = if ($mostraUri) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+        $ctrl.TxtEsitoFixDettaglio.Visibility    = if ($mostraEsito) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+        $ctrl.PanelAzioneRapidaDettaglio.Visibility = if ($mostraRipara -or $mostraUri -or $mostraEsito) { [System.Windows.Visibility]::Visible } else { [System.Windows.Visibility]::Collapsed }
+    }
+
+    $aggiornaConteggioAutoFix = {
+        $langAuto = $statoUI.LinguaCorrente
+        $itemsAuto = @($statoUI.ElementiAutoFix)
+        $selAuto   = @($itemsAuto | Where-Object { $_.CanAutoFix -and $_.IsSelected })
+        $nSel      = $selAuto.Count
+        $nDispon   = @($itemsAuto | Where-Object { $_.CanAutoFix }).Count
+
+        $ctrl.TxtConteggioSelezionati.Text = switch ($langAuto) {
+            'EN' { "Selected: $nSel / $nDispon safe auto-fixes" }
+            'DE' { "Ausgewaehlt: $nSel / $nDispon sichere Auto-Fixes" }
+            default { "Selezionati: $nSel / $nDispon fix automatici sicuri" }
+        }
+
+        $ctrl.BtnApplicaFixSelezionati.Content = switch ($langAuto) {
+            'EN' { "Apply Selected Fixes ($nSel)" }
+            'DE' { "Ausgewaehlte Korrekturen anwenden ($nSel)" }
+            default { "Applica correzioni selezionate ($nSel)" }
+        }
+
+        $occupato = ($statoUI.FixInCorso -or $statoUI.ScansioneInCorso)
+        $ctrl.BtnApplicaFixSelezionati.IsEnabled = (-not $occupato) -and ($nSel -gt 0)
+        $ctrl.BtnAnteprimaComandi.IsEnabled      = (-not $occupato) -and ($nSel -gt 0 -or $nDispon -gt 0)
+        $ctrl.BtnEsportaScriptFix.IsEnabled      = (-not $occupato) -and ($nSel -gt 0 -or $nDispon -gt 0)
+        $ctrl.BtnSelezionaFixSicuri.IsEnabled    = (-not $occupato) -and ($nDispon -gt 0)
+        $ctrl.BtnDeselezionaTuttiFix.IsEnabled   = (-not $occupato) -and ($itemsAuto.Count -gt 0)
+        $ctrl.BtnRollbackUltimo.IsEnabled        = (-not $occupato) -and (-not [string]::IsNullOrWhiteSpace($statoUI.UltimoBackupPath)) -and ([System.IO.File]::Exists($statoUI.UltimoBackupPath))
+
+        if (-not [string]::IsNullOrWhiteSpace($statoUI.UltimoBackupPath) -and ([System.IO.File]::Exists($statoUI.UltimoBackupPath))) {
+            $nomeFileBkp = Split-Path -Leaf $statoUI.UltimoBackupPath
+            $ctrl.TxtUltimoBackup.Text = switch ($langAuto) {
+                'EN' { "Latest backup: $nomeFileBkp" }
+                'DE' { "Letzte Sicherung: $nomeFileBkp" }
+                default { "Ultimo backup: $nomeFileBkp" }
+            }
+        }
+        else {
+            $ctrl.TxtUltimoBackup.Text = switch ($langAuto) {
+                'EN' { "No remediation backup recorded yet." }
+                'DE' { "Noch keine Sicherung vorhanden." }
+                default { "Nessun backup di sessione disponibile." }
+            }
+        }
+    }
+
+    $aggiornaListaAutoFix = {
+        $langAuto = $statoUI.LinguaCorrente
+        $precedentiSelezionati = @{}
+        foreach ($oldItem in @($statoUI.ElementiAutoFix)) {
+            if ($null -ne $oldItem -and $oldItem.IsSelected) {
+                $precedentiSelezionati[$oldItem.ControlId] = $true
+            }
+        }
+
+        $nuoviAutoFix = @(ConvertTo-AutoFixItems -ElementiVista $statoUI.ElementiVista -Lingua $langAuto -EsitiFixPerId $statoUI.EsitiFixPerId)
+        foreach ($nuovo in $nuoviAutoFix) {
+            if ($nuovo.CanAutoFix -and $precedentiSelezionati.ContainsKey($nuovo.ControlId)) {
+                $nuovo.IsSelected = $true
+            }
+        }
+
+        $statoUI.ElementiAutoFix = $nuoviAutoFix
+        $ctrl.ListAutoFixControlli.ItemsSource = $nuoviAutoFix
+
+        if ($statoUI.ElementiVista.Count -eq 0) {
+            $ctrl.TxtAutoFixVuoto.Text = switch ($langAuto) {
+                'EN' { "Run the scan on Tab 1 first to populate failed controls available for Auto-Fix." }
+                'DE' { "Fuehren Sie zuerst den Scan in Tab 1 aus, um fehlgeschlagene Pruefungen anzuzeigen." }
+                default { "Esegui prima la scansione nella Scheda 1 per popolare la lista dei controlli falliti riparabili." }
+            }
+            $ctrl.PanelAutoFixVuoto.Visibility = [System.Windows.Visibility]::Visible
+        }
+        elseif ($nuoviAutoFix.Count -eq 0) {
+            $ctrl.TxtAutoFixVuoto.Text = switch ($langAuto) {
+                'EN' { "Great! No failed controls remain to remediate." }
+                'DE' { "Ausgezeichnet! Es sind keine fehlgeschlagenen Pruefungen mehr offen." }
+                default { "Ottimo! Non risultano controlli falliti da riparare." }
+            }
+            $ctrl.PanelAutoFixVuoto.Visibility = [System.Windows.Visibility]::Visible
+        }
+        else {
+            $ctrl.PanelAutoFixVuoto.Visibility = [System.Windows.Visibility]::Collapsed
+        }
+
+        & $aggiornaConteggioAutoFix
     }
 
     $aggiornaConteggiERiepilogo = {
@@ -983,6 +1170,22 @@ function Start-ScannerUI {
             $ctrl.BtnEsportaHtml.Content           = "Export HTML"
             $ctrl.ChkSalvaLogTecnico.Content       = "Include technical error log next to export"
             $ctrl.TxtDisclaimerPermanente.Text     = "Permanent Notice: This tool audits security configurations strictly in read-only mode. A compliant audit does not guarantee the absence of system compromise."
+            $ctrl.BtnNavAutoFix.Content            = "3. Auto-Fix (WinUtil)"
+            $ctrl.BtnRiparaSingolo.Content         = "Apply Auto-Fix (1-Click)"
+            $ctrl.BtnApriImpostazioni.Content      = "Open Windows Settings"
+            $ctrl.LblAutoFixPresetTitle.Text       = "QUICK SELECTION (WINUTIL STYLE)"
+            $ctrl.BtnSelezionaFixSicuri.Content    = "Select Safe Fixes (AutoSafe)"
+            $ctrl.BtnDeselezionaTuttiFix.Content   = "Deselect All"
+            $ctrl.LblAutoFixSicurezzaTitle.Text    = "SAFETY, PREVIEW & APPLY"
+            $ctrl.TxtChkCreaRestorePoint.Text      = "Create a Windows System Restore point before applying changes"
+            $ctrl.TxtInfoBackupPath.Text           = "Automatic JSON state backup before every change."
+            $ctrl.BtnAnteprimaComandi.Content      = "Preview Selected Commands"
+            $ctrl.BtnEsportaScriptFix.Content      = "Export as .ps1 Script"
+            $ctrl.LblAutoFixRollbackTitle.Text     = "ROLLBACK (1-CLICK RESTORE)"
+            $ctrl.BtnRollbackUltimo.Content        = "Restore Last Changes (Rollback)"
+            $ctrl.LblAutoFixListaTitle.Text        = "FAILED CONTROLS - DETERMINISTIC AUTO-FIX & MANUAL SETTINGS"
+            $ctrl.BtnTornaDaAutoFix.Content        = "Back to Controls Table"
+            $ctrl.LblAutoFixLogTitle.Text          = "COMMAND PREVIEW & REMEDIATION EXECUTION LOG"
         }
         elseif ($lang -eq 'DE') {
             $finestra.Title                        = "Windows 11 Sicherheitsscanner (Schreibgeschuetzt)"
@@ -1034,6 +1237,22 @@ function Start-ScannerUI {
             $ctrl.BtnEsportaHtml.Content           = "HTML exportieren"
             $ctrl.ChkSalvaLogTecnico.Content       = "Technisches Fehlerprotokoll neben dem Export speichern"
             $ctrl.TxtDisclaimerPermanente.Text     = "Dauerhafter Hinweis: Dieses Tool prueft Sicherheitskonfigurationen ausschliesslich schreibgeschuetzt. Ein konformes Audit garantiert nicht die Abwesenheit einer Kompromittierung."
+            $ctrl.BtnNavAutoFix.Content            = "3. Auto-Fix (WinUtil)"
+            $ctrl.BtnRiparaSingolo.Content         = "Auto-Fix anwenden (1-Klick)"
+            $ctrl.BtnApriImpostazioni.Content      = "Windows-Einstellungen oeffnen"
+            $ctrl.LblAutoFixPresetTitle.Text       = "SCHNELLAUSWAHL (WINUTIL-STIL)"
+            $ctrl.BtnSelezionaFixSicuri.Content    = "Sichere Fixes waehlen (AutoSafe)"
+            $ctrl.BtnDeselezionaTuttiFix.Content   = "Alle abwaehlen"
+            $ctrl.LblAutoFixSicurezzaTitle.Text    = "SICHERHEIT, VORSCHAU & AUSFUEHRUNG"
+            $ctrl.TxtChkCreaRestorePoint.Text      = "Vor den Aenderungen einen Windows-Wiederherstellungspunkt erstellen"
+            $ctrl.TxtInfoBackupPath.Text           = "Automatische JSON-Sicherung vor jeder Aenderung."
+            $ctrl.BtnAnteprimaComandi.Content      = "Ausgewaehlte Befehle anzeigen"
+            $ctrl.BtnEsportaScriptFix.Content      = "Als .ps1-Skript exportieren"
+            $ctrl.LblAutoFixRollbackTitle.Text     = "WIEDERHERSTELLUNG (1-KLICK-ROLLBACK)"
+            $ctrl.BtnRollbackUltimo.Content        = "Letzte Aenderungen rueckgaengig machen"
+            $ctrl.LblAutoFixListaTitle.Text        = "FEHLGESCHLAGENE PRUEFUNGEN - AUTO-FIX & MANUELLE EINSTELLUNGEN"
+            $ctrl.BtnTornaDaAutoFix.Content        = "Zurueck zur Tabelle"
+            $ctrl.LblAutoFixLogTitle.Text          = "BEFEHLSVORSCHAU & REMEDIATION-PROTOKOLL"
         }
         else {
             $finestra.Title                        = "Scanner Sicurezza Windows 11 (Sola Lettura)"
@@ -1085,6 +1304,22 @@ function Start-ScannerUI {
             $ctrl.BtnEsportaHtml.Content           = "Esporta HTML"
             $ctrl.ChkSalvaLogTecnico.Content       = "Includi file di log tecnico accanto all'export"
             $ctrl.TxtDisclaimerPermanente.Text     = "Avviso permanente: questo strumento verifica solo alcune configurazioni di sicurezza in sola lettura. Un audit conforme non dimostra l'assenza di compromissioni sul sistema."
+            $ctrl.BtnNavAutoFix.Content            = "3. Auto-Fix (WinUtil)"
+            $ctrl.BtnRiparaSingolo.Content         = "Applica Fix Automatico (1-Click)"
+            $ctrl.BtnApriImpostazioni.Content      = "Apri in Impostazioni Windows"
+            $ctrl.LblAutoFixPresetTitle.Text       = "SELEZIONE RAPIDA (STILE WINUTIL)"
+            $ctrl.BtnSelezionaFixSicuri.Content    = "Seleziona Fix Sicuri (AutoSafe)"
+            $ctrl.BtnDeselezionaTuttiFix.Content   = "Deseleziona tutti"
+            $ctrl.LblAutoFixSicurezzaTitle.Text    = "SICUREZZA, ANTEPRIMA & ESECUZIONE"
+            $ctrl.TxtChkCreaRestorePoint.Text      = "Crea un Punto di Ripristino Windows prima delle modifiche"
+            $ctrl.TxtInfoBackupPath.Text           = "Backup JSON automatico attivo prima di ogni modifica."
+            $ctrl.BtnAnteprimaComandi.Content      = "Anteprima comandi selezionati"
+            $ctrl.BtnEsportaScriptFix.Content      = "Esporta come script .ps1"
+            $ctrl.LblAutoFixRollbackTitle.Text     = "RIPRISTINO (ROLLBACK 1-CLICK)"
+            $ctrl.BtnRollbackUltimo.Content        = "Ripristina ultime modifiche (Rollback)"
+            $ctrl.LblAutoFixListaTitle.Text        = "CONTROLLI FALLITI - AUTO-FIX DETERMINISTICI & IMPOSTAZIONI MANUALI"
+            $ctrl.BtnTornaDaAutoFix.Content        = "Torna alla Tabella Controlli"
+            $ctrl.LblAutoFixLogTitle.Text          = "ANTEPRIMA COMANDI & LOG ESECUZIONE REMEDIATION"
         }
 
         & $aggiornaFiltriComboLingua
@@ -1164,6 +1399,15 @@ function Start-ScannerUI {
 
         & $aggiornaConteggiERiepilogo
         & $aggiornaPannelloDettaglio
+        & $aggiornaListaAutoFix
+
+        if (-not $statoUI.FixInCorso) {
+            $ctrl.TxtStatoAutoFix.Text = switch ($lang) {
+                'EN' { "Status: Ready" }
+                'DE' { "Status: Bereit" }
+                default { "Stato: Pronto" }
+            }
+        }
     }
 
     # --- Eventi Selettore Lingua Esplicito [IT | EN | DE] ---
@@ -1279,7 +1523,7 @@ function Start-ScannerUI {
         }
     })
 
-    # --- Navigazione tra Pagina 1 (Scansione) e Pagina 2 (Resoconto IA a tutto schermo) ---
+    # --- Navigazione tra Pagina 1 (Scansione), Pagina 2 (IA) e Pagina 3 (Auto-Fix) ---
     $mostraPagina = {
         param([string]$NomePagina)
         $statoUI.PaginaCorrente = $NomePagina
@@ -1287,6 +1531,7 @@ function Start-ScannerUI {
 
         if ($NomePagina -eq 'IA') {
             $ctrl.GridPaginaScansione.Visibility = [System.Windows.Visibility]::Collapsed
+            $ctrl.GridPaginaAutoFix.Visibility   = [System.Windows.Visibility]::Collapsed
             $ctrl.GridPaginaIA.Visibility        = [System.Windows.Visibility]::Visible
             # Aggiorna la lista delle criticita' nella barra laterale della Pagina IA
             $falliti = @($statoUI.ElementiVista | Where-Object { $_.Status -eq 'fallito' })
@@ -1298,15 +1543,569 @@ function Start-ScannerUI {
                 $ctrl.ListFallitiIA.SelectedIndex = 0
             }
         }
+        elseif ($NomePagina -eq 'AutoFix') {
+            $ctrl.GridPaginaScansione.Visibility = [System.Windows.Visibility]::Collapsed
+            $ctrl.GridPaginaIA.Visibility        = [System.Windows.Visibility]::Collapsed
+            $ctrl.GridPaginaAutoFix.Visibility   = [System.Windows.Visibility]::Visible
+            & $aggiornaListaAutoFix
+        }
         else {
             $ctrl.GridPaginaIA.Visibility        = [System.Windows.Visibility]::Collapsed
+            $ctrl.GridPaginaAutoFix.Visibility   = [System.Windows.Visibility]::Collapsed
             $ctrl.GridPaginaScansione.Visibility = [System.Windows.Visibility]::Visible
         }
     }
 
     $ctrl.BtnNavScansione.Add_Click({ & $mostraPagina 'Scansione' })
     $ctrl.BtnTornaScansione.Add_Click({ & $mostraPagina 'Scansione' })
+    $ctrl.BtnTornaDaAutoFix.Add_Click({ & $mostraPagina 'Scansione' })
     $ctrl.BtnNavIA.Add_Click({ & $mostraPagina 'IA' })
+    $ctrl.BtnNavAutoFix.Add_Click({ & $mostraPagina 'AutoFix' })
+
+    $apriSettingsUriSicuro = {
+        param([string]$Uri)
+        if (-not (Test-SafeSettingsUri -Uri $Uri)) {
+            return
+        }
+        try {
+            Start-Process -FilePath $Uri.Trim()
+        }
+        catch {
+            [System.Windows.MessageBox]::Show($_.Exception.Message, $finestra.Title, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+        }
+    }
+
+    $ctrl.BtnApriImpostazioni.Add_Click({
+        & $apriSettingsUriSicuro $statoUI.UriImpostazioniCorr
+    })
+
+    $ctrl.ListAutoFixControlli.AddHandler(
+        [System.Windows.Controls.Primitives.ToggleButton]::CheckedEvent,
+        [System.Windows.RoutedEventHandler]{ & $aggiornaConteggioAutoFix }
+    )
+    $ctrl.ListAutoFixControlli.AddHandler(
+        [System.Windows.Controls.Primitives.ToggleButton]::UncheckedEvent,
+        [System.Windows.RoutedEventHandler]{ & $aggiornaConteggioAutoFix }
+    )
+    $ctrl.ListAutoFixControlli.AddHandler(
+        [System.Windows.Controls.Primitives.ButtonBase]::ClickEvent,
+        [System.Windows.RoutedEventHandler]{
+            param($sender, $e)
+            $dep = $e.OriginalSource -as [System.Windows.DependencyObject]
+            while ($null -ne $dep) {
+                if ($dep -is [System.Windows.Controls.CheckBox] -or $dep -is [System.Windows.Controls.Primitives.ToggleButton]) {
+                    return
+                }
+                if ($dep -is [System.Windows.Controls.Button]) {
+                    $tagUri = [string]$dep.Tag
+                    if (Test-SafeSettingsUri -Uri $tagUri) {
+                        & $apriSettingsUriSicuro $tagUri
+                    }
+                    return
+                }
+                $dep = [System.Windows.Media.VisualTreeHelper]::GetParent($dep)
+            }
+        }
+    )
+
+    $ctrl.BtnSelezionaFixSicuri.Add_Click({
+        foreach ($item in @($statoUI.ElementiAutoFix)) {
+            if ($null -ne $item -and $item.CanAutoFix) {
+                $item.IsSelected = $true
+            }
+        }
+        $ctrl.ListAutoFixControlli.Items.Refresh()
+        & $aggiornaConteggioAutoFix
+    })
+
+    $ctrl.BtnDeselezionaTuttiFix.Add_Click({
+        foreach ($item in @($statoUI.ElementiAutoFix)) {
+            if ($null -ne $item) {
+                $item.IsSelected = $false
+            }
+        }
+        $ctrl.ListAutoFixControlli.Items.Refresh()
+        & $aggiornaConteggioAutoFix
+    })
+
+    $getAutoFixTargetIds = {
+        $sel = @($statoUI.ElementiAutoFix | Where-Object { $_.CanAutoFix -and $_.IsSelected } | ForEach-Object { $_.ControlId })
+        if ($sel.Count -gt 0) {
+            return $sel
+        }
+        return @($statoUI.ElementiAutoFix | Where-Object { $_.CanAutoFix } | ForEach-Object { $_.ControlId })
+    }
+
+    $ctrl.BtnAnteprimaComandi.Add_Click({
+        if ($null -eq (Get-Command -Name 'Get-RemediationPreview' -ErrorAction SilentlyContinue)) {
+            return
+        }
+        $targetIds = & $getAutoFixTargetIds
+        if (@($targetIds).Count -eq 0) { return }
+        $previews = @(Get-RemediationPreview -ControlIds $targetIds)
+        $ctrl.TxtLogAutoFix.Text = Format-RemediationScriptExport -PreviewItems $previews -Lingua $statoUI.LinguaCorrente
+        $ctrl.TxtStatoAutoFix.Text = switch ($statoUI.LinguaCorrente) {
+            'EN' { "Preview generated for $(@($targetIds).Count) control(s)" }
+            'DE' { "Vorschau fuer $(@($targetIds).Count) Pruefung(en) erstellt" }
+            default { "Anteprima generata per $(@($targetIds).Count) controllo/i" }
+        }
+    })
+
+    $ctrl.BtnEsportaScriptFix.Add_Click({
+        if ($null -eq (Get-Command -Name 'Get-RemediationPreview' -ErrorAction SilentlyContinue)) {
+            return
+        }
+        $lang = $statoUI.LinguaCorrente
+        $targetIds = & $getAutoFixTargetIds
+        if (@($targetIds).Count -eq 0) { return }
+        $previews = @(Get-RemediationPreview -ControlIds $targetIds)
+        $scriptTxt = Format-RemediationScriptExport -PreviewItems $previews -Lingua $lang
+
+        $dialogo = New-Object Microsoft.Win32.SaveFileDialog
+        $dialogo.Title      = switch ($lang) { 'EN' { "Export PowerShell Remediation Script" } 'DE' { "PowerShell-Skript exportieren" } default { "Esporta script PowerShell di remediation" } }
+        $dialogo.Filter     = "PowerShell Script (*.ps1)|*.ps1"
+        $dialogo.FileName   = (Get-NomeFileExport -Estensione 'ps1')
+        $dialogo.DefaultExt = ".ps1"
+
+        if ($dialogo.ShowDialog($finestra) -eq $true) {
+            $utf8Bom = New-Object System.Text.UTF8Encoding($true)
+            [System.IO.File]::WriteAllText($dialogo.FileName, $scriptTxt, $utf8Bom)
+            $ctrl.TxtStatoAutoFix.Text = switch ($lang) {
+                'EN' { "Exported script: $(Split-Path -Leaf $dialogo.FileName)" }
+                'DE' { "Skript exportiert: $(Split-Path -Leaf $dialogo.FileName)" }
+                default { "Script esportato: $(Split-Path -Leaf $dialogo.FileName)" }
+            }
+        }
+    })
+
+    $avviaRemediationAsincrona = {
+        param([string[]]$IdsRichiesti)
+
+        if ($statoUI.ScansioneInCorso -or $statoUI.FixInCorso) { return }
+        if ($null -eq (Get-Command -Name 'Invoke-SecurityRemediation' -ErrorAction SilentlyContinue)) { return }
+
+        $lang = $statoUI.LinguaCorrente
+        $idsClean = @($IdsRichiesti | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+        if ($idsClean.Count -eq 0) { return }
+
+        $previews = @(Get-RemediationPreview -ControlIds $idsClean)
+        $richiedeAdminBatch = $false
+        foreach ($p in $previews) {
+            if ($p.RequiresAdmin -and $p.FixMode -eq 'AutoSafe') {
+                $richiedeAdminBatch = $true
+                break
+            }
+        }
+
+        if ($richiedeAdminBatch -and (-not $Ambiente.IsAdmin)) {
+            $msgAdm = switch ($lang) {
+                'EN' { "One or more selected fixes modify HKLM registry keys or Defender preferences and require Administrator privileges. Click 'Restart as Administrator' in the top warning banner first." }
+                'DE' { "Mindestens eine ausgewaehlte Korrektur benoetigt Administratorrechte. Klicken Sie zuerst oben auf 'Als Administrator neustarten'." }
+                default { "Uno o piu' fix selezionati modificano chiavi di sistema HKLM o preferenze di Defender e richiedono privilegi di Amministratore. Usa prima 'Riavvia come amministratore' nel banner in alto." }
+            }
+            [System.Windows.MessageBox]::Show($msgAdm, $finestra.Title, [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Warning) | Out-Null
+            return
+        }
+
+        $creaRp = ($ctrl.ChkCreaRestorePoint.IsChecked -eq $true)
+        $msgConf = switch ($lang) {
+            'EN' { "Apply $($idsClean.Count) remediation(s)?`r`nControls: $($idsClean -join ', ')`r`n`r`nA JSON rollback backup is saved automatically before modifying the system." }
+            'DE' { "$($idsClean.Count) Korrektur(en) anwenden?`r`nPruefungen: $($idsClean -join ', ')`r`n`r`nVor den Aenderungen wird automatisch eine JSON-Rollback-Sicherung erstellt." }
+            default { "Applicare $($idsClean.Count) correzione/i selezionate?`r`nControlli: $($idsClean -join ', ')`r`n`r`nVerrà salvato automaticamente un backup JSON per eventuale Rollback." }
+        }
+        $sceltaConf = [System.Windows.MessageBox]::Show($msgConf, $finestra.Title, [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
+        if ($sceltaConf -ne [System.Windows.MessageBoxResult]::Yes) {
+            return
+        }
+
+        $statoUI.FixInCorso = $true
+        & $aggiornaConteggioAutoFix
+        & $aggiornaPannelloDettaglio
+        $ctrl.BtnAvvia.IsEnabled = $false
+
+        $ctrl.TxtLogAutoFix.Text = switch ($lang) {
+            'EN' { "[Remediation started at $(Get-Date -Format 'HH:mm:ss')] Applying $($idsClean.Count) control(s)...`r`n" }
+            'DE' { "[Behebung gestartet um $(Get-Date -Format 'HH:mm:ss')] Wende $($idsClean.Count) Korrektur(en) an...`r`n" }
+            default { "[Remediation avviata alle $(Get-Date -Format 'HH:mm:ss')] Applicazione di $($idsClean.Count) controllo/i...`r`n" }
+        }
+        $ctrl.TxtStatoAutoFix.Text = switch ($lang) {
+            'EN' { "Status: Applying fixes (0/$($idsClean.Count))..." }
+            'DE' { "Status: Korrekturen werden angewendet (0/$($idsClean.Count))..." }
+            default { "Stato: Applicazione fix in corso (0/$($idsClean.Count))..." }
+        }
+
+        $cbProgressoFix = [Action[int, int, object]]{
+            param([int]$idx, [int]$tot, [object]$itemRes)
+            $ctrl.TxtStatoAutoFix.Text = switch ($statoUI.LinguaCorrente) {
+                'EN' { "Status: Applying & verifying ($idx/$tot)..." }
+                'DE' { "Status: Anwenden & Pruefen ($idx/$tot)..." }
+                default { "Stato: Applicazione e verifica ($idx/$tot)..." }
+            }
+            $riga = "[$idx/$tot] $($itemRes.ControlId) -> $($itemRes.Status) | $($itemRes.Message)"
+            if (-not [string]::IsNullOrWhiteSpace([string]$itemRes.Error)) {
+                $riga += " (Error: $($itemRes.Error))"
+            }
+            $ctrl.TxtLogAutoFix.AppendText("$riga`r`n")
+            $ctrl.TxtLogAutoFix.ScrollToEnd()
+        }
+
+        $cbFineFix = [Action[object]]{
+            param($payload)
+            $langNow = $statoUI.LinguaCorrente
+            $statoUI.FixInCorso = $false
+            $ctrl.BtnAvvia.IsEnabled = $true
+
+            $repFix = $payload.Report
+            $errFatale = $payload.Error
+            if ($null -ne $payload.Ps) { $payload.Ps.Dispose() }
+            if ($null -ne $payload.Rs) { $payload.Rs.Close(); $payload.Rs.Dispose() }
+
+            if (-not [string]::IsNullOrWhiteSpace([string]$errFatale)) {
+                $ctrl.TxtLogAutoFix.AppendText("`r`n[ERROR] $errFatale`r`n")
+                $ctrl.TxtStatoAutoFix.Text = switch ($langNow) {
+                    'EN' { "Status: Remediation error" }
+                    'DE' { "Status: Fehler bei der Behebung" }
+                    default { "Stato: Errore durante la remediation" }
+                }
+            }
+            elseif ($null -ne $repFix) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$repFix.BackupPath)) {
+                    $statoUI.UltimoBackupPath = [string]$repFix.BackupPath
+                }
+
+                foreach ($rItem in @($repFix.Results)) {
+                    if ($null -ne $rItem) {
+                        $statoUI.EsitiFixPerId[$rItem.ControlId] = $rItem
+                    }
+                }
+
+                $statoUI.RisultatiGrezzi = @(Update-RisultatiDopoFix -RisultatiGrezzi $statoUI.RisultatiGrezzi -FixResults @($repFix.Results))
+                $idSelPrima = if ($null -ne $statoUI.ElementoSelezionato) { $statoUI.ElementoSelezionato.ControlId } else { $null }
+                $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $langNow)
+                if ($null -ne $idSelPrima) {
+                    foreach ($el in $statoUI.ElementiVista) {
+                        if ($el.ControlId -eq $idSelPrima) {
+                            $statoUI.ElementoSelezionato = $el
+                            break
+                        }
+                    }
+                }
+
+                $fallitiAgg = @($statoUI.ElementiVista | Where-Object { $_.Status -eq 'fallito' })
+                $ctrl.ListFallitiIA.ItemsSource = $fallitiAgg
+
+                $ctrl.TxtLogAutoFix.AppendText("`r`n--- Summary: Fixed=$($repFix.FixedCount), RebootRequired=$($repFix.RebootRequiredCount), Blocked=$($repFix.BlockedCount), Failed=$($repFix.FailedCount) ---`r`n")
+                if ($repFix.RestorePointCreated) {
+                    $ctrl.TxtLogAutoFix.AppendText("System Restore Point: $($repFix.RestorePointMessage)`r`n")
+                }
+                if (-not [string]::IsNullOrWhiteSpace([string]$repFix.BackupPath)) {
+                    $ctrl.TxtLogAutoFix.AppendText("Backup JSON: $($repFix.BackupPath)`r`n")
+                }
+                $ctrl.TxtLogAutoFix.ScrollToEnd()
+
+                $ctrl.TxtStatoAutoFix.Text = switch ($langNow) {
+                    'EN' { "Completed: $($repFix.FixedCount) fixed & verified, $($repFix.BlockedCount) blocked, $($repFix.FailedCount) failed" }
+                    'DE' { "Abgeschlossen: $($repFix.FixedCount) behoben, $($repFix.BlockedCount) blockiert, $($repFix.FailedCount) fehlgeschlagen" }
+                    default { "Completato: $($repFix.FixedCount) riparati e verificati, $($repFix.BlockedCount) bloccati, $($repFix.FailedCount) falliti" }
+                }
+            }
+
+            & $aggiornaConteggiERiepilogo
+            & $applicaFiltriTabella
+            & $aggiornaPannelloDettaglio
+            & $aggiornaListaAutoFix
+        }
+
+        $issFix = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+        $nomiFnRem = @(
+            'Get-DefaultBackupDirectory', 'New-RemediationBackupSession', 'Backup-RegistryValueState',
+            'Backup-DefenderPreferenceState', 'Add-RemediationBackupEntry', 'Set-RegistryValueWithBackup',
+            'Set-DefenderPreferenceWithBackup', 'Save-RemediationBackupSession', 'New-ScannerRestorePoint',
+            'Restore-RemediationBackup', 'Get-RemediationCatalog', 'Get-RemediationDefinition',
+            'Get-AutoSafeControlIds', 'Test-IsAdministrator', 'Get-RemediationPreview',
+            'Invoke-SecurityRemediation', 'Invoke-Controlli', 'Test-RegistryValue'
+        )
+        foreach ($nomeFn in $nomiFnRem) {
+            $fnObj = Get-Command -Name $nomeFn -ErrorAction SilentlyContinue
+            if ($null -ne $fnObj) {
+                [void]$issFix.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fnObj.Name, $fnObj.Definition)))
+            }
+        }
+        foreach ($fnChk in @(Get-ChildItem Function:\Test-* -ErrorAction SilentlyContinue)) {
+            [void]$issFix.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fnChk.Name, $fnChk.Definition)))
+        }
+
+        $rsFix = [runspacefactory]::CreateRunspace($issFix)
+        $rsFix.ApartmentState = 'STA'
+        $rsFix.ThreadOptions  = 'ReuseThread'
+        $rsFix.Open()
+
+        $psFix = [powershell]::Create()
+        $psFix.Runspace = $rsFix
+
+        $syncFix = [hashtable]::Synchronized(@{
+            Finestra            = $finestra
+            ControlIds          = $idsClean
+            Catalogo            = $Catalogo
+            Ambiente            = $Ambiente
+            PercorsoChecks      = $percorsoChecks
+            PercorsoCore        = $percorsoCore
+            PercorsoRemediation = $percorsoRemediation
+            CreateRestorePoint  = $creaRp
+            CallbackProgresso   = $cbProgressoFix
+            CallbackFine        = $cbFineFix
+            Ps                  = $psFix
+            Rs                  = $rsFix
+        })
+        $rsFix.SessionStateProxy.SetVariable('SyncFix', $syncFix)
+
+        [void]$psFix.AddScript({
+            Set-StrictMode -Version 2
+            $ErrorActionPreference = 'Stop'
+            $rep = $null
+            $errMsg = $null
+
+            try {
+                if (-not [string]::IsNullOrWhiteSpace($SyncFix.PercorsoCore) -and (Test-Path -LiteralPath $SyncFix.PercorsoCore)) {
+                    . (Join-Path $SyncFix.PercorsoCore 'Runner.ps1')
+                    . (Join-Path $SyncFix.PercorsoChecks 'Registry.ps1')
+                    . (Join-Path $SyncFix.PercorsoChecks 'Firewall.ps1')
+                    . (Join-Path $SyncFix.PercorsoChecks 'Accounts.ps1')
+                    . (Join-Path $SyncFix.PercorsoChecks 'Defender.ps1')
+                    . (Join-Path $SyncFix.PercorsoChecks 'FileSecurity.ps1')
+                    . (Join-Path $SyncFix.PercorsoChecks 'Network.ps1')
+                    . (Join-Path $SyncFix.PercorsoChecks 'SystemSecurity.ps1')
+                }
+                if (-not [string]::IsNullOrWhiteSpace($SyncFix.PercorsoRemediation) -and (Test-Path -LiteralPath $SyncFix.PercorsoRemediation)) {
+                    . (Join-Path $SyncFix.PercorsoRemediation 'BackupManager.ps1')
+                    . (Join-Path $SyncFix.PercorsoRemediation 'RemediationCatalog.ps1')
+                    . (Join-Path $SyncFix.PercorsoRemediation 'FixRunner.ps1')
+                }
+
+                $onProgRem = {
+                    param($idx, $tot, $itemRes)
+                    [void]$SyncFix.Finestra.Dispatcher.Invoke(
+                        [System.Windows.Threading.DispatcherPriority]::Background,
+                        $SyncFix.CallbackProgresso,
+                        $idx,
+                        $tot,
+                        $itemRes
+                    )
+                }
+
+                $paramsRem = @{
+                    ControlIds     = $SyncFix.ControlIds
+                    Catalogo       = $SyncFix.Catalogo
+                    Ambiente       = $SyncFix.Ambiente
+                    CartellaChecks = $SyncFix.PercorsoChecks
+                    OnProgress     = $onProgRem
+                }
+                if ($SyncFix.CreateRestorePoint) {
+                    $paramsRem['CreateRestorePoint'] = $true
+                }
+
+                $rep = Invoke-SecurityRemediation @paramsRem
+            }
+            catch {
+                $errMsg = $_.Exception.Message
+            }
+            finally {
+                $payload = [PSCustomObject]@{
+                    Report = $rep
+                    Error  = $errMsg
+                    Ps     = $SyncFix.Ps
+                    Rs     = $SyncFix.Rs
+                }
+                [void]$SyncFix.Finestra.Dispatcher.BeginInvoke(
+                    [System.Windows.Threading.DispatcherPriority]::Normal,
+                    $SyncFix.CallbackFine,
+                    $payload
+                )
+            }
+        })
+        [void]$psFix.BeginInvoke()
+    }
+
+    $ctrl.BtnApplicaFixSelezionati.Add_Click({
+        $selIds = @($statoUI.ElementiAutoFix | Where-Object { $_.CanAutoFix -and $_.IsSelected } | ForEach-Object { $_.ControlId })
+        & $avviaRemediationAsincrona $selIds
+    })
+
+    $ctrl.BtnRiparaSingolo.Add_Click({
+        if ($null -eq $statoUI.ElementoSelezionato) { return }
+        & $avviaRemediationAsincrona @($statoUI.ElementoSelezionato.ControlId)
+    })
+
+    $ctrl.BtnRollbackUltimo.Add_Click({
+        if ($statoUI.ScansioneInCorso -or $statoUI.FixInCorso) { return }
+        if ($null -eq (Get-Command -Name 'Restore-RemediationBackup' -ErrorAction SilentlyContinue)) { return }
+
+        $backupPath = $statoUI.UltimoBackupPath
+        if ([string]::IsNullOrWhiteSpace($backupPath) -or (-not [System.IO.File]::Exists($backupPath))) { return }
+
+        $lang = $statoUI.LinguaCorrente
+        $nomeBkp = Split-Path -Leaf $backupPath
+        $msgRb = switch ($lang) {
+            'EN' { "Restore original settings from backup '$nomeBkp'?" }
+            'DE' { "Urspruengliche Einstellungen aus Sicherung '$nomeBkp' wiederherstellen?" }
+            default { "Ripristinare le impostazioni originali dal backup '$nomeBkp'?" }
+        }
+        $sceltaRb = [System.Windows.MessageBox]::Show($msgRb, $finestra.Title, [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
+        if ($sceltaRb -ne [System.Windows.MessageBoxResult]::Yes) {
+            return
+        }
+
+        $statoUI.FixInCorso = $true
+        & $aggiornaConteggioAutoFix
+        & $aggiornaPannelloDettaglio
+        $ctrl.BtnAvvia.IsEnabled = $false
+        $ctrl.TxtStatoAutoFix.Text = switch ($lang) {
+            'EN' { "Status: Rolling back from $nomeBkp..." }
+            'DE' { "Status: Rollback aus $nomeBkp..." }
+            default { "Stato: Ripristino in corso da $nomeBkp..." }
+        }
+        $ctrl.TxtLogAutoFix.AppendText("`r`n[Rollback started at $(Get-Date -Format 'HH:mm:ss')] File: $backupPath`r`n")
+
+        $cbFineRb = [Action[object]]{
+            param($payloadRb)
+            $langNow = $statoUI.LinguaCorrente
+            $statoUI.FixInCorso = $false
+            $ctrl.BtnAvvia.IsEnabled = $true
+
+            $rbRes = $payloadRb.RestoreResult
+            $rechecks = @($payloadRb.Rechecks)
+            $errMsg = $payloadRb.Error
+            if ($null -ne $payloadRb.Ps) { $payloadRb.Ps.Dispose() }
+            if ($null -ne $payloadRb.Rs) { $payloadRb.Rs.Close(); $payloadRb.Rs.Dispose() }
+
+            if (-not [string]::IsNullOrWhiteSpace([string]$errMsg)) {
+                $ctrl.TxtLogAutoFix.AppendText("[Rollback ERROR] $errMsg`r`n")
+                $ctrl.TxtStatoAutoFix.Text = switch ($langNow) {
+                    'EN' { "Status: Rollback failed" }
+                    'DE' { "Status: Rollback fehlgeschlagen" }
+                    default { "Stato: Rollback fallito" }
+                }
+            }
+            elseif ($null -ne $rbRes) {
+                foreach ($itemR in @($rbRes.Results)) {
+                    $ctrl.TxtLogAutoFix.AppendText("[Rollback] $($itemR.ControlId) -> $($itemR.Target) | Restored=$($itemR.Restored) $($itemR.Error)`r`n")
+                }
+                if ($rechecks.Count -gt 0) {
+                    $mappedFixes = @()
+                    foreach ($rc in $rechecks) {
+                        $statoUI.EsitiFixPerId[$rc.control_id] = [PSCustomObject]@{
+                            Status  = 'RolledBack'
+                            Message = "Rolled back ($($rc.status))"
+                            Error   = $rc.error
+                        }
+                        $mappedFixes += [PSCustomObject]@{
+                            ControlId         = $rc.control_id
+                            PostCheckStatus   = $rc.status
+                            PostCheckObserved = $rc.observed
+                            Error             = $rc.error
+                        }
+                    }
+                    $statoUI.RisultatiGrezzi = @(Update-RisultatiDopoFix -RisultatiGrezzi $statoUI.RisultatiGrezzi -FixResults $mappedFixes)
+                    $statoUI.ElementiVista = @(ConvertTo-RisultatiVista -Risultati $statoUI.RisultatiGrezzi -Catalogo $Catalogo -Lingua $langNow)
+                    $ctrl.ListFallitiIA.ItemsSource = @($statoUI.ElementiVista | Where-Object { $_.Status -eq 'fallito' })
+                }
+
+                $ctrl.TxtLogAutoFix.AppendText("--- Rollback completed: $($rbRes.RestoredCount)/$($rbRes.TotalEntries) entries restored ---`r`n")
+                $ctrl.TxtLogAutoFix.ScrollToEnd()
+                $ctrl.TxtStatoAutoFix.Text = switch ($langNow) {
+                    'EN' { "Rollback completed: $($rbRes.RestoredCount)/$($rbRes.TotalEntries) restored" }
+                    'DE' { "Rollback abgeschlossen: $($rbRes.RestoredCount)/$($rbRes.TotalEntries) wiederhergestellt" }
+                    default { "Rollback completato: $($rbRes.RestoredCount)/$($rbRes.TotalEntries) voci ripristinate" }
+                }
+            }
+
+            & $aggiornaConteggiERiepilogo
+            & $applicaFiltriTabella
+            & $aggiornaPannelloDettaglio
+            & $aggiornaListaAutoFix
+        }
+
+        $issRb = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+        foreach ($nomeFn in @('Restore-RemediationBackup', 'Invoke-Controlli', 'Test-RegistryValue')) {
+            $fnObj = Get-Command -Name $nomeFn -ErrorAction SilentlyContinue
+            if ($null -ne $fnObj) {
+                [void]$issRb.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fnObj.Name, $fnObj.Definition)))
+            }
+        }
+        foreach ($fnChk in @(Get-ChildItem Function:\Test-* -ErrorAction SilentlyContinue)) {
+            [void]$issRb.Commands.Add((New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fnChk.Name, $fnChk.Definition)))
+        }
+
+        $rsRb = [runspacefactory]::CreateRunspace($issRb)
+        $rsRb.ApartmentState = 'STA'
+        $rsRb.ThreadOptions  = 'ReuseThread'
+        $rsRb.Open()
+
+        $psRb = [powershell]::Create()
+        $psRb.Runspace = $rsRb
+
+        $syncRb = [hashtable]::Synchronized(@{
+            Finestra            = $finestra
+            BackupPath          = $backupPath
+            Catalogo            = $Catalogo
+            Ambiente            = $Ambiente
+            PercorsoChecks      = $percorsoChecks
+            PercorsoCore        = $percorsoCore
+            PercorsoRemediation = $percorsoRemediation
+            CallbackFine        = $cbFineRb
+            Ps                  = $psRb
+            Rs                  = $rsRb
+        })
+        $rsRb.SessionStateProxy.SetVariable('SyncRb', $syncRb)
+
+        [void]$psRb.AddScript({
+            Set-StrictMode -Version 2
+            $ErrorActionPreference = 'Stop'
+            $rbResult = $null
+            $rechecks = @()
+            $errMsg   = $null
+
+            try {
+                if (-not [string]::IsNullOrWhiteSpace($SyncRb.PercorsoCore) -and (Test-Path -LiteralPath $SyncRb.PercorsoCore)) {
+                    . (Join-Path $SyncRb.PercorsoCore 'Runner.ps1')
+                    . (Join-Path $SyncRb.PercorsoChecks 'Registry.ps1')
+                    . (Join-Path $SyncRb.PercorsoChecks 'Firewall.ps1')
+                    . (Join-Path $SyncRb.PercorsoChecks 'Accounts.ps1')
+                    . (Join-Path $SyncRb.PercorsoChecks 'Defender.ps1')
+                    . (Join-Path $SyncRb.PercorsoChecks 'FileSecurity.ps1')
+                    . (Join-Path $SyncRb.PercorsoChecks 'Network.ps1')
+                    . (Join-Path $SyncRb.PercorsoChecks 'SystemSecurity.ps1')
+                }
+                if (-not [string]::IsNullOrWhiteSpace($SyncRb.PercorsoRemediation) -and (Test-Path -LiteralPath $SyncRb.PercorsoRemediation)) {
+                    . (Join-Path $SyncRb.PercorsoRemediation 'BackupManager.ps1')
+                }
+
+                $rbResult = Restore-RemediationBackup -BackupPath $SyncRb.BackupPath
+                $idsRestored = @($rbResult.Results | ForEach-Object { $_.ControlId } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+                if ($idsRestored.Count -gt 0 -and $null -ne $SyncRb.Catalogo -and $null -ne $SyncRb.Ambiente) {
+                    $rechecks = @(Invoke-Controlli -Catalogo $SyncRb.Catalogo -Ambiente $SyncRb.Ambiente -ControlId $idsRestored -CartellaChecks $SyncRb.PercorsoChecks)
+                }
+            }
+            catch {
+                $errMsg = $_.Exception.Message
+            }
+            finally {
+                $payload = [PSCustomObject]@{
+                    RestoreResult = $rbResult
+                    Rechecks      = @($rechecks)
+                    Error         = $errMsg
+                    Ps            = $SyncRb.Ps
+                    Rs            = $SyncRb.Rs
+                }
+                [void]$SyncRb.Finestra.Dispatcher.BeginInvoke(
+                    [System.Windows.Threading.DispatcherPriority]::Normal,
+                    $SyncRb.CallbackFine,
+                    $payload
+                )
+            }
+        })
+        [void]$psRb.BeginInvoke()
+    })
 
     $ctrl.ListFallitiIA.Add_SelectionChanged({
         if ($null -ne $ctrl.ListFallitiIA.SelectedItem) {
@@ -1705,6 +2504,7 @@ function Start-ScannerUI {
 
             & $aggiornaConteggiERiepilogo
             & $applicaFiltriTabella
+            & $aggiornaListaAutoFix
 
             # Pulizia risorse Runspace
             if ($null -ne $statoUI.PsInstance) {

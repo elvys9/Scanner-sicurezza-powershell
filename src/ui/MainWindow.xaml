@@ -539,6 +539,15 @@
                                 Style="{StaticResource ModernButton}"
                                 Content="2. Assistente IA (Ollama)"
                                 Padding="14,6"
+                                Margin="0,0,4,0"
+                                FontWeight="SemiBold"
+                                Background="Transparent"
+                                Foreground="{DynamicResource TextSecondary}"
+                                BorderThickness="0"/>
+                        <Button x:Name="BtnNavAutoFix"
+                                Style="{StaticResource ModernButton}"
+                                Content="3. Auto-Fix (WinUtil)"
+                                Padding="14,6"
                                 FontWeight="SemiBold"
                                 Background="Transparent"
                                 Foreground="{DynamicResource TextSecondary}"
@@ -550,7 +559,7 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button x:Name="BtnAvvia"
                             Style="{StaticResource ModernButton}"
-                            Content="Avvia scansione (34 controlli)"
+                            Content="Avvia scansione (64 controlli)"
                             FontWeight="Bold"
                             Padding="16,7"
                             Margin="0,0,8,0"
@@ -602,7 +611,7 @@
                            Foreground="{DynamicResource TextPrimary}"
                            FontWeight="Bold"
                            FontSize="12.5"
-                           Text="Pronto (0/34)"/>
+                           Text="Pronto (0/64)"/>
             </Grid>
         </Border>
 
@@ -817,7 +826,7 @@
                                         </Canvas>
                                     </Border>
                                     <TextBlock x:Name="TxtMessaggioGuida"
-                                               Text="Premi 'Avvia scansione' per analizzare i 34 controlli di sicurezza del PC."
+                                               Text="Premi 'Avvia scansione' per analizzare i 64 controlli di sicurezza del PC."
                                                FontSize="15"
                                                FontWeight="Bold"
                                                Foreground="{DynamicResource TextPrimary}"
@@ -1002,6 +1011,40 @@
                                                TextWrapping="Wrap"
                                                LineHeight="19"/>
                                 </Border>
+
+                                <!-- Azioni Rapide Contestuali (Auto-Fix 1-Click o Impostazioni Windows) -->
+                                <StackPanel x:Name="PanelAzioneRapidaDettaglio" Visibility="Collapsed" Margin="0,0,0,12">
+                                    <WrapPanel Orientation="Horizontal">
+                                        <Button x:Name="BtnRiparaSingolo"
+                                                Style="{StaticResource ModernButton}"
+                                                Visibility="Collapsed"
+                                                Content="Applica Fix Automatico (1-Click)"
+                                                Padding="12,6"
+                                                Margin="0,0,8,4"
+                                                Background="#059669"
+                                                Foreground="#FFFFFF"
+                                                BorderThickness="0"
+                                                FontWeight="Bold"/>
+                                        <Button x:Name="BtnApriImpostazioni"
+                                                Style="{StaticResource ModernButton}"
+                                                Visibility="Collapsed"
+                                                Content="Apri in Impostazioni Windows"
+                                                Padding="12,6"
+                                                Margin="0,0,8,4"
+                                                Background="#2563EB"
+                                                Foreground="#FFFFFF"
+                                                BorderThickness="0"
+                                                FontWeight="SemiBold"/>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="TxtEsitoFixDettaglio"
+                                               Visibility="Collapsed"
+                                               Text=""
+                                               TextWrapping="Wrap"
+                                               FontWeight="SemiBold"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               Margin="0,6,0,0"/>
+                                </StackPanel>
 
                                 <!-- Blocco Comando PowerShell (visibile solo se HaComando = true) -->
                                 <StackPanel x:Name="PanelComandoRimedio" Visibility="Collapsed" Margin="0,0,0,12">
@@ -1272,9 +1315,331 @@
                                  FontFamily="Segoe UI"
                                  FontSize="14"
                                  Padding="18"
-                                 Text="1. Esegui prima la scansione del PC col pulsante 'Avvia scansione (34 controlli)' in alto.&#x0a;2. Premi 'Genera Resoconto Completo PC' qui a sinistra per ricevere l'analisi di tutte le vulnerabilita' trovate e i consigli pratici di messa in sicurezza.&#x0a;3. Se sei su una Macchina Virtuale senza Ollama, lascia attiva la spunta a sinistra: il tool pensera' a tutto in automatico."/>
+                                 Text="1. Esegui prima la scansione del PC col pulsante 'Avvia scansione (64 controlli)' in alto.&#x0a;2. Premi 'Genera Resoconto Completo PC' qui a sinistra per ricevere l'analisi di tutte le vulnerabilita' trovate e i consigli pratici di messa in sicurezza.&#x0a;3. Se sei su una Macchina Virtuale senza Ollama, lascia attiva la spunta a sinistra: il tool pensera' a tutto in automatico."/>
                     </Grid>
                 </Border>
+            </Grid>
+
+            <!-- ==================== PAGINA 3: AUTO-FIX STILE WINUTIL & ROLLBACK ==================== -->
+            <Grid x:Name="GridPaginaAutoFix" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="360"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- COLONNA SINISTRA: Preset Selezione, Backup/Apply e Rollback -->
+                <Border Grid.Column="0"
+                        Background="{DynamicResource BgSurface}"
+                        BorderBrush="{DynamicResource BorderSubtle}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="16">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel>
+                            <!-- Card 1: Selezione Rapida Preset -->
+                            <Border Background="{DynamicResource BgSubtle}"
+                                    BorderBrush="{DynamicResource BorderStrong}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="13"
+                                    Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock x:Name="LblAutoFixPresetTitle"
+                                               Text="SELEZIONE RAPIDA (STILE WINUTIL)"
+                                               FontWeight="Bold"
+                                               FontSize="11.5"
+                                               Foreground="{DynamicResource AccentBrush}"
+                                               Margin="0,0,0,8"/>
+                                    <Button x:Name="BtnSelezionaFixSicuri"
+                                            Style="{StaticResource ModernButton}"
+                                            Content="Seleziona Fix Sicuri (AutoSafe)"
+                                            Padding="12,8"
+                                            Margin="0,0,0,7"
+                                            Background="#059669"
+                                            Foreground="#FFFFFF"
+                                            BorderThickness="0"
+                                            FontWeight="Bold"
+                                            HorizontalAlignment="Stretch"/>
+                                    <Button x:Name="BtnDeselezionaTuttiFix"
+                                            Style="{StaticResource ModernButton}"
+                                            Content="Deseleziona tutti"
+                                            Padding="10,6"
+                                            Margin="0,0,0,8"
+                                            HorizontalAlignment="Stretch"/>
+                                    <TextBlock x:Name="TxtConteggioSelezionati"
+                                               Text="Selezionati: 0 fix automatici"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextSecondary}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Card 2: Sicurezza, Anteprima & Applicazione -->
+                            <Border Background="{DynamicResource BgSubtle}"
+                                    BorderBrush="{DynamicResource BorderStrong}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="13"
+                                    Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock x:Name="LblAutoFixSicurezzaTitle"
+                                               Text="SICUREZZA, ANTEPRIMA &amp; ESECUZIONE"
+                                               FontWeight="Bold"
+                                               FontSize="11.5"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               Margin="0,0,0,8"/>
+                                    <CheckBox x:Name="ChkCreaRestorePoint"
+                                              IsChecked="True"
+                                              Margin="0,0,0,8"
+                                              Foreground="{DynamicResource TextPrimary}">
+                                        <TextBlock x:Name="TxtChkCreaRestorePoint"
+                                                   Text="Crea un Punto di Ripristino Windows prima delle modifiche"
+                                                   FontSize="11.5"
+                                                   TextWrapping="Wrap"/>
+                                    </CheckBox>
+                                    <TextBlock x:Name="TxtInfoBackupPath"
+                                               Text="Backup JSON automatico attivo prima di ogni modifica."
+                                               FontSize="11"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,0,0,10"/>
+                                    <Button x:Name="BtnAnteprimaComandi"
+                                            Style="{StaticResource ModernButton}"
+                                            Content="Anteprima comandi selezionati"
+                                            Padding="10,7"
+                                            Margin="0,0,0,7"
+                                            HorizontalAlignment="Stretch"
+                                            IsEnabled="False"/>
+                                    <Button x:Name="BtnEsportaScriptFix"
+                                            Style="{StaticResource ModernButton}"
+                                            Content="Esporta come script .ps1"
+                                            Padding="10,7"
+                                            Margin="0,0,0,10"
+                                            HorizontalAlignment="Stretch"
+                                            IsEnabled="False"/>
+                                    <Button x:Name="BtnApplicaFixSelezionati"
+                                            Style="{StaticResource ModernButton}"
+                                            Content="Applica correzioni selezionate (0)"
+                                            Padding="12,11"
+                                            Background="#10B981"
+                                            Foreground="#FFFFFF"
+                                            BorderThickness="0"
+                                            FontWeight="Bold"
+                                            FontSize="13"
+                                            HorizontalAlignment="Stretch"
+                                            IsEnabled="False"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Card 3: Rollback -->
+                            <Border Background="{DynamicResource BgSubtle}"
+                                    BorderBrush="{DynamicResource BorderStrong}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="13">
+                                <StackPanel>
+                                    <TextBlock x:Name="LblAutoFixRollbackTitle"
+                                               Text="RIPRISTINO (ROLLBACK 1-CLICK)"
+                                               FontWeight="Bold"
+                                               FontSize="11.5"
+                                               Foreground="{DynamicResource WarnBannerFg}"
+                                               Margin="0,0,0,6"/>
+                                    <TextBlock x:Name="TxtUltimoBackup"
+                                               Text="Nessun backup di sessione disponibile."
+                                               FontSize="11.5"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               TextWrapping="Wrap"
+                                               Margin="0,0,0,9"/>
+                                    <Button x:Name="BtnRollbackUltimo"
+                                            Style="{StaticResource ModernButton}"
+                                            Content="Ripristina ultime modifiche (Rollback)"
+                                            Padding="12,8"
+                                            Background="#D97706"
+                                            Foreground="#FFFFFF"
+                                            BorderThickness="0"
+                                            FontWeight="Bold"
+                                            HorizontalAlignment="Stretch"
+                                            IsEnabled="False"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- COLONNA DESTRA: Checklist Controlli Falliti & Console Log Esecuzione -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1.45*"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="1*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Checklist Controlli -->
+                    <Border Grid.Row="0"
+                            Background="{DynamicResource BgSurface}"
+                            BorderBrush="{DynamicResource BorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="16">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <Grid Grid.Row="0" Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="LblAutoFixListaTitle"
+                                           Grid.Column="0"
+                                           Text="CONTROLLI FALLITI — AUTO-FIX DETERMINISTICI &amp; IMPOSTAZIONI MANUALI"
+                                           FontSize="13"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextPrimary}"/>
+                                <Button x:Name="BtnTornaDaAutoFix"
+                                        Style="{StaticResource ModernButton}"
+                                        Grid.Column="1"
+                                        Content="Torna alla Tabella Controlli"
+                                        Padding="12,6"/>
+                            </Grid>
+
+                            <Grid Grid.Row="1">
+                                <ListBox x:Name="ListAutoFixControlli"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         HorizontalContentAlignment="Stretch"
+                                         Background="{DynamicResource BgSubtle}"
+                                         Foreground="{DynamicResource TextPrimary}"
+                                         BorderBrush="{DynamicResource BorderSubtle}"
+                                         BorderThickness="1"
+                                         Padding="6">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource BgSurface}"
+                                                    BorderBrush="{DynamicResource BorderStrong}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6"
+                                                    Padding="11,8"
+                                                    Margin="0,3">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <CheckBox Grid.Column="0"
+                                                              IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                              IsEnabled="{Binding CanAutoFix}"
+                                                              VerticalAlignment="Center"
+                                                              Margin="0,0,12,0"/>
+
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Title}"
+                                                                   FontWeight="SemiBold"
+                                                                   FontSize="12.5"
+                                                                   Foreground="{DynamicResource TextPrimary}"
+                                                                   TextWrapping="Wrap"/>
+                                                        <WrapPanel Margin="0,3,0,0">
+                                                            <TextBlock Text="{Binding ControlId}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" Margin="0,0,10,0"/>
+                                                            <TextBlock Text="{Binding SeverityLabel}" FontSize="11" Foreground="{DynamicResource TextSecondary}" Margin="0,0,10,0"/>
+                                                            <TextBlock Text="{Binding FixModeLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource PassFg}" Margin="0,0,10,0"/>
+                                                            <TextBlock Text="Admin" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource WarnBannerFg}" Visibility="{Binding AdminBadgeVisibility}" Margin="0,0,10,0"/>
+                                                            <TextBlock Text="{Binding FixStatusLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"/>
+                                                        </WrapPanel>
+                                                    </StackPanel>
+
+                                                    <Button Grid.Column="2"
+                                                            Style="{StaticResource ModernButton}"
+                                                            Content="{Binding SettingsBtnLabel}"
+                                                            Tag="{Binding SettingsUri}"
+                                                            Visibility="{Binding SettingsBtnVisibility}"
+                                                            Padding="10,5"
+                                                            Margin="10,0,0,0"
+                                                            Background="#2563EB"
+                                                            Foreground="#FFFFFF"
+                                                            BorderThickness="0"
+                                                            FontSize="11.5"
+                                                            FontWeight="SemiBold"
+                                                            VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <Border x:Name="PanelAutoFixVuoto"
+                                        Background="{DynamicResource BgSurface}"
+                                        CornerRadius="6"
+                                        Padding="24"
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Stretch">
+                                    <TextBlock x:Name="TxtAutoFixVuoto"
+                                               Text="Esegui prima la scansione nella Scheda 1 per popolare la lista dei controlli falliti riparabili."
+                                               FontSize="13.5"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextSecondary}"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextAlignment="Center"
+                                               TextWrapping="Wrap"
+                                               MaxWidth="460"/>
+                                </Border>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <GridSplitter Grid.Row="1"
+                                  Height="12"
+                                  HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  Background="Transparent"/>
+
+                    <!-- Log Esecuzione / Anteprima Script -->
+                    <Border Grid.Row="2"
+                            Background="{DynamicResource BgSurface}"
+                            BorderBrush="{DynamicResource BorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="16">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <Grid Grid.Row="0" Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="LblAutoFixLogTitle"
+                                           Grid.Column="0"
+                                           Text="ANTEPRIMA COMANDI &amp; LOG ESECUZIONE REMEDIATION"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource TextSecondary}"/>
+                                <TextBlock x:Name="TxtStatoAutoFix"
+                                           Grid.Column="1"
+                                           Text="Stato: Pronto (nessuna modifica eseguita finora)"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentBrush}"/>
+                            </Grid>
+                            <TextBox x:Name="TxtLogAutoFix"
+                                     Grid.Row="1"
+                                     IsReadOnly="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas"
+                                     FontSize="12"
+                                     Padding="12"
+                                     Text="Seleziona uno o piu' fix sicuri dalla lista in alto per visualizzare l'anteprima dei comandi PowerShell o avviare l'applicazione con backup e verifica automatica."/>
+                        </Grid>
+                    </Border>
+                </Grid>
             </Grid>
         </Grid>
 
