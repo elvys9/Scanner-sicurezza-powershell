@@ -1204,6 +1204,9 @@ function Test-Tpm20Ready {
 
     try {
         $tpm = Get-Tpm -ErrorAction Stop
+        if ($null -eq $tpm -or $null -eq $tpm.PSObject.Properties['TpmPresent']) {
+            throw "Oggetto TPM non restituito o richiede privilegi elevati"
+        }
         $present = [bool]$tpm.TpmPresent
         $ready   = [bool]$tpm.TpmReady
 
@@ -1225,7 +1228,7 @@ function Test-Tpm20Ready {
     catch {
         try {
             $cimTpm = Get-CimInstance -ClassName Win32_Tpm -Namespace 'root\cimv2\Security\MicrosoftTpm' -ErrorAction Stop
-            if ($null -ne $cimTpm) {
+            if ($null -ne $cimTpm -and $null -ne $cimTpm.PSObject.Properties['IsEnabled_InitialValue']) {
                 $enVal  = [bool]$cimTpm.IsEnabled_InitialValue
                 $actVal = [bool]$cimTpm.IsActivated_InitialValue
                 $risultato.Evidence = @{
@@ -1242,6 +1245,33 @@ function Test-Tpm20Ready {
                     $risultato.Observed = "TPM non attivo (Enabled=$enVal, Activated=$actVal)"
                 }
                 return $risultato
+            }
+        }
+        catch { }
+
+        # Fallback su Registro (HKLM:\SYSTEM\CurrentControlSet\Services\TPM\WMI ed Enum - leggibile anche senza Admin)
+        try {
+            $chiaveTpmWmi  = 'HKLM:\SYSTEM\CurrentControlSet\Services\TPM\WMI'
+            $chiaveTpmEnum = 'HKLM:\SYSTEM\CurrentControlSet\Services\TPM\Enum'
+            if (Test-Path -LiteralPath $chiaveTpmWmi -ErrorAction SilentlyContinue) {
+                $propWmi  = Get-ItemProperty -LiteralPath $chiaveTpmWmi -ErrorAction SilentlyContinue
+                $propEnum = if (Test-Path -LiteralPath $chiaveTpmEnum -ErrorAction SilentlyContinue) { Get-ItemProperty -LiteralPath $chiaveTpmEnum -ErrorAction SilentlyContinue } else { $null }
+
+                $enumCount = if ($null -ne $propEnum -and $null -ne $propEnum.PSObject.Properties['Count']) { [int]$propEnum.Count } else { 0 }
+                $readyStor = if ($null -ne $propWmi -and $null -ne $propWmi.PSObject.Properties['TaskReadyForStorage']) { [int]$propWmi.TaskReadyForStorage } else { 0 }
+                $fwVer     = if ($null -ne $propWmi -and $null -ne $propWmi.PSObject.Properties['TaskFirmwareVersion']) { [string]$propWmi.TaskFirmwareVersion } else { '' }
+
+                if ($enumCount -ge 1 -or $readyStor -eq 1 -or (-not [string]::IsNullOrWhiteSpace($fwVer))) {
+                    $risultato.Evidence = @{
+                        Fonte               = 'TPMServiceRegistry'
+                        DeviceCount         = $enumCount
+                        TaskReadyForStorage = $readyStor
+                        FirmwareVersion     = $fwVer
+                    }
+                    $risultato.Status   = 'superato'
+                    $risultato.Observed = "Modulo hardware TPM 2.0 presente e pronto (Firmware $fwVer)"
+                    return $risultato
+                }
             }
         }
         catch { }
