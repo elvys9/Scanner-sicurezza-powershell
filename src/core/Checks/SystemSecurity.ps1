@@ -1418,3 +1418,109 @@ function Test-PowerShellExecutionPolicySecure {
 
     return $risultato
 }
+
+function Test-AdministratorProtection {
+    <#
+    .SYNOPSIS
+        Verifica che la nuova modalita' Administrator Protection (elevazione just-in-time di Windows 11 24H2/25H2/26H2)
+        sia abilitata (TypeOfAdminApprovalMode = 2) (HOME-UAC-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "TypeOfAdminApprovalMode = 2 (Administrator Protection just-in-time attiva)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        [int]$numeroBuild = 0
+        if ($null -ne $Ambiente -and $null -ne $Ambiente.PSObject.Properties['Build'] -and (-not [string]::IsNullOrWhiteSpace([string]$Ambiente.Build))) {
+            if ([string]$Ambiente.Build -match '^(\d+)') {
+                $numeroBuild = [int]$Matches[1]
+            }
+        }
+
+        if ($numeroBuild -eq 0) {
+            $chiaveCurVer = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+            if (Test-Path -LiteralPath $chiaveCurVer -ErrorAction SilentlyContinue) {
+                $propVer = Get-ItemProperty -LiteralPath $chiaveCurVer -ErrorAction SilentlyContinue
+                if ($null -ne $propVer -and $null -ne $propVer.PSObject.Properties['CurrentBuildNumber'] -and ([string]$propVer.CurrentBuildNumber -match '^(\d+)')) {
+                    $numeroBuild = [int]$Matches[1]
+                }
+                elseif ($null -ne $propVer -and $null -ne $propVer.PSObject.Properties['CurrentBuild'] -and ([string]$propVer.CurrentBuild -match '^(\d+)')) {
+                    $numeroBuild = [int]$Matches[1]
+                }
+            }
+        }
+
+        $chiaveUac = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+        if (-not (Test-Path -LiteralPath $chiaveUac -ErrorAction SilentlyContinue)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Chiave di registro UAC Policies\System non trovata"
+            $risultato.Evidence = @{ Path = $chiaveUac; Build = $numeroBuild }
+            return $risultato
+        }
+
+        $propUac = Get-ItemProperty -LiteralPath $chiaveUac -ErrorAction Stop
+        $haProprieta = ($null -ne $propUac -and $null -ne $propUac.PSObject.Properties['TypeOfAdminApprovalMode'] -and $null -ne $propUac.TypeOfAdminApprovalMode)
+        $valoreMode  = if ($haProprieta) { [int]$propUac.TypeOfAdminApprovalMode } else { -1 }
+
+        $lsaDeprivileged = $null
+        $chiaveLsa = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'
+        if (Test-Path -LiteralPath $chiaveLsa -ErrorAction SilentlyContinue) {
+            $propLsa = Get-ItemProperty -LiteralPath $chiaveLsa -ErrorAction SilentlyContinue
+            if ($null -ne $propLsa -and $null -ne $propLsa.PSObject.Properties['ShadowAdminEnabled']) {
+                $lsaDeprivileged = $propLsa.ShadowAdminEnabled
+            }
+        }
+
+        $risultato.Evidence = @{
+            Path                    = $chiaveUac
+            TypeOfAdminApprovalMode = $valoreMode
+            ValuePresent            = $haProprieta
+            Build                   = $numeroBuild
+            ShadowAdminEnabled      = $lsaDeprivileged
+        }
+
+        if ($haProprieta -and $valoreMode -eq 2) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Administrator Protection just-in-time attiva (TypeOfAdminApprovalMode = 2)"
+        }
+        elseif ((-not $haProprieta) -and ($numeroBuild -gt 0 -and $numeroBuild -lt 26100)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Funzionalita' disponibile da Windows 11 24H2/25H2+ (Build rilevata: $numeroBuild < 26100)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Modalita' UAC legacy attiva; Administrator Protection non abilitata (TypeOfAdminApprovalMode = $valoreMode)"
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alla chiave UAC Policies\System"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare Administrator Protection"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}

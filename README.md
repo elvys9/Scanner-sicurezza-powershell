@@ -1,7 +1,7 @@
 # Windows 11 Security Scanner (PowerShell 5.1 & WPF + Local Ollama AI)
 
 > **A zero-dependency, 100% read-only security configuration, antivirus, and suspicious file scanner for Windows 11 (Home & Pro), inspired by [winutil](https://github.com/ChrisTitusTech/winutil).**  
-> Built natively for Windows PowerShell 5.1 with a modernized two-page Fluent WPF graphical interface (Dark/Light themes, explicit `IT` / `EN` / `DE` language selector), 34 deterministic CIS-aligned checks, and an integrated **Local AI Security Advisor powered by Ollama**.
+> Built natively for Windows PowerShell 5.1 with a modernized two-page Fluent WPF graphical interface (Dark/Light themes, explicit `IT` / `EN` / `DE` language selector), **58 deterministic CIS & MITRE ATT&CK aligned checks**, and an integrated **Local AI Security Advisor powered by Ollama**.
 
 ---
 
@@ -30,10 +30,10 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 
 ## ✨ Key Features
 
-- **100% Read-Only & Deterministic**: The scanner **never modifies** system settings, registry keys, or services (enforced via automated PowerShell AST static analysis tests). All 34 checks are evaluated deterministically; the AI only explains results and recommends prioritized fixes.
+- **100% Read-Only & Deterministic**: The scanner **never modifies** system settings, registry keys, or services (enforced via automated PowerShell AST static analysis tests). All 58 checks are evaluated deterministically; the AI only explains results and recommends prioritized fixes.
 - **Zero External Runtime Dependencies**: Runs out-of-the-box on Windows 11 using built-in Windows PowerShell 5.1 and `.NET Framework` (`PresentationFramework` WPF).
 - **Two-Page Full-Screen WPF Interface**:
-  1. **Page 1 — Security Controls & Technical Details**: Filterable table of 34 security controls (Status, Severity, Category, Search), live progress bar, KPI summary cards, and step-by-step remediation guidance with one-click copyable PowerShell commands.
+  1. **Page 1 — Security Controls & Technical Details**: Filterable table of 58 security controls (Status, Severity, Category, Search), live progress bar, KPI summary cards, and step-by-step remediation guidance with one-click copyable PowerShell commands.
   2. **Page 2 — Full-Screen Local AI Security Advisor (Ollama)**: Dedicated full-screen workspace that analyzes all failed controls and generates an executive security report and prioritized remediation plan.
 - **Zero-Touch Ollama Auto-Setup (Works on VMs too)**:
   - Automatically detects a local Ollama instance (`127.0.0.1:11434`) or a VM Host gateway (`10.0.2.2:11434`).
@@ -42,7 +42,7 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 
 ---
 
-## 🛡️ All 55 Implemented Security Controls
+## 🛡️ All 58 Implemented Security Controls
 
 | ID             | Category          | Security Check Description                                                  | Type     |
 |----------------|-------------------|-----------------------------------------------------------------------------|----------|
@@ -50,6 +50,7 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 | `HOME-UAC-001` | UAC               | User Account Control (UAC) enabled (`EnableLUA = 1`)                        | Registry |
 | `HOME-UAC-002` | UAC               | UAC elevation prompt required on Secure Desktop (`ConsentPromptBehaviorAdmin in 1,2,5` & `PromptOnSecureDesktop = 1`) | Function |
 | `HOME-UAC-003` | UAC               | UAC application installer detection enabled (`EnableInstallerDetection = 1`) | Registry |
+| `HOME-UAC-004` | UAC               | Windows 11 Administrator Protection (`TypeOfAdminApprovalMode = 2`) enabled | Function |
 | `HOME-ACC-001` | Accounts          | Built-in Guest account disabled (`SID -501`)                                | Function |
 | `HOME-ACC-002` | Accounts          | Built-in local Administrator account disabled (`SID -500`)                  | Function |
 | `HOME-ACC-003` | Accounts          | No active local user accounts without a password (`PasswordRequired = True` or `MicrosoftAccount`) | Function |
@@ -74,6 +75,8 @@ irm https://raw.githubusercontent.com/elvys9/Scanner-sicurezza-powershell/main/d
 | `HOME-FIL-004` | File Security     | No suspicious or obfuscated Windows Scheduled Tasks                         | Function |
 | `HOME-FIL-005` | File Security     | No system executable hijacking (`IFEO` Debugger backdoors on `sethc.exe`, `taskmgr.exe`, `MsMpEng.exe`) | Function |
 | `HOME-FIL-006` | File Security     | No suspicious scripts or executables (`.vbs`, `.js`, `.bat`, `.ps1`) in Startup folders | Function |
+| `HOME-FIL-007` | File Security     | No fileless persistence via WMI Event Subscriptions (`root\subscription`)   | Function |
+| `HOME-FIL-008` | File Security     | No policy-forced browser extensions (`ExtensionInstallForcelist` on Chrome/Edge) | Function |
 | `HOME-SYS-001` | Windows Settings  | File extensions visible for known file types in File Explorer (`HideFileExt = 0`) | Function |
 | `HOME-SYS-002` | Windows Settings  | AutoRun and AutoPlay disabled for removable USB drives                      | Function |
 | `HOME-SYS-003` | Windows Settings  | Microsoft Defender SmartScreen enabled for apps and downloaded files        | Function |

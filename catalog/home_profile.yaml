@@ -704,3 +704,39 @@ controls:
     references:
       - "Microsoft PowerShell Security Best Practices"
       - "HardeningKitty - PowerShell Execution Policy"
+
+  - id: "HOME-UAC-004"
+    title: "Protezione Amministratore (Administrator Protection) attiva"
+    category: "UAC"
+    severity: "medio"
+    editions: ["Home", "Pro"]
+    description: "Verifica che la nuova modalita' Administrator Protection just-in-time di Windows 11 24H2/25H2/26H2 sia abilitata tramite TypeOfAdminApprovalMode = 2 in Policies\\System."
+    rationale: "Administrator Protection crea un account amministratore nascosto separato con privilegi just-in-time, impedendo ai malware di ereditare silenziosamente il token amministrativo permanente dell'utente."
+    check:
+      command_ref: "SystemSecurity.ps1#Test-AdministratorProtection"
+    references:
+      - "Microsoft Security Baseline Windows 11 25H2/26H2 - Administrator Protection"
+
+  - id: "HOME-FIL-007"
+    title: "Nessuna persistenza fileless tramite WMI Event Subscriptions"
+    category: "Controllo File"
+    severity: "critico"
+    editions: ["Home", "Pro"]
+    description: "Interroga in sola lettura il namespace root\\subscription per verificare l'assenza di CommandLineEventConsumer, ActiveScriptEventConsumer ed EventFilter sospetti."
+    rationale: "Gli attaccanti utilizzano le sottoscrizioni WMI permanenti per ottenere persistenza fileless invisibile alle normali chiavi Run, eseguendo script o comandi ad ogni evento di sistema."
+    check:
+      command_ref: "FileSecurity.ps1#Test-WmiEventSubscriptions"
+    references:
+      - "MITRE ATT&CK T1546.003 - Windows Management Instrumentation Event Subscription"
+
+  - id: "HOME-FIL-008"
+    title: "Nessuna estensione browser forzata da policy (Chrome / Edge)"
+    category: "Controllo File"
+    severity: "alto"
+    editions: ["Home", "Pro"]
+    description: "Verifica che le chiavi ExtensionInstallForcelist in HKLM/HKCU per Google Chrome e Microsoft Edge non contengano estensioni forzate da policy."
+    rationale: "Malware, adware e infostealer forzano spesso l'installazione silenziosa di estensioni browser malevole tramite ExtensionInstallForcelist impedendo all'utente di rimuoverle dall'interfaccia."
+    check:
+      command_ref: "FileSecurity.ps1#Test-BrowserForcedExtensions"
+    references:
+      - "MITRE ATT&CK T1176 - Browser Extensions"

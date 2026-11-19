@@ -1039,6 +1039,60 @@ $script:CatalogoJsonIncorporato = @'
         "Microsoft PowerShell Security Best Practices",
         "HardeningKitty - PowerShell Execution Policy"
       ]
+    },
+    {
+      "id": "HOME-UAC-004",
+      "title": "Protezione Amministratore (Administrator Protection) attiva",
+      "category": "UAC",
+      "severity": "medio",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che la nuova modalita' Administrator Protection just-in-time di Windows 11 24H2/25H2/26H2 sia abilitata tramite TypeOfAdminApprovalMode = 2 in Policies\\System.",
+      "rationale": "Administrator Protection crea un account amministratore nascosto separato con privilegi just-in-time, impedendo ai malware di ereditare silenziosamente il token amministrativo permanente dell'utente.",
+      "check": {
+        "command_ref": "SystemSecurity.ps1#Test-AdministratorProtection"
+      },
+      "references": [
+        "Microsoft Security Baseline Windows 11 25H2/26H2 - Administrator Protection"
+      ]
+    },
+    {
+      "id": "HOME-FIL-007",
+      "title": "Nessuna persistenza fileless tramite WMI Event Subscriptions",
+      "category": "Controllo File",
+      "severity": "critico",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Interroga in sola lettura il namespace root\\subscription per verificare l'assenza di CommandLineEventConsumer, ActiveScriptEventConsumer ed EventFilter sospetti.",
+      "rationale": "Gli attaccanti utilizzano le sottoscrizioni WMI permanenti per ottenere persistenza fileless invisibile alle normali chiavi Run, eseguendo script o comandi ad ogni evento di sistema.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-WmiEventSubscriptions"
+      },
+      "references": [
+        "MITRE ATT&CK T1546.003 - Windows Management Instrumentation Event Subscription"
+      ]
+    },
+    {
+      "id": "HOME-FIL-008",
+      "title": "Nessuna estensione browser forzata da policy (Chrome / Edge)",
+      "category": "Controllo File",
+      "severity": "alto",
+      "editions": [
+        "Home",
+        "Pro"
+      ],
+      "description": "Verifica che le chiavi ExtensionInstallForcelist in HKLM/HKCU per Google Chrome e Microsoft Edge non contengano estensioni forzate da policy.",
+      "rationale": "Malware, adware e infostealer forzano spesso l'installazione silenziosa di estensioni browser malevole tramite ExtensionInstallForcelist impedendo all'utente di rimuoverle dall'interfaccia.",
+      "check": {
+        "command_ref": "FileSecurity.ps1#Test-BrowserForcedExtensions"
+      },
+      "references": [
+        "MITRE ATT&CK T1176 - Browser Extensions"
+      ]
     }
   ]
 }
@@ -1416,7 +1470,7 @@ $script:XamlIncorporato = @'
                             </Border>
                         </StackPanel>
                         <TextBlock x:Name="TxtSottotitoloApp"
-                                   Text="55 Controlli Deterministici + Assistente IA Locale (Ollama)"
+                                   Text="58 Controlli Deterministici + Assistente IA Locale (Ollama)"
                                    FontSize="11.5"
                                    Foreground="#94A3B8"
                                    Margin="0,2,0,0"/>
@@ -5958,6 +6012,8 @@ function Test-DefenderAsrRules {
     - HOME-FIL-004: Verifica Attivita' pianificate (Scheduled Tasks) contro comandi offuscati (Test-TaskPianificatiSospetti)
     - HOME-FIL-005: Verifica assenza dirottamenti IFEO Debugger (Sticky Keys / TaskMgr / Defender) (Test-HijackingIFEO)
     - HOME-FIL-006: Scansione cartelle Esecuzione automatica (Startup) contro script sospetti (Test-CartellaStartupUtente)
+    - HOME-FIL-007: Verifica assenza persistenza fileless via WMI Event Subscriptions (Test-WmiEventSubscriptions)
+    - HOME-FIL-008: Verifica assenza estensioni browser forzate da policy Chrome/Edge (Test-BrowserForcedExtensions)
     Non modifica mai lo stato del sistema.
 #>
 
@@ -6405,6 +6461,212 @@ function Test-CartellaStartupUtente {
     catch {
         $risultato.Status = 'errore'
         $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-WmiEventSubscriptions {
+    <#
+    .SYNOPSIS
+        Verifica che non siano presenti sottoscrizioni WMI persistenti malevole
+        (persistenza fileless tramite __EventFilter, CommandLineEventConsumer,
+        ActiveScriptEventConsumer e __FilterToConsumerBinding in root\subscription) (HOME-FIL-007).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 sottoscrizioni WMI persistenti sospette (CommandLineEventConsumer / ActiveScriptEventConsumer)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $filtri          = @(Get-CimInstance -Namespace 'root\subscription' -ClassName '__EventFilter' -ErrorAction Stop)
+        $cmdConsumers    = @(Get-CimInstance -Namespace 'root\subscription' -ClassName 'CommandLineEventConsumer' -ErrorAction Stop)
+        $scriptConsumers = @(Get-CimInstance -Namespace 'root\subscription' -ClassName 'ActiveScriptEventConsumer' -ErrorAction Stop)
+        $bindings        = @(Get-CimInstance -Namespace 'root\subscription' -ClassName '__FilterToConsumerBinding' -ErrorAction Stop)
+
+        $elementiSospetti = @()
+        $filtriLegittimi = @('SCM Event Log Filter')
+
+        foreach ($c in $cmdConsumers) {
+            $nomeC  = if ($null -ne $c.PSObject.Properties['Name'] -and $null -ne $c.Name) { [string]$c.Name } else { 'ConsumerSenzaNome' }
+            $cmdTpl = if ($null -ne $c.PSObject.Properties['CommandLineTemplate'] -and $null -ne $c.CommandLineTemplate) { [string]$c.CommandLineTemplate } else { '' }
+            if ($cmdTpl.Length -gt 120) {
+                $cmdTpl = $cmdTpl.Substring(0, 117) + '...'
+            }
+            $elementiSospetti += "CommandLineEventConsumer: $nomeC ($cmdTpl)"
+        }
+
+        foreach ($s in $scriptConsumers) {
+            $nomeS  = if ($null -ne $s.PSObject.Properties['Name'] -and $null -ne $s.Name) { [string]$s.Name } else { 'ScriptConsumerSenzaNome' }
+            $scrTxt = if ($null -ne $s.PSObject.Properties['ScriptText'] -and $null -ne $s.ScriptText) { [string]$s.ScriptText } else { '' }
+            if ($scrTxt.Length -gt 120) {
+                $scrTxt = $scrTxt.Substring(0, 117) + '...'
+            }
+            $elementiSospetti += "ActiveScriptEventConsumer: $nomeS ($scrTxt)"
+        }
+
+        foreach ($f in $filtri) {
+            $fNome = if ($null -ne $f.PSObject.Properties['Name'] -and $null -ne $f.Name) { [string]$f.Name } else { '' }
+            if ($filtriLegittimi -contains $fNome) { continue }
+            $fQuery = if ($null -ne $f.PSObject.Properties['Query'] -and $null -ne $f.Query) { [string]$f.Query } else { '' }
+            if ($fQuery.Length -gt 120) {
+                $fQuery = $fQuery.Substring(0, 117) + '...'
+            }
+            if (($cmdConsumers.Count -gt 0 -or $scriptConsumers.Count -gt 0) -or
+                ($fQuery -match '(?i)(powershell|cmd\.exe|wscript|cscript|mshta|Win32_ProcessStartTrace)')) {
+                $elementiSospetti += "EventFilter: $fNome ($fQuery)"
+            }
+        }
+
+        $bindingsNonStandard = 0
+        foreach ($b in $bindings) {
+            $bFilt = if ($null -ne $b.PSObject.Properties['Filter'] -and $null -ne $b.Filter) { [string]$b.Filter } else { '' }
+            $bCons = if ($null -ne $b.PSObject.Properties['Consumer'] -and $null -ne $b.Consumer) { [string]$b.Consumer } else { '' }
+            if (($bFilt -match 'SCM Event Log Filter') -and ($bCons -match 'NTEventLogEventConsumer')) {
+                continue
+            }
+            $bindingsNonStandard++
+        }
+
+        $risultato.Evidence = @{
+            EventFiltersCount          = $filtri.Count
+            CommandLineConsumersCount  = $cmdConsumers.Count
+            ActiveScriptConsumersCount = $scriptConsumers.Count
+            BindingsCount              = $bindings.Count
+            NonStandardBindingsCount   = $bindingsNonStandard
+            ElementiSospetti           = $elementiSospetti
+        }
+
+        if ($elementiSospetti.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna sottoscrizione WMI persistente sospetta rilevata in root\subscription"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevate $($elementiSospetti.Count) sottoscrizioni WMI sospette: $($elementiSospetti -join '; ')"
+        }
+    }
+    catch [System.UnauthorizedAccessException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Privilegi insufficienti per interrogare il namespace WMI root\subscription"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege|CIM resource|Unauthorized') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per interrogare il namespace WMI root\subscription"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-BrowserForcedExtensions {
+    <#
+    .SYNOPSIS
+        Verifica che non vi siano estensioni browser forzate tramite policy di registro
+        (ExtensionInstallForcelist su Google Chrome o Microsoft Edge) (HOME-FIL-008).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessuna estensione browser forzata da policy (ExtensionInstallForcelist vuota o assente)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaviBrowser = @(
+            @{ Browser = 'Chrome'; Hive = 'HKLM'; Path = 'HKLM:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist' },
+            @{ Browser = 'Chrome'; Hive = 'HKCU'; Path = 'HKCU:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist' },
+            @{ Browser = 'Edge';   Hive = 'HKLM'; Path = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist' },
+            @{ Browser = 'Edge';   Hive = 'HKCU'; Path = 'HKCU:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist' }
+        )
+
+        $estensioniForzate = @()
+        $chiaviTrovate     = @()
+
+        foreach ($voce in $chiaviBrowser) {
+            if (-not (Test-Path -LiteralPath $voce.Path -ErrorAction SilentlyContinue)) {
+                continue
+            }
+            $chiaviTrovate += $voce.Path
+            $prop = Get-ItemProperty -LiteralPath $voce.Path -ErrorAction Stop
+            if ($null -eq $prop) { continue }
+
+            foreach ($p in $prop.PSObject.Properties) {
+                if ($p.Name -in @('PSPath', 'PSParentPath', 'PSChildName', 'PSDrive', 'PSProvider')) {
+                    continue
+                }
+                $valEst = [string]$p.Value
+                if (-not [string]::IsNullOrWhiteSpace($valEst)) {
+                    $estensioniForzate += "$($voce.Browser) ($($voce.Hive)): $valEst"
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            ChiaviVerificate  = $chiaviBrowser.Count
+            ChiaviEsistenti   = $chiaviTrovate
+            EstensioniForzate = $estensioniForzate
+            TotaleRilevate    = $estensioniForzate.Count
+        }
+
+        if ($estensioniForzate.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna estensione browser forzata da policy rilevata su Chrome o Edge"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevate $($estensioniForzate.Count) estensioni browser forzate da policy: $($estensioniForzate -join '; ')"
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch [System.UnauthorizedAccessException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege|SecurityException') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
     }
 
     return $risultato
@@ -8469,6 +8731,112 @@ function Test-PowerShellExecutionPolicySecure {
     return $risultato
 }
 
+function Test-AdministratorProtection {
+    <#
+    .SYNOPSIS
+        Verifica che la nuova modalita' Administrator Protection (elevazione just-in-time di Windows 11 24H2/25H2/26H2)
+        sia abilitata (TypeOfAdminApprovalMode = 2) (HOME-UAC-004).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "TypeOfAdminApprovalMode = 2 (Administrator Protection just-in-time attiva)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        [int]$numeroBuild = 0
+        if ($null -ne $Ambiente -and $null -ne $Ambiente.PSObject.Properties['Build'] -and (-not [string]::IsNullOrWhiteSpace([string]$Ambiente.Build))) {
+            if ([string]$Ambiente.Build -match '^(\d+)') {
+                $numeroBuild = [int]$Matches[1]
+            }
+        }
+
+        if ($numeroBuild -eq 0) {
+            $chiaveCurVer = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion'
+            if (Test-Path -LiteralPath $chiaveCurVer -ErrorAction SilentlyContinue) {
+                $propVer = Get-ItemProperty -LiteralPath $chiaveCurVer -ErrorAction SilentlyContinue
+                if ($null -ne $propVer -and $null -ne $propVer.PSObject.Properties['CurrentBuildNumber'] -and ([string]$propVer.CurrentBuildNumber -match '^(\d+)')) {
+                    $numeroBuild = [int]$Matches[1]
+                }
+                elseif ($null -ne $propVer -and $null -ne $propVer.PSObject.Properties['CurrentBuild'] -and ([string]$propVer.CurrentBuild -match '^(\d+)')) {
+                    $numeroBuild = [int]$Matches[1]
+                }
+            }
+        }
+
+        $chiaveUac = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+        if (-not (Test-Path -LiteralPath $chiaveUac -ErrorAction SilentlyContinue)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Chiave di registro UAC Policies\System non trovata"
+            $risultato.Evidence = @{ Path = $chiaveUac; Build = $numeroBuild }
+            return $risultato
+        }
+
+        $propUac = Get-ItemProperty -LiteralPath $chiaveUac -ErrorAction Stop
+        $haProprieta = ($null -ne $propUac -and $null -ne $propUac.PSObject.Properties['TypeOfAdminApprovalMode'] -and $null -ne $propUac.TypeOfAdminApprovalMode)
+        $valoreMode  = if ($haProprieta) { [int]$propUac.TypeOfAdminApprovalMode } else { -1 }
+
+        $lsaDeprivileged = $null
+        $chiaveLsa = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'
+        if (Test-Path -LiteralPath $chiaveLsa -ErrorAction SilentlyContinue) {
+            $propLsa = Get-ItemProperty -LiteralPath $chiaveLsa -ErrorAction SilentlyContinue
+            if ($null -ne $propLsa -and $null -ne $propLsa.PSObject.Properties['ShadowAdminEnabled']) {
+                $lsaDeprivileged = $propLsa.ShadowAdminEnabled
+            }
+        }
+
+        $risultato.Evidence = @{
+            Path                    = $chiaveUac
+            TypeOfAdminApprovalMode = $valoreMode
+            ValuePresent            = $haProprieta
+            Build                   = $numeroBuild
+            ShadowAdminEnabled      = $lsaDeprivileged
+        }
+
+        if ($haProprieta -and $valoreMode -eq 2) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Administrator Protection just-in-time attiva (TypeOfAdminApprovalMode = 2)"
+        }
+        elseif ((-not $haProprieta) -and ($numeroBuild -gt 0 -and $numeroBuild -lt 26100)) {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Funzionalita' disponibile da Windows 11 24H2/25H2+ (Build rilevata: $numeroBuild < 26100)"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Modalita' UAC legacy attiva; Administrator Protection non abilitata (TypeOfAdminApprovalMode = $valoreMode)"
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alla chiave UAC Policies\System"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per verificare Administrator Protection"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
 # =============================================================================
 # MODULO: src\ui\ViewModel.ps1
 # =============================================================================
@@ -8770,6 +9138,21 @@ $script:RimediStaticiFetta = @{
         command = 'Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force'
         risk    = "Basso: consente gli script locali ma richiede una firma digitale per gli script scaricati da Internet."
     }
+    'HOME-UAC-004' = [PSCustomObject]@{
+        text    = "Abilita Administrator Protection (elevazione just-in-time introdotta in Windows 11 24H2/25H2+) tramite Sicurezza di Windows o Policy UAC (TypeOfAdminApprovalMode = 2)."
+        command = 'Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" -Name "TypeOfAdminApprovalMode" -Value 2 -Type DWord'
+        risk    = "Basso su Windows 11 24H2/25H2+: richiede conferma interattiva di Windows Hello / password per creare un token amministrativo isolato just-in-time."
+    }
+    'HOME-FIL-007' = [PSCustomObject]@{
+        text    = "Ispeziona e rimuovi eventuali sottoscrizioni WMI persistenti non autorizzate (__EventFilter, CommandLineEventConsumer, ActiveScriptEventConsumer) nel namespace root\subscription."
+        command = 'Get-CimInstance -Namespace "root\subscription" -ClassName CommandLineEventConsumer; Get-CimInstance -Namespace "root\subscription" -ClassName ActiveScriptEventConsumer'
+        risk    = "Nessuno rimuovendo sottoscrizioni malware; verifica prima che non appartengano a software aziendali legittimi."
+    }
+    'HOME-FIL-008' = [PSCustomObject]@{
+        text    = "Verifica ed elimina eventuali voci sospette nella chiave ExtensionInstallForcelist del registro (Google Chrome o Microsoft Edge) per consentire la rimozione di estensioni indesiderate."
+        command = 'Get-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist","HKCU:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist","HKLM:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist","HKCU:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist" -ErrorAction SilentlyContinue'
+        risk    = "Basso su PC personali: rimuove l'obbligo di installazione forzata delle estensioni configurate tramite policy."
+    }
 }
 
 # Traduzioni complete in Inglese (EN) per tutti i 34 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
@@ -8829,9 +9212,12 @@ $script:TraduzioniControlliEN = @{
     'HOME-NET-008' = @{ cat = 'Network';           title = 'Legacy TLS 1.0/1.1 disabled and DNS over HTTPS (DoH) supported'; rat = 'Disabling TLS 1.0/1.1 prevents cryptographic downgrade attacks, while DNS over HTTPS encrypts DNS queries against spoofing.'; rem = 'Ensure TLS 1.0/1.1 are not enabled in SCHANNEL and set EnableAutoDoh = 2 in Dnscache\Parameters.'; risk = 'Low: automatically encrypts DNS queries when the configured DNS server supports DoH.' }
     'HOME-SYS-009' = @{ cat = 'Windows Settings';  title = 'Windows Script Host (WSH) disabled against .vbs/.js malware'; rat = 'Disabling WSH blocks automatic execution of VBScript (.vbs) and JScript (.js) malware droppers commonly used in phishing.'; rem = 'Set Enabled = 0 under HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings.'; risk = 'Low: blocks legacy .vbs/.js scripts; does not affect PowerShell.' }
     'HOME-SEC-009' = @{ cat = 'Advanced Security'; title = 'Secure PowerShell ExecutionPolicy (no Unrestricted or Bypass)'; rat = 'An overly permissive ExecutionPolicy allows unsigned or downloaded PowerShell scripts to run without restriction.'; rem = 'Set PowerShell ExecutionPolicy to RemoteSigned via Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine.'; risk = 'Low: allows local scripts while requiring a digital signature for scripts downloaded from the Internet.' }
+    'HOME-UAC-004' = @{ cat = 'UAC';               title = 'Windows 11 Administrator Protection (JIT) enabled';          rat = 'Administrator Protection creates an isolated, hidden admin account with just-in-time tokens, preventing malware from silently inheriting permanent admin rights.'; rem = 'Enable Administrator Protection in Windows Security -> Account protection or set TypeOfAdminApprovalMode = 2 (Windows 11 24H2/25H2+).'; risk = 'Low on Windows 11 24H2/25H2+: prompts with Windows Hello or password for an isolated admin token.' }
+    'HOME-FIL-007' = @{ cat = 'File Security';     title = 'No fileless persistence via WMI Event Subscriptions';        rat = 'Attackers abuse permanent WMI event subscriptions to maintain stealthy fileless persistence without creating startup files or Run keys.'; rem = 'Inspect root\subscription __EventFilter, CommandLineEventConsumer, and ActiveScriptEventConsumer and remove unauthorized entries.'; risk = 'None when removing unauthorized malware subscriptions.' }
+    'HOME-FIL-008' = @{ cat = 'File Security';     title = 'No forced browser extensions via policy (Chrome / Edge)';   rat = 'Malware and infostealers frequently abuse ExtensionInstallForcelist policies to silently force-install malicious extensions and prevent removal.'; rem = 'Inspect ExtensionInstallForcelist keys for Chrome and Edge in HKLM/HKCU Policies and remove unrecognized entries.'; risk = 'Low on home PCs: lifts policy-enforced browser extension locks.' }
 }
 
-# Traduzioni complete in Tedesco (DE) per tutti i 55 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
+# Traduzioni complete in Tedesco (DE) per tutti i 58 controlli (Titolo, Categoria, Spiegazione, Rimedio, Rischi)
 $script:TraduzioniControlliDE = @{
     'HOME-FW-001'  = @{ cat = 'Firewall';            title = 'Windows-Firewall auf allen Profilen aktiviert';                  rat = 'Die Firewall ist die erste Verteidigungslinie gegen unbefugte Netzwerkverbindungen.'; rem = 'Aktivieren Sie die Windows Defender Firewall fuer Domaenen-, Privat- und Oeffentliche Profile ueber Windows-Sicherheit oder PowerShell als Administrator.'; risk = 'Gering: Blockiert unerwuenschte eingehende Verbindungen bei normalem ausgehendem Datenverkehr.' }
     'HOME-UAC-001' = @{ cat = 'UAC';                 title = 'Benutzerkontensteuerung (UAC) aktiviert';                        rat = 'UAC schuetzt das System, indem vor Vorgaengen mit Administratorrechten eine Bestaetigung angefordert wird.'; rem = 'Aktivieren Sie UAC (EnableLUA = 1) in den Windows-Einstellungen oder per PowerShell als Administrator. Neustart erforderlich.'; risk = 'Gering: Windows fragt vor administrativen Aenderungen nach.' }
@@ -8888,6 +9274,9 @@ $script:TraduzioniControlliDE = @{
     'HOME-NET-008' = @{ cat = 'Netzwerk';            title = 'Veraltetes TLS 1.0/1.1 deaktiviert und DNS over HTTPS (DoH) aktiv'; rat = 'Das Deaktivieren von TLS 1.0/1.1 verhindert Downgrade-Angriffe, waehrend DNS over HTTPS DNS-Abfragen gegen Spoofing verschluesselt.'; rem = 'Stellen Sie sicher, dass TLS 1.0/1.1 in SCHANNEL deaktiviert sind und setzen Sie EnableAutoDoh = 2 unter Dnscache\Parameters.'; risk = 'Gering: Verschluesselt DNS-Abfragen automatisch, wenn der DNS-Server DoH unterstuetzt.' }
     'HOME-SYS-009' = @{ cat = 'Windows-Einstellungen'; title = 'Windows Script Host (WSH) gegen .vbs/.js-Malware deaktiviert'; rat = 'Das Deaktivieren von WSH blockiert die automatische Ausfuehrung von VBScript (.vbs)- und JScript (.js)-Droppern.'; rem = 'Setzen Sie Enabled = 0 unter HKLM:\SOFTWARE\Microsoft\Windows Script Host\Settings.'; risk = 'Gering: Blockiert veraltete .vbs/.js-Skripte; hat keinen Einfluss auf PowerShell.' }
     'HOME-SEC-009' = @{ cat = 'Erweiterte Sicherheit'; title = 'Sichere PowerShell ExecutionPolicy (kein Unrestricted/Bypass)'; rat = 'Eine zu offene ExecutionPolicy ermoeglicht das ungehinderte Starten nicht signierter PowerShell-Skripte aus dem Internet.'; rem = 'Setzen Sie die ExecutionPolicy auf RemoteSigned ueber Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine.'; risk = 'Gering: Erlaubt lokale Skripte, erfordert aber eine digitale Signatur fuer Skripte aus dem Internet.' }
+    'HOME-UAC-004' = @{ cat = 'UAC';                   title = 'Windows 11 Administrator Protection (JIT) aktiviert';           rat = 'Administrator Protection erstellt ein isoliertes Administratorkonto mit Just-in-Time-Rechten und schuetzt vor stiller Token-Uebernahme.'; rem = 'Aktivieren Sie Administrator Protection ueber TypeOfAdminApprovalMode = 2 (Windows 11 24H2/25H2+).'; risk = 'Gering ab Windows 11 24H2/25H2+: Erfordert Windows Hello oder Kennwort fuer temporaere Admin-Token.' }
+    'HOME-FIL-007' = @{ cat = 'Dateisicherheit';       title = 'Keine dateilose Persistenz via WMI Event Subscriptions';        rat = 'Angreifer nutzen permanente WMI-Ereignisabonnements fuer versteckte, dateilose Persistenz ausserhalb von Run-Schluesseln.'; rem = 'Pruefen Sie root\subscription (__EventFilter, CommandLineEventConsumer, ActiveScriptEventConsumer) und entfernen Sie unbekannte Eintraege.'; risk = 'Keines beim Entfernen nicht autorisierter Malware-Abonnements.' }
+    'HOME-FIL-008' = @{ cat = 'Dateisicherheit';       title = 'Keine per Richtlinie erzwungenen Browser-Erweiterungen';      rat = 'Schadsoftware nutzt ExtensionInstallForcelist in Chrome/Edge, um boesartige Erweiterungen dauerhaft und nicht entfernbar zu installieren.'; rem = 'Pruefen und loeschen Sie unbekannte Eintraege unter ExtensionInstallForcelist fuer Chrome und Edge in HKLM/HKCU.'; risk = 'Gering auf Heim-PCs: Hebt erzwungene Browser-Erweiterungsrichtlinien auf.' }
 }
 
 function Get-ValoreProprietaSicuro {

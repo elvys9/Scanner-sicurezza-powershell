@@ -10,6 +10,8 @@
     - HOME-FIL-004: Verifica Attivita' pianificate (Scheduled Tasks) contro comandi offuscati (Test-TaskPianificatiSospetti)
     - HOME-FIL-005: Verifica assenza dirottamenti IFEO Debugger (Sticky Keys / TaskMgr / Defender) (Test-HijackingIFEO)
     - HOME-FIL-006: Scansione cartelle Esecuzione automatica (Startup) contro script sospetti (Test-CartellaStartupUtente)
+    - HOME-FIL-007: Verifica assenza persistenza fileless via WMI Event Subscriptions (Test-WmiEventSubscriptions)
+    - HOME-FIL-008: Verifica assenza estensioni browser forzate da policy Chrome/Edge (Test-BrowserForcedExtensions)
     Non modifica mai lo stato del sistema.
 #>
 
@@ -457,6 +459,212 @@ function Test-CartellaStartupUtente {
     catch {
         $risultato.Status = 'errore'
         $risultato.Error  = $_.Exception.Message
+    }
+
+    return $risultato
+}
+
+function Test-WmiEventSubscriptions {
+    <#
+    .SYNOPSIS
+        Verifica che non siano presenti sottoscrizioni WMI persistenti malevole
+        (persistenza fileless tramite __EventFilter, CommandLineEventConsumer,
+        ActiveScriptEventConsumer e __FilterToConsumerBinding in root\subscription) (HOME-FIL-007).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "0 sottoscrizioni WMI persistenti sospette (CommandLineEventConsumer / ActiveScriptEventConsumer)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $filtri          = @(Get-CimInstance -Namespace 'root\subscription' -ClassName '__EventFilter' -ErrorAction Stop)
+        $cmdConsumers    = @(Get-CimInstance -Namespace 'root\subscription' -ClassName 'CommandLineEventConsumer' -ErrorAction Stop)
+        $scriptConsumers = @(Get-CimInstance -Namespace 'root\subscription' -ClassName 'ActiveScriptEventConsumer' -ErrorAction Stop)
+        $bindings        = @(Get-CimInstance -Namespace 'root\subscription' -ClassName '__FilterToConsumerBinding' -ErrorAction Stop)
+
+        $elementiSospetti = @()
+        $filtriLegittimi = @('SCM Event Log Filter')
+
+        foreach ($c in $cmdConsumers) {
+            $nomeC  = if ($null -ne $c.PSObject.Properties['Name'] -and $null -ne $c.Name) { [string]$c.Name } else { 'ConsumerSenzaNome' }
+            $cmdTpl = if ($null -ne $c.PSObject.Properties['CommandLineTemplate'] -and $null -ne $c.CommandLineTemplate) { [string]$c.CommandLineTemplate } else { '' }
+            if ($cmdTpl.Length -gt 120) {
+                $cmdTpl = $cmdTpl.Substring(0, 117) + '...'
+            }
+            $elementiSospetti += "CommandLineEventConsumer: $nomeC ($cmdTpl)"
+        }
+
+        foreach ($s in $scriptConsumers) {
+            $nomeS  = if ($null -ne $s.PSObject.Properties['Name'] -and $null -ne $s.Name) { [string]$s.Name } else { 'ScriptConsumerSenzaNome' }
+            $scrTxt = if ($null -ne $s.PSObject.Properties['ScriptText'] -and $null -ne $s.ScriptText) { [string]$s.ScriptText } else { '' }
+            if ($scrTxt.Length -gt 120) {
+                $scrTxt = $scrTxt.Substring(0, 117) + '...'
+            }
+            $elementiSospetti += "ActiveScriptEventConsumer: $nomeS ($scrTxt)"
+        }
+
+        foreach ($f in $filtri) {
+            $fNome = if ($null -ne $f.PSObject.Properties['Name'] -and $null -ne $f.Name) { [string]$f.Name } else { '' }
+            if ($filtriLegittimi -contains $fNome) { continue }
+            $fQuery = if ($null -ne $f.PSObject.Properties['Query'] -and $null -ne $f.Query) { [string]$f.Query } else { '' }
+            if ($fQuery.Length -gt 120) {
+                $fQuery = $fQuery.Substring(0, 117) + '...'
+            }
+            if (($cmdConsumers.Count -gt 0 -or $scriptConsumers.Count -gt 0) -or
+                ($fQuery -match '(?i)(powershell|cmd\.exe|wscript|cscript|mshta|Win32_ProcessStartTrace)')) {
+                $elementiSospetti += "EventFilter: $fNome ($fQuery)"
+            }
+        }
+
+        $bindingsNonStandard = 0
+        foreach ($b in $bindings) {
+            $bFilt = if ($null -ne $b.PSObject.Properties['Filter'] -and $null -ne $b.Filter) { [string]$b.Filter } else { '' }
+            $bCons = if ($null -ne $b.PSObject.Properties['Consumer'] -and $null -ne $b.Consumer) { [string]$b.Consumer } else { '' }
+            if (($bFilt -match 'SCM Event Log Filter') -and ($bCons -match 'NTEventLogEventConsumer')) {
+                continue
+            }
+            $bindingsNonStandard++
+        }
+
+        $risultato.Evidence = @{
+            EventFiltersCount          = $filtri.Count
+            CommandLineConsumersCount  = $cmdConsumers.Count
+            ActiveScriptConsumersCount = $scriptConsumers.Count
+            BindingsCount              = $bindings.Count
+            NonStandardBindingsCount   = $bindingsNonStandard
+            ElementiSospetti           = $elementiSospetti
+        }
+
+        if ($elementiSospetti.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna sottoscrizione WMI persistente sospetta rilevata in root\subscription"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevate $($elementiSospetti.Count) sottoscrizioni WMI sospette: $($elementiSospetti -join '; ')"
+        }
+    }
+    catch [System.UnauthorizedAccessException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Privilegi insufficienti per interrogare il namespace WMI root\subscription"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege|CIM resource|Unauthorized') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Privilegi insufficienti per interrogare il namespace WMI root\subscription"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
+    }
+
+    return $risultato
+}
+
+function Test-BrowserForcedExtensions {
+    <#
+    .SYNOPSIS
+        Verifica che non vi siano estensioni browser forzate tramite policy di registro
+        (ExtensionInstallForcelist su Google Chrome o Microsoft Edge) (HOME-FIL-008).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [PSCustomObject]$Controllo,
+
+        [Parameter(Mandatory = $false)]
+        [PSCustomObject]$Ambiente = $null
+    )
+
+    $risultato = [PSCustomObject]@{
+        Status   = 'sconosciuto'
+        Observed = $null
+        Expected = "Nessuna estensione browser forzata da policy (ExtensionInstallForcelist vuota o assente)"
+        Evidence = $null
+        Error    = $null
+    }
+
+    try {
+        $chiaviBrowser = @(
+            @{ Browser = 'Chrome'; Hive = 'HKLM'; Path = 'HKLM:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist' },
+            @{ Browser = 'Chrome'; Hive = 'HKCU'; Path = 'HKCU:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist' },
+            @{ Browser = 'Edge';   Hive = 'HKLM'; Path = 'HKLM:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist' },
+            @{ Browser = 'Edge';   Hive = 'HKCU'; Path = 'HKCU:\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallForcelist' }
+        )
+
+        $estensioniForzate = @()
+        $chiaviTrovate     = @()
+
+        foreach ($voce in $chiaviBrowser) {
+            if (-not (Test-Path -LiteralPath $voce.Path -ErrorAction SilentlyContinue)) {
+                continue
+            }
+            $chiaviTrovate += $voce.Path
+            $prop = Get-ItemProperty -LiteralPath $voce.Path -ErrorAction Stop
+            if ($null -eq $prop) { continue }
+
+            foreach ($p in $prop.PSObject.Properties) {
+                if ($p.Name -in @('PSPath', 'PSParentPath', 'PSChildName', 'PSDrive', 'PSProvider')) {
+                    continue
+                }
+                $valEst = [string]$p.Value
+                if (-not [string]::IsNullOrWhiteSpace($valEst)) {
+                    $estensioniForzate += "$($voce.Browser) ($($voce.Hive)): $valEst"
+                }
+            }
+        }
+
+        $risultato.Evidence = @{
+            ChiaviVerificate  = $chiaviBrowser.Count
+            ChiaviEsistenti   = $chiaviTrovate
+            EstensioniForzate = $estensioniForzate
+            TotaleRilevate    = $estensioniForzate.Count
+        }
+
+        if ($estensioniForzate.Count -eq 0) {
+            $risultato.Status   = 'superato'
+            $risultato.Observed = "Nessuna estensione browser forzata da policy rilevata su Chrome o Edge"
+        }
+        else {
+            $risultato.Status   = 'fallito'
+            $risultato.Observed = "Rilevate $($estensioniForzate.Count) estensioni browser forzate da policy: $($estensioniForzate -join '; ')"
+        }
+    }
+    catch [System.Security.SecurityException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch [System.UnauthorizedAccessException] {
+        $risultato.Status   = 'sconosciuto'
+        $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+        $risultato.Error    = $_.Exception.Message
+    }
+    catch {
+        if ($_.Exception.Message -match 'Access is denied|Accesso negato|privilegi|privilege|SecurityException') {
+            $risultato.Status   = 'sconosciuto'
+            $risultato.Observed = "Accesso negato alle chiavi di policy del browser"
+            $risultato.Error    = $_.Exception.Message
+        }
+        else {
+            $risultato.Status = 'errore'
+            $risultato.Error  = $_.Exception.Message
+        }
     }
 
     return $risultato

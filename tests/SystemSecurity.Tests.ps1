@@ -278,15 +278,57 @@ Describe 'Controlli SystemSecurity (HOME-UPD-001, HOME-ENC-001, HOME-PRV-001, HO
             $res.Status | Should -Be 'fallito'
         }
     }
+
+    Context 'Test-AdministratorProtection (HOME-UAC-004)' {
+        It 'Restituisce superato quando TypeOfAdminApprovalMode e impostato a 2 (just-in-time)' {
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ TypeOfAdminApprovalMode = 2 }
+            }
+            $res = Test-AdministratorProtection -Controllo $controlloDummy -Ambiente ([PSCustomObject]@{ Build = '26100.1' })
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Restituisce fallito quando TypeOfAdminApprovalMode e 1 (legacy)' {
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ TypeOfAdminApprovalMode = 1 }
+            }
+            $res = Test-AdministratorProtection -Controllo $controlloDummy -Ambiente ([PSCustomObject]@{ Build = '26100.1' })
+            $res.Status | Should -Be 'fallito'
+        }
+
+        It 'Restituisce fallito quando TypeOfAdminApprovalMode e assente su build 26100+' {
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ EnableLUA = 1 }
+            }
+            $res = Test-AdministratorProtection -Controllo $controlloDummy -Ambiente ([PSCustomObject]@{ Build = '26100.1' })
+            $res.Status | Should -Be 'fallito'
+        }
+
+        It 'Restituisce sconosciuto quando TypeOfAdminApprovalMode e assente su build precedente a 26100' {
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{ EnableLUA = 1 }
+            }
+            $res = Test-AdministratorProtection -Controllo $controlloDummy -Ambiente ([PSCustomObject]@{ Build = '22631.1' })
+            $res.Status | Should -Be 'sconosciuto'
+        }
+
+        It 'Restituisce sconosciuto in caso di SecurityException' {
+            Mock Get-ItemProperty {
+                throw [System.Security.SecurityException]::new('Access is denied')
+            }
+            $res = Test-AdministratorProtection -Controllo $controlloDummy -Ambiente ([PSCustomObject]@{ Build = '26100.1' })
+            $res.Status | Should -Be 'sconosciuto'
+        }
+    }
 }
 
-Describe 'Copertura completa dei 55 controlli e script singolo stile winutil' {
+Describe 'Copertura completa dei 58 controlli e script singolo stile winutil' {
 
-    It 'Tutti i 55 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
+    It 'Tutti i 58 controlli in catalog/home_profile.json hanno un check implementato (registry o command_ref)' {
         $percorsoJson = Join-Path $PSScriptRoot '..\catalog\home_profile.json'
         $cat = Get-Content -LiteralPath $percorsoJson -Raw -Encoding UTF8 | ConvertFrom-Json
 
-        @($cat.controls).Count | Should -Be 55
+        @($cat.controls).Count | Should -Be 58
         foreach ($c in $cat.controls) {
             $haReg = ($null -ne $c.check.PSObject.Properties['registry'] -and $null -ne $c.check.registry)
             $haCmd = ($null -ne $c.check.PSObject.Properties['command_ref'] -and (-not [string]::IsNullOrWhiteSpace($c.check.command_ref)))

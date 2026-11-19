@@ -95,4 +95,77 @@ Describe 'Controlli FileSecurity (HOME-FIL-001, HOME-FIL-002, HOME-FIL-003)' {
             $res.Observed | Should -Match 'virustotal\.com'
         }
     }
+
+    Context 'Test-WmiEventSubscriptions (HOME-FIL-007)' {
+        It 'Restituisce superato se e presente solo la sottoscrizione predefinita SCM Event Log Filter' {
+            Mock Get-CimInstance {
+                param($Namespace, $ClassName)
+                switch ($ClassName) {
+                    '__EventFilter' { return @([PSCustomObject]@{ Name = 'SCM Event Log Filter'; Query = 'SELECT * FROM MSFT_SCMEventLogEvent' }) }
+                    'CommandLineEventConsumer' { return @() }
+                    'ActiveScriptEventConsumer' { return @() }
+                    '__FilterToConsumerBinding' { return @([PSCustomObject]@{ Filter = '__EventFilter.Name="SCM Event Log Filter"'; Consumer = 'NTEventLogEventConsumer.Name="SCM Event Log Consumer"' }) }
+                }
+            }
+            $res = Test-WmiEventSubscriptions -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Restituisce fallito se rileva un CommandLineEventConsumer sospetto' {
+            Mock Get-CimInstance {
+                param($Namespace, $ClassName)
+                switch ($ClassName) {
+                    '__EventFilter' { return @([PSCustomObject]@{ Name = 'EvilFilter'; Query = 'SELECT * FROM __InstanceCreationEvent' }) }
+                    'CommandLineEventConsumer' { return @([PSCustomObject]@{ Name = 'EvilConsumer'; CommandLineTemplate = 'powershell.exe -enc AAAA' }) }
+                    'ActiveScriptEventConsumer' { return @() }
+                    '__FilterToConsumerBinding' { return @([PSCustomObject]@{ Filter = '__EventFilter.Name="EvilFilter"'; Consumer = 'CommandLineEventConsumer.Name="EvilConsumer"' }) }
+                }
+            }
+            $res = Test-WmiEventSubscriptions -Controllo $controlloDummy
+            $res.Status   | Should -Be 'fallito'
+            $res.Observed | Should -Match 'EvilConsumer'
+        }
+
+        It 'Restituisce sconosciuto se Get-CimInstance solleva Access is denied' {
+            Mock Get-CimInstance {
+                throw [System.UnauthorizedAccessException]::new('Access is denied')
+            }
+            $res = Test-WmiEventSubscriptions -Controllo $controlloDummy
+            $res.Status | Should -Be 'sconosciuto'
+        }
+    }
+
+    Context 'Test-BrowserForcedExtensions (HOME-FIL-008)' {
+        It 'Restituisce superato se nessuna chiave ExtensionInstallForcelist e presente' {
+            Mock Test-Path { return $false }
+            $res = Test-BrowserForcedExtensions -Controllo $controlloDummy
+            $res.Status | Should -Be 'superato'
+        }
+
+        It 'Restituisce fallito se rileva una estensione forzata in ExtensionInstallForcelist' {
+            Mock Test-Path {
+                param($LiteralPath)
+                return ($LiteralPath -eq 'HKLM:\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist')
+            }
+            Mock Get-ItemProperty {
+                return [PSCustomObject]@{
+                    '1'        = 'abcdefghijklmnopabcdefghijklmnop;https://clients2.google.com/service/update2/crx'
+                    PSPath     = 'Microsoft.PowerShell.Core\Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome\ExtensionInstallForcelist'
+                    PSProvider = 'Registry'
+                }
+            }
+            $res = Test-BrowserForcedExtensions -Controllo $controlloDummy
+            $res.Status   | Should -Be 'fallito'
+            $res.Observed | Should -Match 'abcdefghijklmnop'
+        }
+
+        It 'Restituisce sconosciuto in caso di SecurityException durante la lettura delle policy' {
+            Mock Test-Path { return $true }
+            Mock Get-ItemProperty {
+                throw [System.Security.SecurityException]::new('Access is denied')
+            }
+            $res = Test-BrowserForcedExtensions -Controllo $controlloDummy
+            $res.Status | Should -Be 'sconosciuto'
+        }
+    }
 }
